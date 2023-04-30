@@ -3,7 +3,6 @@
 
 use std::collections::HashMap;
 
-
 fn check_valid_tile_string(tile_str: &String) {
     assert!(tile_str.len() == 2);
     assert!(
@@ -89,4 +88,79 @@ fn main() {
         println!("{tile}");
     }
     println!("is winning hand? {}", is_winning_hand(hand));
+}
+
+#[cfg(test)]
+mod tests {
+    // importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn test_is_winning_hand_isolated_honor() {
+        let tiles = Vec::from([
+            String::from("1m"),
+            String::from("1m"),
+            String::from("1m"),
+            String::from("2m"),
+            String::from("3m"),
+            String::from("4m"),
+            String::from("5m"),
+            String::from("6m"),
+            String::from("7m"),
+            String::from("8m"),
+            String::from("9m"),
+            String::from("9m"),
+            String::from("9m"),
+            String::from("Ww"), // isolated honor tile
+        ]);
+        assert_eq!(is_winning_hand(tiles), false);
+    }
+
+    #[test]
+    fn test_is_winning_hand_isolated_number() {
+        let tiles = Vec::from([
+            String::from("1m"), // isolated number tile
+            String::from("3m"),
+            String::from("4m"),
+            String::from("5m"),
+            String::from("6m"),
+            String::from("7m"),
+            String::from("8m"),
+            String::from("9m"),
+            String::from("2s"),
+            String::from("2s"),
+            String::from("2s"),
+            String::from("Rd"),
+            String::from("Rd"),
+            String::from("Rd"),
+        ]);
+        assert_eq!(is_winning_hand(tiles), false);
+    }
+
+    #[test]
+    fn test_is_winning_hand_nine_gates() {
+        let tiles = Vec::from([
+            String::from("1m"),
+            String::from("1m"),
+            String::from("1m"),
+            String::from("2m"),
+            String::from("3m"),
+            String::from("4m"),
+            String::from("5m"),
+            String::from("6m"),
+            String::from("7m"),
+            String::from("8m"),
+            String::from("9m"),
+            String::from("9m"),
+            String::from("9m"),
+        ]);
+        for rank in 1..=9 {
+            let mut new_tiles = Vec::new();
+            new_tiles.clone_from_slice(tiles.as_slice());
+            let mut added_tile = String::from(rank.to_string());
+            added_tile.push('m');
+            new_tiles.push(added_tile);
+            assert_eq!(is_winning_hand(new_tiles), true);
+        }
+    }
 }
