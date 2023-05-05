@@ -3,12 +3,12 @@
 
 use std::collections::HashMap;
 
-// const NUMBER_TILES: [&str; 9] = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
-// const WIND_TILES: [&str; 4] = ["E", "S", "W", "N"];
-// const DRAGON_TILES: [&str; 3] = ["G", "R", "W"];
+const NUMBER_TILES: [&str; 9] = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+const WIND_TILES: [&str; 4] = ["E", "S", "W", "N"];
+const DRAGON_TILES: [&str; 3] = ["G", "R", "W"];
 // const TILE_SUITS: [&str; 5] = ["m", "p", "s", "w", "d"];
 const HONOR_SUITS: [&str; 2] = ["w", "d"];
-// const NUMBER_SUITS: [&str; 3] = ["m", "p", "s"];
+const NUMBER_SUITS: [&str; 3] = ["m", "p", "s"];
 
 // fn check_valid_tile_string(tile_str: &String) {
 //     assert!(tile_str.len() == 2);
@@ -64,6 +64,118 @@ fn count_tiles_by_suit_rank(tiles: &Vec<String>) -> HashMap<&str, HashMap<&str, 
     tile_counts_by_suit
 }
 
+fn is_thirteen_orphans_yaku(tile_counts_by_suit: &HashMap<&str, HashMap<&str, i32>>) -> bool {
+    // Returns true iff the hand is a winning hand by the thirteen orphans yaku (aka "kokushi musou", or just "kokushi")
+    let mut paired_tile = String::from("");
+
+    // check winds:
+    match tile_counts_by_suit.get("w") {
+        Some(man_counts) => {
+            for wind_tile in WIND_TILES {
+                let count = man_counts.get(wind_tile).unwrap_or(&0);
+                let count = *count;
+                if count > 2 {
+                    return false;
+                } else if count == 2 {
+                    // exactly one of the "orphans" (terminal number tiles and honor tiles)
+                    // must be paired in thirteen orphans yaku
+                    if paired_tile.is_empty() {
+                        paired_tile.push_str(wind_tile);
+                        paired_tile.push_str("w");
+                        continue;
+                    } else {
+                        return false;
+                    }
+                }
+            }
+        }
+        // no winds entirely disqualifies the hand from thirteen orphans yaku
+        None => return false,
+    };
+
+    // check dragons:
+    match tile_counts_by_suit.get("d") {
+        Some(man_counts) => {
+            for dragon_tile in DRAGON_TILES {
+                let count = man_counts.get(dragon_tile).unwrap_or(&0);
+                let count = *count;
+                if count > 2 {
+                    return false;
+                } else if count == 2 {
+                    // exactly one of the "orphans" (terminal number tiles and honor tiles)
+                    // must be paired in thirteen orphans yaku
+                    if paired_tile.is_empty() {
+                        paired_tile.push_str(dragon_tile);
+                        paired_tile.push_str("w");
+                        continue;
+                    } else {
+                        return false;
+                    }
+                }
+            }
+        }
+        // no dragons entirely disqualifies the hand from thirteen orphans yaku
+        None => return false,
+    };
+
+    // check number suits:
+    for tile_suit in NUMBER_SUITS {
+        match tile_counts_by_suit.get(tile_suit) {
+            Some(man_counts) => {
+                for tile_rank in NUMBER_TILES {
+                    let count = man_counts.get(tile_rank).unwrap_or(&0);
+                    let count = *count;
+                    if tile_rank == "1" || tile_rank == "9" {
+                        if count > 2 {
+                            return false;
+                        } else if count == 2 {
+                            // exactly one of the "orphans" (terminal number tiles and honor tiles)
+                            // must be paired in thirteen orphans yaku
+                            if paired_tile.is_empty() {
+                                paired_tile.push_str(tile_rank);
+                                paired_tile.push_str(tile_suit);
+                                continue;
+                            } else {
+                                return false;
+                            }
+                        }
+                    } else if count > 0 {
+                        // any non-terminal number tiles (i.e. not 1 or 9) tiles immediately disqualifies the hand from thirteen orphans yaku
+                        return false;
+                    }
+                }
+            }
+            // missing a number suit entirely disqualifies the hand from thirteen orphans yaku
+            None => return false,
+        };
+    }
+
+    // at the end, there still must be a single paired tile
+    return !paired_tile.is_empty();
+}
+
+fn is_seven_pairs_yaku(tile_counts_by_suit: &HashMap<&str, HashMap<&str, i32>>) -> bool {
+    // Returns true iff the hand is a winning hand by the seven pairs yaku (aka "chiitoitsu", "chiitoi", "niconico")
+    // Note: does not allow a closed quadruplet (ankan) to be counted as two separate pairs for this yaku
+    let mut paired_tiles: Vec<String> = Vec::new();
+
+    for (tile_suit, suit_counts) in tile_counts_by_suit.iter() {
+        for (tile_rank, count) in suit_counts.iter() {
+            let count = *count;
+            if count != 2 {
+                return false;
+            } else {
+                let mut tile_str = String::new();
+                tile_str.push_str(tile_rank);
+                tile_str.push_str(tile_suit);
+                paired_tiles.push(tile_str);
+            }
+        }
+    }
+
+    return paired_tiles.len() == 7;
+}
+
 fn is_winning_hand(tiles: &Vec<String>) -> bool {
     // LESSON: if function is not meant to take ownership of the input argument, take in a reference
 
@@ -72,10 +184,13 @@ fn is_winning_hand(tiles: &Vec<String>) -> bool {
         return false;
     }
 
-    // TODO check for edge case hands: 7 pairs and 13 orphans
-
     let tile_counts_by_suit = count_tiles_by_suit_rank(tiles);
     println!("{:?}", tile_counts_by_suit);
+
+    // TODO check for edge case hands: 7 pairs and 13 orphans
+    if is_thirteen_orphans_yaku(&tile_counts_by_suit) || is_seven_pairs_yaku(&tile_counts_by_suit) {
+        return true;
+    }
 
     // there can be at most one pair
     let mut pair_tile = String::from("");
@@ -175,6 +290,65 @@ mod tests {
         assert_eq!(counts.get("m").unwrap().get("8"), Some(&2));
         assert_eq!(counts.get("d").unwrap().get("G"), Some(&2));
         assert_eq!(counts.get("w").unwrap().get("W"), Some(&3));
+    }
+
+    #[test]
+    fn test_is_thirteen_orphans_yaku() {
+        // from: https://riichi.wiki/Kokushi_musou
+        let tiles = Vec::from([
+            String::from("1m"),
+            String::from("9m"),
+            String::from("1p"),
+            String::from("9p"),
+            String::from("1s"),
+            String::from("9s"),
+            String::from("Ew"),
+            String::from("Sw"),
+            String::from("Ww"),
+            String::from("Nw"),
+            String::from("Gd"),
+            String::from("Rd"),
+            String::from("Wd"),
+        ]);
+
+        for winning_tile in tiles {
+            let mut new_tiles = Vec::new();
+            new_tiles.clone_from_slice(tiles.as_slice());
+            new_tiles.push(winning_tile);
+            let new_tiles_count_by_suit = count_tiles_by_suit_rank(&new_tiles);
+            assert_eq!(is_thirteen_orphans_yaku(&new_tiles_count_by_suit), true);
+        }
+        let tiles_count_by_suit = count_tiles_by_suit_rank(&tiles);
+        assert_eq!(is_thirteen_orphans_yaku(&tiles_count_by_suit), false);
+    }
+
+    #[test]
+    fn test_is_seven_pairs_yaku() {
+        // from: https://riichi.wiki/Chiitoitsu
+        let tiles = Vec::from([
+            String::from("1m"),
+            String::from("1m"),
+            String::from("3m"),
+            String::from("3m"),
+            String::from("4m"),
+            String::from("5p"),
+            String::from("5p"),
+            String::from("2s"),
+            String::from("2s"),
+            String::from("Ww"),
+            String::from("Ww"),
+            String::from("Wd"),
+            String::from("Wd"),
+        ]);
+
+        let mut new_tiles = Vec::new();
+        new_tiles.clone_from_slice(tiles.as_slice());
+        new_tiles.push(String::from("4m"));
+        let new_tiles_count_by_suit = count_tiles_by_suit_rank(&new_tiles);
+        assert_eq!(is_seven_pairs_yaku(&new_tiles_count_by_suit), true);
+
+        let tiles_count_by_suit = count_tiles_by_suit_rank(&tiles);
+        assert_eq!(is_seven_pairs_yaku(&tiles_count_by_suit), false);
     }
 
     #[test]
