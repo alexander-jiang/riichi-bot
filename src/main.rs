@@ -70,9 +70,9 @@ fn is_thirteen_orphans_yaku(tile_counts_by_suit: &HashMap<&str, HashMap<&str, i3
 
     // check winds:
     match tile_counts_by_suit.get("w") {
-        Some(man_counts) => {
+        Some(wind_counts) => {
             for wind_tile in WIND_TILES {
-                let count = man_counts.get(wind_tile).unwrap_or(&0);
+                let count = wind_counts.get(wind_tile).unwrap_or(&0);
                 let count = *count;
                 if count > 2 {
                     return false;
@@ -95,9 +95,9 @@ fn is_thirteen_orphans_yaku(tile_counts_by_suit: &HashMap<&str, HashMap<&str, i3
 
     // check dragons:
     match tile_counts_by_suit.get("d") {
-        Some(man_counts) => {
+        Some(dragon_counts) => {
             for dragon_tile in DRAGON_TILES {
-                let count = man_counts.get(dragon_tile).unwrap_or(&0);
+                let count = dragon_counts.get(dragon_tile).unwrap_or(&0);
                 let count = *count;
                 if count > 2 {
                     return false;
@@ -121,9 +121,9 @@ fn is_thirteen_orphans_yaku(tile_counts_by_suit: &HashMap<&str, HashMap<&str, i3
     // check number suits:
     for tile_suit in NUMBER_SUITS {
         match tile_counts_by_suit.get(tile_suit) {
-            Some(man_counts) => {
+            Some(tile_counts) => {
                 for tile_rank in NUMBER_TILES {
-                    let count = man_counts.get(tile_rank).unwrap_or(&0);
+                    let count = tile_counts.get(tile_rank).unwrap_or(&0);
                     let count = *count;
                     if tile_rank == "1" || tile_rank == "9" {
                         if count > 2 {
@@ -278,47 +278,202 @@ fn is_winning_hand(tiles: &Vec<String>) -> bool {
     return true;
 }
 
+#[derive(Clone, Debug)]
 struct HandMeld {
-    meld_type: String, // one of: sequence, three-of-a-kind, four-of-a-kind, pair
+    meld_type: String, // one of: sequence, three-of-a-kind, four-of-a-kind
     // TODO make an enum
     is_open: bool, // indicates whether the meld is open (formed using a discard) or closed
-    tiles: Vec<String>
+    tiles: Vec<String>, // TODO replace with Tile class
 }
 
-fn _hand_grouping(tiles: &Vec<String>, pair_tile: Option<String>) -> Option<Vec<HandMeld>> {
-    // returns Some if the hand can be formed into 4 groups (three of a kind, four of a kind, or a sequence) and a pair
+#[derive(Clone, Debug)]
+struct PartialWinningHand {
+    // building a winning hand - if the pair_tile is none, it indicates there is no candidate pair_tile
+    melds: Vec<HandMeld>,
+    pair_tile: Option<String>, // TODO replace with Tile class
+}
+
+#[derive(Clone, Debug)]
+struct WinningHand {
+    melds: Vec<HandMeld>,
+    pair_tile: String, // TODO replace with Tile class
+}
+
+fn _hand_grouping(tiles: &Vec<String>, partial_hand: &PartialWinningHand) -> Option<Vec<WinningHand>> {
+    // returns Some if the remaining tiles can be grouped (three of a kind, four of a kind, or a sequence) and exactly one pair
+    // can return multiple values if there are multiple valid groupings
+    // TODO is this possible?
+
+    // example: if the parameter partial_hand contains a pair already, and the only way to use a tile is in a pair, then this function would return none
+
+    println!("number of remaining tiles: {}", tiles.len());
+    println!("remaining tiles: {:?}", tiles);
+
+    if tiles.is_empty() {
+        if partial_hand.pair_tile.is_some() && partial_hand.melds.len() == 4 {
+            let mut winning_hands = Vec::new();
+            winning_hands.push(WinningHand {
+                melds: partial_hand.melds.clone(),
+                pair_tile: partial_hand.pair_tile.clone().unwrap().clone(),
+            });
+            return Some(winning_hands);
+        } else {
+            return None;
+        }
+    }
+    if tiles.len() == 1 {
+        return None;
+    }
+    if tiles.len() == 2 {
+        // if there are only two tiles left, the only way this can be a winning hand is if
+        // the remaining tiles form the pair
+        if tiles.get(0).unwrap() != tiles.get(1).unwrap() {
+            return None;
+        }
+        if partial_hand.pair_tile.is_some() {
+            return None;
+        }
+        let mut winning_hands = Vec::new();
+        winning_hands.push(WinningHand {
+            melds: partial_hand.melds.clone(),
+            pair_tile: tiles.get(0).unwrap().clone(),
+        });
+        return Some(winning_hands);
+    }
+    // TODO handle case with three tiles left here or by suit?
+    // if tiles.len() == 3 {
+    // }
+
+    // TODO handle case with four tiles left here or by suit?
+    // if tiles.len() == 4 {
+    //     // if there are only four tiles left, the only way this can be a winning hand is if
+    //     // the remaining tiles form a quad
+    //     let first_tile = tiles.get(0).unwrap();
+    //     let remaining_tiles: Vec<_> = tiles.iter().filter(|&tile| tile != first_tile).cloned().collect();
+    //     if !remaining_tiles.is_empty() {
+    //         return None;
+    //     }
+    //     if !partial_hand.pair_tile.is_some() {
+    //         // if there's not already a pair, this isn't a winning hand
+    //         return None;
+    //     }
+    //     let mut new_melds = partial_hand.melds.clone();
+    //     new_melds.push(HandMeld {
+    //         meld_type: String::from("quad"),
+    //         is_open: false, // TODO handle this properly
+    //         tiles: tiles.clone(),
+    //     });
+    //     let new_partial_hand = PartialWinningHand {
+    //         melds: new_melds,
+    //         pair_tile: partial_hand.pair_tile.clone(),
+    //     };
+    //     return _hand_grouping(&remaining_tiles, &new_partial_hand);
+    // }
+
     // this works with partial hand states e.g. excluding tiles from open melds, and when working recursively
-    let mut remaining_tiles = tiles.clone();
+    let remaining_tiles = tiles.clone();
 
     let tile_counts_by_suit: HashMap<&str, HashMap<&str, i32>> = count_tiles_by_suit_rank(&remaining_tiles);
-
-    // there can be at most one pair
-    // let mut pair_tile = String::from("");
 
     // check honor tiles:
     // - any isolated honors? if so, not winning
     // - if there is a pair, that must be the only pair in the hand
-    for (tile_suit, suit_counts) in &tile_counts_by_suit {
-        if !HONOR_SUITS.contains(&tile_suit) {
-            continue;
-        }
-        for (tile_rank, tile_count) in suit_counts {
-            let mut new_tile_str = String::new();
-            new_tile_str.push_str(tile_rank);
-            new_tile_str.push_str(tile_suit);
+    for tile_suit in HONOR_SUITS {
+        if let Some(honor_counts) = tile_counts_by_suit.get(tile_suit) {
+            for (tile_rank, tile_count) in honor_counts {
+                let mut new_tile_str = String::new();
+                new_tile_str.push_str(tile_rank);
+                new_tile_str.push_str(tile_suit);
+                let new_tile_str = new_tile_str;
 
-            if tile_count == &1 {
-                // isolated honor tile
-                println!("isolated honor tile {new_tile_str}");
-                return None;
-            } else if tile_count == &2 {
-                if pair_tile.is_some() {
-                    // honor tile must be the pair, but can only have one pair in the winning hand
-                    println!("pair of honor tile {new_tile_str} but already have a pair");
+                if tile_count == &0 {
+                    continue;
+                }
+                if tile_count == &1 {
+                    // isolated honor tile
+                    println!("isolated honor tile {new_tile_str}");
                     return None;
+                } else if tile_count == &2 {
+                    if partial_hand.pair_tile.is_some() {
+                        // honor tile must be the pair, but can only have one pair in the winning hand
+                        println!("pair of honor tile {new_tile_str} but already have a pair");
+                        return None;
+                    } else {
+                        // remove all copies of this tile, honor tiles can't be used in sequences, so there's
+                        // no way for a single honor tile type to be used in more than one meld/group
+                        let remaining_tiles: Vec<_> = remaining_tiles.iter().filter(|&tile| tile != &new_tile_str).cloned().collect();
+                        println!("found pair of {}, remaining tiles: {:?}", new_tile_str, remaining_tiles);
+                        let new_partial_hand = PartialWinningHand {
+                            melds: partial_hand.melds.clone(),
+                            pair_tile: Some(new_tile_str),
+                        };
+
+                        // if this doesn't work, there is no other option - so we can return here without trying other alternatives
+                        return _hand_grouping(&remaining_tiles, &new_partial_hand);
+                    }
                 } else {
-                    let remaining_tiles: Vec<_> = remaining_tiles.iter().filter(|&&tile| tile == new_tile_str).collect();
-                    return _hand_grouping(remaining_tiles, Some(new_tile_str));
+                    // a triplet or a quad
+
+                    // remove all copies of this tile, honor tiles can't be used in sequences, so there's
+                    // no way for a single honor tile type to be used in more than one meld/group
+                    let remaining_tiles: Vec<_> = remaining_tiles.iter().filter(|&tile| tile != &new_tile_str).cloned().collect();
+                    println!("found set of {}, remaining tiles: {:?}", new_tile_str, remaining_tiles);
+                    let new_partial_hand = partial_hand.clone();
+
+                    // if this doesn't work, there is no other option - so we can return here without trying other alternatives
+                    return _hand_grouping(&remaining_tiles, &new_partial_hand);
+                }
+            }
+        }
+    }
+
+    // check number suits
+    for tile_suit in NUMBER_SUITS {
+        if let Some(tile_counts) = tile_counts_by_suit.get(tile_suit) {
+            for (tile_rank, tile_count) in tile_counts {
+                let mut new_tile_str = String::new();
+                new_tile_str.push_str(tile_rank);
+                new_tile_str.push_str(tile_suit);
+                let new_tile_str = new_tile_str;
+
+                if tile_count == &0 {
+                    continue;
+                }
+                if tile_count == &1 {
+                    // isolated number tile
+                    // TODO at first, only checking for triplets/quads, this is not actually a disqualifier for a winning hand
+                    println!("isolated tile {new_tile_str}");
+                    return None;
+                } else if tile_count == &2 {
+                    if partial_hand.pair_tile.is_some() {
+                        println!("pair of tile {new_tile_str} but already have a pair");
+                        // TODO at first, only checking for triplets/quads, this is not actually a disqualifier for a winning hand
+                        // e.g. could have a winning hand that uses two of a number tile in two sequences
+                        return None;
+                    } else {
+                        // TODO at first, only checking for triplets/quads, using both copies as a pair isn't the only option
+                        // e.g. could have a winning hand that uses two of a number tile in two sequences
+                        let remaining_tiles: Vec<_> = remaining_tiles.iter().filter(|&tile| tile != &new_tile_str).cloned().collect();
+                        println!("found pair of {}, remaining tiles: {:?}", new_tile_str, remaining_tiles);
+                        let new_partial_hand = PartialWinningHand {
+                            melds: partial_hand.melds.clone(),
+                            pair_tile: Some(new_tile_str),
+                        };
+
+                        // TODO at first, only checking for triplets/quads, this is not the only option
+                        return _hand_grouping(&remaining_tiles, &new_partial_hand);
+                    }
+                } else {
+                    // a triplet or a quad
+                    // TODO at first, only checking for triplets/quads, using all copies as a set isn't the only option
+                    //  (e.g. could use four copies as triplet + one in a sequence, or pair + two sequences, etc.)
+                    //  (e.g. could use three copies as a pair + one in a sequence, or three different sequences, etc)
+                    let remaining_tiles: Vec<_> = remaining_tiles.iter().filter(|&tile| tile != &new_tile_str).cloned().collect();
+                    println!("found set of {}, remaining tiles: {:?}", new_tile_str, remaining_tiles);
+                    let new_partial_hand = partial_hand.clone();
+
+                    // TODO at first, only checking for triplets/quads, this is not the only option
+                    return _hand_grouping(&remaining_tiles, &new_partial_hand);
                 }
             }
         }
@@ -538,5 +693,71 @@ mod tests {
             new_tiles.push(added_tile);
             assert_eq!(is_winning_hand(&new_tiles), true);
         }
+    }
+
+
+    #[test]
+    fn test_hand_grouping_big_winds() {
+        // Four groups (triplets or quads), one for each wind tile
+        // From https://riichi.wiki/List_of_yaku (Daisuushii)
+        let mut tiles = Vec::from([
+            String::from("Ew"),
+            String::from("Ew"),
+            String::from("Ew"),
+            String::from("Sw"),
+            String::from("Sw"),
+            String::from("Sw"),
+            String::from("Ww"),
+            String::from("Ww"),
+            String::from("Ww"),
+            String::from("Nw"),
+            String::from("Nw"),
+            String::from("Nw"),
+            String::from("5p"),
+        ]);
+
+        let partial_hand = PartialWinningHand {
+            melds: Vec::new(),
+            pair_tile: None,
+        };
+
+        assert!(!_hand_grouping(&tiles, &partial_hand).is_some());
+
+        // add winning tile: 5p
+        tiles.push(String::from("5p"));
+        assert!(_hand_grouping(&tiles, &partial_hand).is_some());
+    }
+
+
+    #[test]
+    fn test_hand_grouping_little_winds() {
+        // Three groups (triplets or quads) of different winds, and a pair of the fourth
+        // From https://riichi.wiki/List_of_yaku (Shousuushii)
+        let mut tiles = Vec::from([
+            String::from("8m"),
+            String::from("8m"),
+            String::from("8m"),
+            String::from("Ew"),
+            String::from("Sw"),
+            String::from("Sw"),
+            String::from("Sw"),
+            String::from("Ww"),
+            String::from("Ww"),
+            String::from("Ww"),
+            String::from("Nw"),
+            String::from("Nw"),
+            String::from("Nw"),
+        ]);
+
+        let partial_hand = PartialWinningHand {
+            melds: Vec::new(),
+            pair_tile: None,
+        };
+
+        assert!(!_hand_grouping(&tiles, &partial_hand).is_some());
+
+        // add winning tile: Ew
+        tiles.push(String::from("Ew"));
+        assert!(_hand_grouping(&tiles, &partial_hand).is_some());
     }
 }

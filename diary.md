@@ -10,3 +10,4 @@
     * I was concerned about a recursive solution, but I think that it should be safe due to the low maximum depth - each recursive call will remove at least 2 (and usually at least 3) tiles away from the list of remaining tiles, and the fanout is not high - there are at most 4 options if a single tile has 4 of a kind: make a meld with all four tiles together, make a meld with three of the tiles, use two of the tiles for the pair, or make a meld with one of the tiles for a sequence
 
 * spent ~2 hours on the winning hand function today (before setting the timeline) & probably ~4 hours before that on the existing code
+* spent ~1.5 hours on the recursive approach for hand grouping - added a few new unit tests as well.
