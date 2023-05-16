@@ -184,7 +184,7 @@ fn is_winning_hand(tiles: &Vec<String>) -> bool {
         return false;
     }
 
-    let tile_counts_by_suit = count_tiles_by_suit_rank(tiles);
+    let tile_counts_by_suit: HashMap<&str, HashMap<&str, i32>> = count_tiles_by_suit_rank(tiles);
     println!("{:?}", tile_counts_by_suit);
 
     // TODO check for edge case hands: 7 pairs and 13 orphans
@@ -198,7 +198,7 @@ fn is_winning_hand(tiles: &Vec<String>) -> bool {
     // check honor tiles:
     // - any isolated honors? if so, not winning
     // - if there is a pair, that must be the only pair in the hand
-    for (tile_suit, suit_counts) in tile_counts_by_suit {
+    for (tile_suit, suit_counts) in &tile_counts_by_suit {
         if !HONOR_SUITS.contains(&tile_suit) {
             continue;
         }
@@ -207,11 +207,11 @@ fn is_winning_hand(tiles: &Vec<String>) -> bool {
             new_tile_str.push_str(tile_rank);
             new_tile_str.push_str(tile_suit);
 
-            if tile_count == 1 {
+            if tile_count == &1 {
                 // isolated honor tile
                 println!("isolated honor tile {new_tile_str}");
                 return false;
-            } else if tile_count == 2 {
+            } else if tile_count == &2 {
                 if !pair_tile.is_empty() {
                     // honor tile must be the pair, but can only have one pair in the winning hand
                     println!("pair of honor tile {new_tile_str} but already have a pair");
@@ -227,11 +227,106 @@ fn is_winning_hand(tiles: &Vec<String>) -> bool {
 
     // TODO check numbered suits:
     // - start from the lowest number in the suit
-    // - there must be at least 2 tiles of that number, or a tile of the next higher number
-    // -
+    // - there must be at least 2 tiles of that number, or a tile of each of the next two higher numbers
+    // - once you make a grouping, then you take those tiles away and repear the process
 
-    return false;
+    for tile_suit in NUMBER_SUITS {
+        if let Some(tile_counts) = tile_counts_by_suit.get(tile_suit) {
+            let mut keys: Vec<_> = tile_counts.keys().collect();
+            keys.sort();
+            for key in keys {
+                if !tile_counts.contains_key(key) || tile_counts.get(key).unwrap() == &0 {
+                    continue;
+                }
+
+                let mut sequence_possible = true;
+                let mut set_possible = true;
+                if key != &"8" && key != &"9" {
+                    let char_u8 = (*key).as_bytes()[0] + 1;
+                    let second_char = (char_u8 + 1) as char;
+                    let third_char = (char_u8 + 2) as char;
+                    let second_key = second_char.to_string();
+                    let third_key = third_char.to_string();
+
+                    // if there is no tile of the next rank or the rank after that, there can be no sequence starting from this tile
+                    if (!tile_counts.contains_key(second_key.as_str()) || tile_counts.get(second_key.as_str()).unwrap() == &0) && (!tile_counts.contains_key(third_key.as_str()) || tile_counts.get(third_key.as_str()).unwrap() == &0) {
+                        println!("sequence from {}m not possible", {key});
+                        sequence_possible = false;
+                    }
+
+                    // TODO this is just a necessary requirement, we need to "consume" the sequence if it is the only possible way this tile can
+                    // be not isolated e.g. 2345 cannot form two complete sequences but 233445 can
+                } else {
+                    println!("sequence from {}m not possible", {key});
+                    sequence_possible = false;
+                }
+                if tile_counts.contains_key(key) && tile_counts.get(key).unwrap() < &3 {
+                    set_possible = false;
+                }
+
+                println!("{}", key);
+                if !sequence_possible && !set_possible {
+                    // can this tile be the pair? must be no existing pair tile and there must be at least 2 copies of this tile
+                    println!("isolated tile: {}{}", key, tile_suit);
+                    return false;
+                }
+                // TODO certain hands
+            }
+        }
+    }
+
+    return true;
 }
+
+struct HandMeld {
+    meld_type: String, // one of: sequence, three-of-a-kind, four-of-a-kind, pair
+    // TODO make an enum
+    is_open: bool, // indicates whether the meld is open (formed using a discard) or closed
+    tiles: Vec<String>
+}
+
+fn _hand_grouping(tiles: &Vec<String>, pair_tile: Option<String>) -> Option<Vec<HandMeld>> {
+    // returns Some if the hand can be formed into 4 groups (three of a kind, four of a kind, or a sequence) and a pair
+    // this works with partial hand states e.g. excluding tiles from open melds, and when working recursively
+    let mut remaining_tiles = tiles.clone();
+
+    let tile_counts_by_suit: HashMap<&str, HashMap<&str, i32>> = count_tiles_by_suit_rank(&remaining_tiles);
+
+    // there can be at most one pair
+    // let mut pair_tile = String::from("");
+
+    // check honor tiles:
+    // - any isolated honors? if so, not winning
+    // - if there is a pair, that must be the only pair in the hand
+    for (tile_suit, suit_counts) in &tile_counts_by_suit {
+        if !HONOR_SUITS.contains(&tile_suit) {
+            continue;
+        }
+        for (tile_rank, tile_count) in suit_counts {
+            let mut new_tile_str = String::new();
+            new_tile_str.push_str(tile_rank);
+            new_tile_str.push_str(tile_suit);
+
+            if tile_count == &1 {
+                // isolated honor tile
+                println!("isolated honor tile {new_tile_str}");
+                return None;
+            } else if tile_count == &2 {
+                if pair_tile.is_some() {
+                    // honor tile must be the pair, but can only have one pair in the winning hand
+                    println!("pair of honor tile {new_tile_str} but already have a pair");
+                    return None;
+                } else {
+                    let remaining_tiles: Vec<_> = remaining_tiles.iter().filter(|&&tile| tile == new_tile_str).collect();
+                    return _hand_grouping(remaining_tiles, Some(new_tile_str));
+                }
+            }
+        }
+    }
+
+    return None;
+}
+
 
 fn main() {
     // let tile = Tile { suit: TileSuit::Man, rank: NumberTileType::Five};
