@@ -311,10 +311,10 @@ mod tests {
             String::from("Wd"),
         ]);
 
-        for winning_tile in tiles {
-            let mut new_tiles = Vec::new();
-            new_tiles.clone_from_slice(tiles.as_slice());
-            new_tiles.push(winning_tile);
+        // Iterate over a slice to avoid moving the value of `tiles` variable into the for loop
+        for winning_tile in &tiles {
+            let mut new_tiles = tiles.clone();
+            new_tiles.push(winning_tile.to_string());
             let new_tiles_count_by_suit = count_tiles_by_suit_rank(&new_tiles);
             assert_eq!(is_thirteen_orphans_yaku(&new_tiles_count_by_suit), true);
         }
@@ -341,14 +341,13 @@ mod tests {
             String::from("Wd"),
         ]);
 
-        let mut new_tiles = Vec::new();
-        new_tiles.clone_from_slice(tiles.as_slice());
+        let tiles_count_by_suit = count_tiles_by_suit_rank(&tiles);
+        assert_eq!(is_seven_pairs_yaku(&tiles_count_by_suit), false);
+
+        let mut new_tiles = tiles.clone();
         new_tiles.push(String::from("4m"));
         let new_tiles_count_by_suit = count_tiles_by_suit_rank(&new_tiles);
         assert_eq!(is_seven_pairs_yaku(&new_tiles_count_by_suit), true);
-
-        let tiles_count_by_suit = count_tiles_by_suit_rank(&tiles);
-        assert_eq!(is_seven_pairs_yaku(&tiles_count_by_suit), false);
     }
 
     #[test]
@@ -371,8 +370,7 @@ mod tests {
         ]);
 
         for winning_tile in [String::from("8m"), String::from("Gd")] {
-            let mut new_tiles = Vec::new();
-            new_tiles.clone_from_slice(tiles.as_slice());
+            let mut new_tiles = tiles.clone();
             new_tiles.push(winning_tile);
             assert_eq!(is_winning_hand(&new_tiles), true);
         }
@@ -439,8 +437,7 @@ mod tests {
             String::from("9m"),
         ]);
         for rank in 1..=9 {
-            let mut new_tiles = Vec::new();
-            new_tiles.clone_from_slice(tiles.as_slice());
+            let mut new_tiles = tiles.clone();
             let mut added_tile = String::from(rank.to_string());
             added_tile.push('m');
             new_tiles.push(added_tile);
