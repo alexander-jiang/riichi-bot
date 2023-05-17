@@ -11,3 +11,6 @@
 
 * spent ~2 hours on the winning hand function today (before setting the timeline) & probably ~4 hours before that on the existing code
 * spent ~1.5 hours on the recursive approach for hand grouping - added a few new unit tests as well.
+
+### May 17 2023
+* spent ~1 hour trying to add the sequence detection for number suits - I want to add a helper to remove a single tile from a Vector of Strings, but it isn't working in my unit test?

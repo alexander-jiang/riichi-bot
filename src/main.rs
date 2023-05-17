@@ -310,10 +310,12 @@ struct WinningHand {
     pair_tile: String, // TODO replace with Tile class
 }
 
-fn _remove_one_copy(tiles: &Vec<String>, tile_to_remove: String) -> Vec<String> {
+fn _remove_one_copy(tiles: &Vec<String>, tile_to_remove: &String) -> Vec<String> {
     let mut new_tiles: Vec<String> = Vec::new();
+    println!("tile_to_remove: {:?}", *tile_to_remove);
 
-    for group in tiles.splitn(1, |tile| *tile == tile_to_remove) {
+    for group in tiles.splitn(1, |tile| *tile == *tile_to_remove) {
+        println!("group: {:?}", group);
         new_tiles.extend(group.iter().cloned());
     }
     return new_tiles;
@@ -509,9 +511,14 @@ fn _hand_grouping(tiles: &Vec<String>, partial_hand: &PartialWinningHand) -> Opt
                         println!("checking for sequence starting at {new_tile_str}");
                         // build remaining tiles by removing one copy of each of the three tiles in the sequence
                         let mut removed_tiles: Vec<String> = Vec::new();
-                        let mut remaining_tiles: Vec<String> = tiles.clone();
+                        removed_tiles.push(new_tile_str.clone());
+                        removed_tiles.push(second_tile_str.clone());
+                        removed_tiles.push(third_tile_str.clone());
+                        let remaining_tiles: Vec<String> = tiles.clone();
+                        let remaining_tiles = _remove_one_copy(&remaining_tiles, &new_tile_str);
+                        let remaining_tiles = _remove_one_copy(&remaining_tiles, &second_tile_str);
+                        let remaining_tiles = _remove_one_copy(&remaining_tiles, &third_tile_str);
 
-                        remaining_tiles.splitn(1, |tile| *tile == new_tile_str)
                         // new meld
                         let new_meld = HandMeld {
                             meld_type: "sequence".to_string(),
@@ -893,5 +900,51 @@ mod tests {
             };
             assert!(_hand_grouping(&new_tiles, &partial_hand).is_some());
         }
+    }
+
+
+    #[test]
+    fn test_remove_one_copy() {
+        let tiles = Vec::from([
+            String::from("1m"),
+            String::from("2m"),
+            String::from("3m"),
+            String::from("4m"),
+            String::from("5m"),
+            String::from("6m"),
+            String::from("7m"),
+            String::from("8m"),
+            String::from("9m"),
+            String::from("9m"),
+        ]);
+
+        let tile_to_remove = "9m".to_string();
+        let remaining_tiles = _remove_one_copy(&tiles, &tile_to_remove);
+        println!("{:?}", remaining_tiles);
+        assert_eq!(remaining_tiles.len(), tiles.len() - 1);
+
+        let new_tiles_count_by_suit = count_tiles_by_suit_rank(&remaining_tiles);
+        assert!(new_tiles_count_by_suit.get("m").unwrap().get("9") == Some(&1));
+    }
+
+
+    #[test]
+    fn test_remove_one_copy_none_exists() {
+        let tiles = Vec::from([
+            String::from("1m"),
+            String::from("2m"),
+            String::from("3m"),
+            String::from("4m"),
+            String::from("5m"),
+            String::from("6m"),
+            String::from("7m"),
+            String::from("8m"),
+            String::from("9m"),
+            String::from("9m"),
+        ]);
+
+        let tile_to_remove = "1s".to_string();
+        let remaining_tiles = _remove_one_copy(&tiles, &tile_to_remove);
+        assert_eq!(remaining_tiles.len(), tiles.len());
     }
 }
