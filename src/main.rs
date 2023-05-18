@@ -311,12 +311,21 @@ struct WinningHand {
 }
 
 fn _remove_one_copy(tiles: &Vec<String>, tile_to_remove: &String) -> Vec<String> {
-    let mut new_tiles: Vec<String> = Vec::new();
-    println!("tile_to_remove: {:?}", *tile_to_remove);
+    // TODO how come the tiles.splitn(1, |tile| *tile == *tile_to_remove) approach doesn't work here?
 
-    for group in tiles.splitn(1, |tile| *tile == *tile_to_remove) {
-        println!("group: {:?}", group);
-        new_tiles.extend(group.iter().cloned());
+    // println!("tile_to_remove: {:?}", *tile_to_remove);
+    let mut found_idx: Option<usize> = None;
+    for tile_idx in 0..tiles.len() {
+        let tile = tiles.get(tile_idx).unwrap();
+        // println!("tile: {:?}", tile);
+        if *tile == *tile_to_remove {
+            found_idx = Some(tile_idx);
+            break;
+        }
+    }
+    let mut new_tiles: Vec<String> = tiles.clone();
+    if found_idx.is_some() {
+        new_tiles.remove(found_idx.unwrap());
     }
     return new_tiles;
 }
