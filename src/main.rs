@@ -189,95 +189,20 @@ fn is_winning_hand(tiles: &Vec<String>) -> bool {
     let tile_counts_by_suit: HashMap<&str, HashMap<&str, i32>> = count_tiles_by_suit_rank(tiles);
     println!("{:?}", tile_counts_by_suit);
 
-    // TODO check for edge case hands: 7 pairs and 13 orphans
+    // check for edge case hands: 7 pairs and 13 orphans
     if is_thirteen_orphans_yaku(&tile_counts_by_suit) || is_seven_pairs_yaku(&tile_counts_by_suit) {
         return true;
     }
 
-    // there can be at most one pair
-    let mut pair_tile = String::from("");
+    // otherwise, see if you can make a hand grouping
+    let new_tiles = tiles.clone();
+    let partial_hand = PartialWinningHand {
+        melds: Vec::new(),
+        pair_tile: None,
+    };
+    let grouping_result = _hand_grouping(&new_tiles, &partial_hand);
 
-    // check honor tiles:
-    // - any isolated honors? if so, not winning
-    // - if there is a pair, that must be the only pair in the hand
-    for (tile_suit, suit_counts) in &tile_counts_by_suit {
-        if !HONOR_SUITS.contains(&tile_suit) {
-            continue;
-        }
-        for (tile_rank, tile_count) in suit_counts {
-            let mut new_tile_str = String::new();
-            new_tile_str.push_str(tile_rank);
-            new_tile_str.push_str(tile_suit);
-
-            if tile_count == &1 {
-                // isolated honor tile
-                println!("isolated honor tile {new_tile_str}");
-                return false;
-            } else if tile_count == &2 {
-                if !pair_tile.is_empty() {
-                    // honor tile must be the pair, but can only have one pair in the winning hand
-                    println!("pair of honor tile {new_tile_str} but already have a pair");
-                    return false;
-                } else {
-                    pair_tile = new_tile_str;
-                }
-            }
-        }
-    }
-
-    println!("pair tile so far = {}", pair_tile);
-
-    // TODO check numbered suits:
-    // - start from the lowest number in the suit
-    // - there must be at least 2 tiles of that number, or a tile of each of the next two higher numbers
-    // - once you make a grouping, then you take those tiles away and repear the process
-
-    for tile_suit in NUMBER_SUITS {
-        if let Some(tile_counts) = tile_counts_by_suit.get(tile_suit) {
-            let mut keys: Vec<_> = tile_counts.keys().collect();
-            keys.sort();
-            for key in keys {
-                if !tile_counts.contains_key(key) || tile_counts.get(key).unwrap() == &0 {
-                    continue;
-                }
-
-                let mut sequence_possible = true;
-                let mut set_possible = true;
-                if key != &"8" && key != &"9" {
-                    let char_u8 = (*key).as_bytes()[0] + 1;
-                    let second_char = (char_u8 + 1) as char;
-                    let third_char = (char_u8 + 2) as char;
-                    let second_key = second_char.to_string();
-                    let third_key = third_char.to_string();
-
-                    // if there is no tile of the next rank or the rank after that, there can be no sequence starting from this tile
-                    if (!tile_counts.contains_key(second_key.as_str()) || tile_counts.get(second_key.as_str()).unwrap() == &0) && (!tile_counts.contains_key(third_key.as_str()) || tile_counts.get(third_key.as_str()).unwrap() == &0) {
-                        println!("sequence from {}m not possible", {key});
-                        sequence_possible = false;
-                    }
-
-                    // TODO this is just a necessary requirement, we need to "consume" the sequence if it is the only possible way this tile can
-                    // be not isolated e.g. 2345 cannot form two complete sequences but 233445 can
-                } else {
-                    println!("sequence from {}m not possible", {key});
-                    sequence_possible = false;
-                }
-                if tile_counts.contains_key(key) && tile_counts.get(key).unwrap() < &3 {
-                    set_possible = false;
-                }
-
-                println!("{}", key);
-                if !sequence_possible && !set_possible {
-                    // can this tile be the pair? must be no existing pair tile and there must be at least 2 copies of this tile
-                    println!("isolated tile: {}{}", key, tile_suit);
-                    return false;
-                }
-                // TODO certain hands
-            }
-        }
-    }
-
-    return true;
+    return grouping_result.is_some();
 }
 
 #[derive(Clone)]
@@ -840,7 +765,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn test_hand_grouping_big_winds() {
         // Four groups (triplets or quads), one for each wind tile
@@ -870,9 +794,11 @@ mod tests {
 
         // add winning tile: 5p
         tiles.push(String::from("5p"));
-        assert!(_hand_grouping(&tiles, &partial_hand).is_some());
-    }
 
+        let grouping_result = _hand_grouping(&tiles, &partial_hand);
+        assert!(grouping_result.is_some());
+        assert_eq!(grouping_result.as_ref().unwrap().len(), 1);
+    }
 
     #[test]
     fn test_hand_grouping_little_winds() {
@@ -903,7 +829,10 @@ mod tests {
 
         // add winning tile: Ew
         tiles.push(String::from("Ew"));
-        assert!(_hand_grouping(&tiles, &partial_hand).is_some());
+
+        let grouping_result = _hand_grouping(&tiles, &partial_hand);
+        assert!(grouping_result.is_some());
+        assert_eq!(grouping_result.as_ref().unwrap().len(), 1);
     }
 
     #[test]
@@ -941,7 +870,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn test_remove_one_copy() {
         let tiles = Vec::from([
@@ -965,7 +893,6 @@ mod tests {
         let new_tiles_count_by_suit = count_tiles_by_suit_rank(&remaining_tiles);
         assert!(new_tiles_count_by_suit.get("m").unwrap().get("9") == Some(&1));
     }
-
 
     #[test]
     fn test_remove_one_copy_none_exists() {
