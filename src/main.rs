@@ -1,8 +1,7 @@
 // pub mod tiles;
 // use crate::tiles::Tile;
 
-use std::collections::HashSet;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 const NUMBER_TILES: [&str; 9] = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
@@ -229,17 +228,42 @@ impl PartialEq for HandMeld {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 struct PartialWinningHand {
     // building a winning hand - if the pair_tile is none, it indicates there is no candidate pair_tile
     melds: Vec<HandMeld>,
     pair_tile: Option<String>, // TODO replace with Tile class
 }
 
-#[derive(Clone, Debug)]
+impl fmt::Debug for PartialWinningHand {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PartialWinningHand")
+         .field("melds", &self.melds)
+         .field("pair_tile", &self.pair_tile)
+         .finish()
+    }
+}
+
+#[derive(Clone)]
 struct WinningHand {
     melds: Vec<HandMeld>,
     pair_tile: String, // TODO replace with Tile class
+}
+
+impl fmt::Debug for WinningHand {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WinningHand")
+         .field("melds", &self.melds)
+         .field("pair_tile", &self.pair_tile)
+         .finish()
+    }
+}
+
+fn _meld_is_triplet(hand_meld: &HandMeld, tile_to_check: &String) -> bool {
+    return hand_meld.meld_type == "triplet" && hand_meld.tiles.len() == 1 && hand_meld.tiles.iter().next().unwrap().as_str() == (*tile_to_check).as_str();
+}
+fn _meld_is_quad(hand_meld: &HandMeld, tile_to_check: &String) -> bool {
+    return hand_meld.meld_type == "quad" && hand_meld.tiles.len() == 1 && hand_meld.tiles.iter().next().unwrap().as_str() == (*tile_to_check).as_str();
 }
 
 fn _remove_one_copy(tiles: &Vec<String>, tile_to_remove: &String) -> Vec<String> {
@@ -269,21 +293,23 @@ fn _hand_grouping(tiles: &Vec<String>, partial_hand: &PartialWinningHand) -> Opt
 
     // example: if the parameter partial_hand contains a pair already, and the only way to use a tile is in a pair, then this function would return none
 
-    println!("number of remaining tiles: {}", tiles.len());
-    println!("remaining tiles: {:?}", tiles);
+    // println!("{} remaining tiles: {:?}", tiles.len(), tiles);
 
     if tiles.is_empty() {
-        println!("partial hand so far:");
-        println!("pair tile: {:?}", partial_hand.pair_tile);
-        println!("melds: {:?}", partial_hand.melds);
+        // println!("partial hand so far:");
+        // println!("pair tile: {:?}", partial_hand.pair_tile);
+        // println!("melds: {:?}", partial_hand.melds);
         if partial_hand.pair_tile.is_some() && partial_hand.melds.len() == 4 {
             let mut winning_hands = Vec::new();
-            winning_hands.push(WinningHand {
+            let winning_hand = WinningHand {
                 melds: partial_hand.melds.clone(),
                 pair_tile: partial_hand.pair_tile.clone().unwrap().clone(),
-            });
+            };
+            println!("found winning hand: {:?}", winning_hand);
+            winning_hands.push(winning_hand);
             return Some(winning_hands);
         } else {
+            println!("invalid hand with no tiles remaining, num melds = {}, pair_tile = {:?}", partial_hand.melds.len(), partial_hand.pair_tile);
             return None;
         }
     }
@@ -300,10 +326,12 @@ fn _hand_grouping(tiles: &Vec<String>, partial_hand: &PartialWinningHand) -> Opt
             return None;
         }
         let mut winning_hands = Vec::new();
-        winning_hands.push(WinningHand {
+        let winning_hand = WinningHand {
             melds: partial_hand.melds.clone(),
             pair_tile: tiles.get(0).unwrap().clone(),
-        });
+        };
+        println!("found winning hand: {:?}", winning_hand);
+        winning_hands.push(winning_hand);
         return Some(winning_hands);
     }
 
@@ -339,7 +367,7 @@ fn _hand_grouping(tiles: &Vec<String>, partial_hand: &PartialWinningHand) -> Opt
                         // remove all copies of this tile, honor tiles can't be used in sequences, so there's
                         // no way for a single honor tile type to be used in more than one meld/group
                         let remaining_tiles: Vec<_> = remaining_tiles.iter().filter(|&tile| tile != &new_tile_str).cloned().collect();
-                        println!("found pair of {}, remaining tiles: {:?}", new_tile_str, remaining_tiles);
+                        // println!("found pair of {}, remaining tiles: {:?}", new_tile_str, remaining_tiles);
                         let new_partial_hand = PartialWinningHand {
                             melds: partial_hand.melds.clone(),
                             pair_tile: Some(new_tile_str),
@@ -355,7 +383,7 @@ fn _hand_grouping(tiles: &Vec<String>, partial_hand: &PartialWinningHand) -> Opt
                     // no way for a single honor tile type to be used in more than one meld/group
                     let removed_tiles: Vec<_> = remaining_tiles.iter().filter(|&tile| tile == &new_tile_str).cloned().collect();
                     let remaining_tiles: Vec<_> = remaining_tiles.iter().filter(|&tile| tile != &new_tile_str).cloned().collect();
-                    println!("found set of {}, remaining tiles: {:?}", new_tile_str, remaining_tiles);
+                    // println!("found set of {}, remaining tiles: {:?}", new_tile_str, remaining_tiles);
                     let new_meld = HandMeld {
                         meld_type: if tile_count == &3 { "triplet".to_string() } else { "quad".to_string() },
                         is_open: false, // TODO handle this properly
@@ -420,7 +448,8 @@ fn _hand_grouping(tiles: &Vec<String>, partial_hand: &PartialWinningHand) -> Opt
                     let third_tile_str = third_tile_str;
 
                     if tile_counts.get(second_rank_str).unwrap_or(&0) > &0 && tile_counts.get(third_rank_str).unwrap_or(&0) > &0 {
-                        println!("checking for sequence starting at {new_tile_str}");
+                        // println!("checking for sequence starting at {new_tile_str}");
+
                         // build remaining tiles by removing one copy of each of the three tiles in the sequence
                         let mut removed_tiles: Vec<String> = Vec::new();
                         removed_tiles.push(new_tile_str.clone());
@@ -459,23 +488,32 @@ fn _hand_grouping(tiles: &Vec<String>, partial_hand: &PartialWinningHand) -> Opt
                         let remaining_tiles: Vec<String> = tiles.clone();
                         let remaining_tiles = _remove_one_copy(&remaining_tiles, &new_tile_str);
                         let remaining_tiles = _remove_one_copy(&remaining_tiles, &new_tile_str);
-                        println!("found pair of {}, remaining tiles: {:?}", new_tile_str, remaining_tiles);
+                        // println!("found pair of {}, remaining tiles: {:?}", new_tile_str, remaining_tiles);
 
-                        // recursive call
-                        let new_partial_hand = PartialWinningHand {
-                            melds: partial_hand.melds.clone(),
-                            // TODO why does compiler recommend cloning here if performance is acceptable?
-                            pair_tile: Some(new_tile_str.clone()),
-                        };
+                        // if any existing winning hands use a pair of this tile, don't make this recursive call!
+                        // otherwise you'll end up with duplicated winning hands
+                        let has_winning_hand_with_pair = winning_hands.iter().filter(|&winning_hand|
+                            // does this WinningHand include a HandMeld that is a pair of this tile?
+                            (*winning_hand).pair_tile == new_tile_str
+                        ).next().is_some();
 
-                        if let Some(new_winning_hands) = _hand_grouping(&remaining_tiles, &new_partial_hand) {
-                            winning_hands.extend(new_winning_hands);
+                        if !has_winning_hand_with_pair {
+                            // recursive call
+                            let new_partial_hand = PartialWinningHand {
+                                melds: partial_hand.melds.clone(),
+                                // TODO why does compiler recommend cloning here if performance is acceptable?
+                                pair_tile: Some(new_tile_str.clone()),
+                            };
+
+                            if let Some(new_winning_hands) = _hand_grouping(&remaining_tiles, &new_partial_hand) {
+                                winning_hands.extend(new_winning_hands);
+                            }
                         }
                     }
                 }
                 if tile_count >= &3 {
                     // three copies of number tile can be used for triplet
-                    println!("checking for triplet of {new_tile_str}");
+                    // println!("checking for triplet of {new_tile_str}");
 
                     // build remaining tiles by removing three copies of the tile
                     let mut removed_tiles: Vec<String> = Vec::new();
@@ -495,20 +533,31 @@ fn _hand_grouping(tiles: &Vec<String>, partial_hand: &PartialWinningHand) -> Opt
                         tiles: HashSet::from_iter(removed_tiles),
                     };
 
-                    // recursive call
-                    let mut new_melds = partial_hand.melds.clone();
-                    new_melds.push(new_meld);
-                    let new_partial_hand = PartialWinningHand {
-                        melds: new_melds,
-                        pair_tile: partial_hand.pair_tile.clone(),
-                    };
-                    if let Some(new_winning_hands) = _hand_grouping(&remaining_tiles, &new_partial_hand) {
-                        winning_hands.extend(new_winning_hands);
+                    // if any existing winning hands use a triplet of this tile, don't make this recursive call!
+                    // otherwise you'll end up with duplicated winning hands
+                    let has_winning_hand_with_triplet = winning_hands.iter().filter(|&winning_hand|
+                        // does this WinningHand include a HandMeld that is a triplet of this tile?
+                        (*winning_hand).melds.iter().filter(|&meld|
+                            _meld_is_triplet(meld, &new_tile_str)
+                        ).next().is_some()
+                    ).next().is_some();
+
+                    if !has_winning_hand_with_triplet {
+                        // recursive call
+                        let mut new_melds = partial_hand.melds.clone();
+                        new_melds.push(new_meld);
+                        let new_partial_hand = PartialWinningHand {
+                            melds: new_melds,
+                            pair_tile: partial_hand.pair_tile.clone(),
+                        };
+                        if let Some(new_winning_hands) = _hand_grouping(&remaining_tiles, &new_partial_hand) {
+                            winning_hands.extend(new_winning_hands);
+                        }
                     }
                 }
                 if tile_count >= &4 {
                     // three copies of number tile can be used for quad
-                    println!("checking for quad of {new_tile_str}");
+                    // println!("checking for quad of {new_tile_str}");
 
                     // build remaining tiles by removing four copies of the tile
                     let mut removed_tiles: Vec<String> = Vec::new();
@@ -530,15 +579,26 @@ fn _hand_grouping(tiles: &Vec<String>, partial_hand: &PartialWinningHand) -> Opt
                         tiles: HashSet::from_iter(removed_tiles),
                     };
 
-                    // recursive call
-                    let mut new_melds = partial_hand.melds.clone();
-                    new_melds.push(new_meld);
-                    let new_partial_hand = PartialWinningHand {
-                        melds: new_melds,
-                        pair_tile: partial_hand.pair_tile.clone(),
-                    };
-                    if let Some(new_winning_hands) = _hand_grouping(&remaining_tiles, &new_partial_hand) {
-                        winning_hands.extend(new_winning_hands);
+                    // if any existing winning hands use a quad of this tile, don't make this recursive call!
+                    // otherwise you'll end up with duplicated winning hands
+                    let has_winning_hand_with_quad = winning_hands.iter().filter(|&winning_hand|
+                        // does this WinningHand include a HandMeld that is a quad of this tile?
+                        (*winning_hand).melds.iter().filter(|&meld|
+                            _meld_is_quad(meld, &new_tile_str)
+                        ).next().is_some()
+                    ).next().is_some();
+
+                    if !has_winning_hand_with_quad {
+                        // recursive call
+                        let mut new_melds = partial_hand.melds.clone();
+                        new_melds.push(new_meld);
+                        let new_partial_hand = PartialWinningHand {
+                            melds: new_melds,
+                            pair_tile: partial_hand.pair_tile.clone(),
+                        };
+                        if let Some(new_winning_hands) = _hand_grouping(&remaining_tiles, &new_partial_hand) {
+                            winning_hands.extend(new_winning_hands);
+                        }
                     }
                 }
 
@@ -857,6 +917,7 @@ mod tests {
             let mut added_tile = String::from(rank.to_string());
             added_tile.push('m');
             new_tiles.push(added_tile);
+            println!("nine gates variation: {:?}", new_tiles);
 
             let partial_hand = PartialWinningHand {
                 melds: Vec::new(),
@@ -864,9 +925,9 @@ mod tests {
             };
             let grouping_result = _hand_grouping(&new_tiles, &partial_hand);
             assert!(grouping_result.is_some());
-            // TODO fix code to pass this test: need to de-dupe winning hands
+            // println!("- nine gates variation winning hand: {:?}", grouping_result.as_ref().unwrap());
             assert_eq!(grouping_result.as_ref().unwrap().len(), 1);
-            println!("- nine gates variation winning hand: {:?}", grouping_result.unwrap().get(0).unwrap());
+            // println!("- nine gates variation winning hand: {:?}", grouping_result.unwrap().get(0).unwrap());
         }
     }
 
