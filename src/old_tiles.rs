@@ -1127,6 +1127,150 @@ mod tests {
     }
 
     #[test]
+    fn test_hand_grouping_chinitsu_ex1() {
+        // from wiki on chiniisou: https://riichi.wiki/Chiniisou
+        let tiles = Vec::from([
+            String::from("1p"),
+            String::from("2p"),
+            String::from("3p"),
+            String::from("4p"),
+            String::from("4p"),
+            String::from("5p"),
+            String::from("5p"),
+            String::from("7p"),
+            String::from("7p"),
+            String::from("8p"),
+            String::from("8p"),
+            String::from("9p"),
+            String::from("9p"),
+        ]);
+
+        let partial_hand = PartialWinningHand {
+            melds: Vec::new(),
+            pair_tile: None,
+        };
+
+        for winning_tile in ["4p", "5p"] {
+            let mut new_tiles = tiles.clone();
+            new_tiles.push(winning_tile.to_string());
+            println!("chinitsu: {:?}", tiles);
+
+            let grouping_result = _hand_grouping(&new_tiles, &partial_hand);
+            assert!(grouping_result.is_some());
+            println!(
+                "- chinitsu winning hand: {:?}",
+                grouping_result.as_ref().unwrap()
+            );
+            assert_eq!(grouping_result.as_ref().unwrap().len(), 1);
+        }
+
+        for non_winning_tile in ["1p", "2p", "3p", "6p", "7p", "8p", "9p"] {
+            let mut new_tiles = tiles.clone();
+            new_tiles.push(non_winning_tile.to_string());
+            println!("not winning: {:?}", tiles);
+
+            let grouping_result = _hand_grouping(&new_tiles, &partial_hand);
+            assert!(grouping_result.is_none());
+        }
+    }
+
+    #[test]
+    fn test_hand_grouping_chinitsu_ex2() {
+        // from wiki on chiniisou: https://riichi.wiki/Chiniisou
+        let tiles = Vec::from([
+            String::from("2m"),
+            String::from("3m"),
+            String::from("4m"),
+            String::from("5m"),
+            String::from("5m"),
+            String::from("6m"),
+            String::from("6m"),
+            String::from("6m"),
+            String::from("7m"),
+            String::from("7m"),
+            String::from("8m"),
+            String::from("9m"),
+            String::from("9m"),
+        ]);
+
+        let partial_hand = PartialWinningHand {
+            melds: Vec::new(),
+            pair_tile: None,
+        };
+
+        for winning_tile in ["1m", "4m", "7m", "8m"] {
+            let mut new_tiles = tiles.clone();
+            new_tiles.push(winning_tile.to_string());
+            println!("chinitsu: {:?}", tiles);
+
+            let grouping_result = _hand_grouping(&new_tiles, &partial_hand);
+            assert!(grouping_result.is_some());
+            println!(
+                "- chinitsu winning hand: {:?}",
+                grouping_result.as_ref().unwrap()
+            );
+            assert_eq!(grouping_result.as_ref().unwrap().len(), 1);
+        }
+
+        for non_winning_tile in ["2m", "3m", "5m", "6m", "9m"] {
+            let mut new_tiles = tiles.clone();
+            new_tiles.push(non_winning_tile.to_string());
+            println!("not winning: {:?}", tiles);
+
+            let grouping_result = _hand_grouping(&new_tiles, &partial_hand);
+            assert!(grouping_result.is_none());
+        }
+    }
+
+    #[test]
+    fn test_hand_grouping_chinitsu_ex3() {
+        // from wiki on chiniisou: https://riichi.wiki/Chiniisou
+        let tiles = Vec::from([
+            String::from("1s"),
+            String::from("2s"),
+            String::from("3s"),
+            String::from("3s"),
+            String::from("4s"),
+            String::from("5s"),
+            String::from("6s"),
+            String::from("6s"),
+            String::from("6s"),
+            String::from("7s"),
+            String::from("7s"),
+            String::from("8s"),
+            String::from("8s"),
+        ]);
+
+        let partial_hand = PartialWinningHand {
+            melds: Vec::new(),
+            pair_tile: None,
+        };
+
+        for winning_tile in ["3s", "6s", "7s", "8s", "9s"] {
+            let mut new_tiles = tiles.clone();
+            new_tiles.push(winning_tile.to_string());
+            println!("chinitsu: {:?}", tiles);
+
+            let grouping_result = _hand_grouping(&new_tiles, &partial_hand);
+            assert!(grouping_result.is_some());
+            println!(
+                "- chinitsu winning hand: {:?}",
+                grouping_result.as_ref().unwrap()
+            );
+            assert_eq!(grouping_result.as_ref().unwrap().len(), 1);
+        }
+
+        for non_winning_tile in ["1s", "2s", "4s", "5s"] {
+            let mut new_tiles = tiles.clone();
+            new_tiles.push(non_winning_tile.to_string());
+            println!("not winning: {:?}", tiles);
+
+            let grouping_result = _hand_grouping(&new_tiles, &partial_hand);
+            assert!(grouping_result.is_none());
+        }
+    }
+
+    #[test]
     fn test_remove_one_copy() {
         let tiles = Vec::from([
             String::from("1m"),
