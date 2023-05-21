@@ -467,6 +467,10 @@ fn _hand_grouping(tiles: &Vec<String>, partial_hand: &PartialWinningHand) -> Opt
                             tiles: HashSet::from_iter(removed_tiles),
                         };
 
+                        // if any existing winning hands use this sequence, you may still need to make this recursive call
+                        // e.g. for a hand with two identical sequences (e.g. 334455m, a valid winning hand will include multiple
+                        // identical melds)
+
                         // recursive call
                         let mut new_melds = partial_hand.melds.clone();
                         new_melds.push(new_meld);
@@ -929,6 +933,136 @@ mod tests {
             assert_eq!(grouping_result.as_ref().unwrap().len(), 1);
             // println!("- nine gates variation winning hand: {:?}", grouping_result.unwrap().get(0).unwrap());
         }
+    }
+
+    #[test]
+    fn test_hand_grouping_pinfu() {
+        // from wiki on pinfu:
+        let tiles = Vec::from([
+            String::from("1m"),
+            String::from("2m"),
+            String::from("3m"),
+            String::from("2s"),
+            String::from("3s"),
+            String::from("4s"),
+            String::from("7s"),
+            String::from("8s"),
+            String::from("9s"),
+            String::from("5p"),
+            String::from("6p"),
+            String::from("7p"),
+            String::from("9p"),
+            String::from("9p"),
+        ]);
+
+        println!("pinfu variation: {:?}", tiles);
+
+        let partial_hand = PartialWinningHand {
+            melds: Vec::new(),
+            pair_tile: None,
+        };
+        let grouping_result = _hand_grouping(&tiles, &partial_hand);
+        assert!(grouping_result.is_some());
+        assert_eq!(grouping_result.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_hand_grouping_iipeikou() {
+        // from japanese wiki on iipeikou:
+        let tiles = Vec::from([
+            String::from("3m"),
+            String::from("3m"),
+            String::from("4m"),
+            String::from("4m"),
+            String::from("5m"),
+            String::from("5m"),
+            String::from("1p"),
+            String::from("1p"),
+            String::from("1p"),
+            String::from("3s"),
+            String::from("3s"),
+            String::from("7s"),
+            String::from("8s"),
+            String::from("9s"),
+        ]);
+
+        println!("iipeikou variation: {:?}", tiles);
+
+        let partial_hand = PartialWinningHand {
+            melds: Vec::new(),
+            pair_tile: None,
+        };
+        let grouping_result = _hand_grouping(&tiles, &partial_hand);
+        assert!(grouping_result.is_some());
+        println!("- iipeikou winning hand: {:?}", grouping_result.as_ref().unwrap());
+        assert_eq!(grouping_result.as_ref().unwrap().len(), 1);
+    }
+
+
+    #[test]
+    fn test_hand_grouping_tanyao() {
+        // from wiki on tanyao:
+        let tiles = Vec::from([
+            String::from("4m"),
+            String::from("5m"),
+            String::from("6m"),
+            String::from("2s"),
+            String::from("2s"),
+            String::from("2s"),
+            String::from("6s"),
+            String::from("7s"),
+            String::from("8s"),
+            String::from("3p"),
+            String::from("3p"),
+            String::from("5p"),
+            String::from("5p"),
+            String::from("5p"),
+        ]);
+
+        println!("tanyao variation: {:?}", tiles);
+
+        let partial_hand = PartialWinningHand {
+            melds: Vec::new(),
+            pair_tile: None,
+        };
+        let grouping_result = _hand_grouping(&tiles, &partial_hand);
+        assert!(grouping_result.is_some());
+        println!("- tanyao winning hand: {:?}", grouping_result.as_ref().unwrap());
+        assert_eq!(grouping_result.as_ref().unwrap().len(), 1);
+    }
+
+
+    #[test]
+    fn test_hand_grouping_tanyao_and_chinitsu() {
+        // from wiki on tanyao:
+        let tiles = Vec::from([
+            String::from("2m"),
+            String::from("2m"),
+            String::from("3m"),
+            String::from("3m"),
+            String::from("4m"),
+            String::from("4m"),
+            String::from("4m"),
+            String::from("4m"),
+            String::from("5m"),
+            String::from("5m"),
+            String::from("6m"),
+            String::from("6m"),
+            String::from("7m"),
+            String::from("7m"),
+        ]);
+
+        println!("tanyao + chinitsu + ryanpeikou: {:?}", tiles);
+
+        let partial_hand = PartialWinningHand {
+            melds: Vec::new(),
+            pair_tile: None,
+        };
+        let grouping_result = _hand_grouping(&tiles, &partial_hand);
+        assert!(grouping_result.is_some());
+        println!("- tanyao + chinitsu + ryanpeikou winning hand: {:?}", grouping_result.as_ref().unwrap());
+        // this hand has 2 valid groupings: one where the leftover pair is 4m, and another where the leftover pair is 7m
+        assert_eq!(grouping_result.as_ref().unwrap().len(), 2);
     }
 
     #[test]
