@@ -204,6 +204,139 @@ fn is_winning_hand(tiles: &Vec<String>) -> bool {
     return grouping_result.is_some();
 }
 
+// TODO fix tile suit enum and tile rank (or should they be arrays of char?)
+// enum TileSuit {
+//     Man = 'm',
+//     Pin = 'p',
+//     Sou = 's',
+//     Wind = 'w',
+//     Dragon = 'd',
+// }
+
+// enum TileRank {
+
+// }
+
+#[derive(Debug)]
+struct Tile {
+    serial: u32,
+}
+
+impl Tile {
+    // TODO return TileSuit enum instead
+    fn suit(&self) -> char {
+        if self.serial < (4 * 9) {
+            'm'
+        } else if self.serial >= (4 * 9) && self.serial < (2 * 4 * 9) {
+            'p'
+        } else if self.serial >= (2 * 4 * 9) && self.serial < (3 * 4 * 9) {
+            's'
+        } else if self.serial >= (3 * 4 * 9) && self.serial < (3 * 4 * 9 + 4 * 4) {
+            'w'
+        } else if self.serial >= (3 * 4 * 9 + 4 * 4) && self.serial < (3 * 4 * 9 + 4 * 4 + 3 * 4) {
+            'd'
+        } else {
+            panic!("Invalid tile serial number! {}", self.serial);
+        }
+    }
+
+    // TODO return TileRank enum instead
+    fn rank(&self) -> char {
+        if self.suit() == 'm' || self.suit() == 'p' || self.suit() == 's' {
+            // numbered suits
+            // TODO refactor to convert int to char?
+            // TODO what about red fives?
+            let rank = self.serial % 9;
+            match rank {
+                0 => '1',
+                1 => '2',
+                2 => '3',
+                3 => '4',
+                4 => '5',
+                5 => '6',
+                6 => '7',
+                7 => '8',
+                8 => '9',
+                _ => panic!("error getting rank of numbered tile, serial={}", self.serial),
+            }
+        } else if self.suit() == 'w' {
+            let rank = (self.serial - (3 * 36)) % 4;
+            match rank {
+                0 => 'E',
+                1 => 'S',
+                2 => 'W',
+                3 => 'N',
+                _ => panic!("error getting rank of wind tile, serial={}", self.serial),
+            }
+        } else if self.suit() == 'd' {
+            let rank = (self.serial - (3 * 36 + 4 * 4)) % 3;
+            match rank {
+                0 => 'G',
+                1 => 'R',
+                2 => 'W',
+                _ => panic!("error getting rank of dragon tile, serial={}", self.serial),
+            }
+        } else {
+            panic!("Invalid tile serial number! {}", self.serial);
+        }
+    }
+
+    fn to_string(&self) -> String {
+        let mut tile_string = String::new();
+        tile_string.push(self.rank());
+        tile_string.push(self.suit());
+        tile_string
+    }
+
+    // TODO use TileSuit and TileRank enum instead
+    fn from_suit_and_rank(suit: char, rank: char, copy: u32) -> Self {
+        // compute serial number based on suit and rank
+        // assert suit is valid ([mpswd])
+        // assert rank is valid ([1-9] or [ESWN] or [GRW])
+        // assert copy is valid (0-3)
+        match suit {
+            'm' => Self { serial: 0 * (4 * 9) + (rank.to_digit(10).unwrap() - 1) + copy * 9 },
+            'p' => Self { serial: 1 * (4 * 9) + (rank.to_digit(10).unwrap() - 1) + copy * 9 },
+            's' => Self { serial: 2 * (4 * 9) + (rank.to_digit(10).unwrap() - 1) + copy * 9 },
+            'w' => {
+                let rank_num = match rank {
+                    'E' => 0,
+                    'S' => 1,
+                    'W' => 2,
+                    'N' => 3,
+                    _   => panic!("invalid wind tile rank {}", rank),
+                };
+                Self { serial: 3 * (4 * 9) + rank_num + copy * 4 }
+            },
+            'd' => {
+                let rank_num = match rank {
+                    'G' => 0,
+                    'R' => 1,
+                    'W' => 2,
+                    _   => panic!("invalid dragon tile rank {}", rank),
+                };
+                Self { serial: 3 * (4 * 9) + 4 * 4 + rank_num + copy * 3 }
+            },
+            _ => panic!("Invalid tile suit {}", suit),
+        }
+    }
+
+    fn from_string(tile_string: &str) -> Self {
+        // parse into suit and rank
+        // assert tile_string length is 2
+        let mut tile_chars = tile_string.chars();
+        let rank = tile_chars.next();
+        let suit = tile_chars.next();
+
+        if rank.is_some() && suit.is_some() {
+            // TODO why should the copy always be 0?
+            Self::from_suit_and_rank(suit.unwrap(), rank.unwrap(), 0)
+        } else {
+            panic!("invalid tile string {}", tile_string);
+        }
+    }
+}
+
 #[derive(Clone)]
 struct HandMeld {
     meld_type: String, // one of: sequence, three-of-a-kind, four-of-a-kind
@@ -699,6 +832,62 @@ fn main() {
 mod tests {
     // importing names from outer (for mod tests) scope.
     use super::*;
+
+    #[test]
+    fn test_tile_from_and_to_suit_rank() {
+        let man_tile = Tile::from_suit_and_rank('m', '1', 0);
+        assert_eq!(man_tile.suit(), 'm');
+        assert_eq!(man_tile.rank(), '1');
+        assert_eq!(man_tile.serial, 0 + 0 + 0 * 9);
+
+        let pin_tile = Tile::from_suit_and_rank('p', '4', 2);
+        assert_eq!(pin_tile.suit(), 'p');
+        assert_eq!(pin_tile.rank(), '4');
+        assert_eq!(pin_tile.serial, (4 * 9) + 3 + 2 * 9);
+
+        let sou_tile = Tile::from_suit_and_rank('s', '9', 3);
+        assert_eq!(sou_tile.suit(), 's');
+        assert_eq!(sou_tile.rank(), '9');
+        assert_eq!(sou_tile.serial, 2 * (4 * 9) + 8 + 3 * 9);
+
+        let wind_tile = Tile::from_suit_and_rank('w', 'W', 2);
+        assert_eq!(wind_tile.suit(), 'w');
+        assert_eq!(wind_tile.rank(), 'W');
+        assert_eq!(wind_tile.serial, 3 * (4 * 9) + 2 + 2 * 4);
+
+        let dragon_tile = Tile::from_suit_and_rank('d', 'R', 0);
+        assert_eq!(dragon_tile.suit(), 'd');
+        assert_eq!(dragon_tile.rank(), 'R');
+        assert_eq!(dragon_tile.serial, 3 * (4 * 9) + 4 * 4 + 1 + 0 * 3);
+    }
+
+    #[test]
+    fn test_tile_from_and_to_string() {
+        let man_tile = Tile::from_string("1m");
+        assert_eq!(man_tile.suit(), 'm');
+        assert_eq!(man_tile.rank(), '1');
+        assert_eq!(man_tile.to_string(), "1m".to_string());
+
+        let pin_tile = Tile::from_string("4p");
+        assert_eq!(pin_tile.suit(), 'p');
+        assert_eq!(pin_tile.rank(), '4');
+        assert_eq!(pin_tile.to_string(), "4p".to_string());
+
+        let sou_tile = Tile::from_string("9s");
+        assert_eq!(sou_tile.suit(), 's');
+        assert_eq!(sou_tile.rank(), '9');
+        assert_eq!(sou_tile.to_string(), "9s".to_string());
+
+        let wind_tile = Tile::from_string("Ww");
+        assert_eq!(wind_tile.suit(), 'w');
+        assert_eq!(wind_tile.rank(), 'W');
+        assert_eq!(wind_tile.to_string(), "Ww".to_string());
+
+        let dragon_tile = Tile::from_string("Rd");
+        assert_eq!(dragon_tile.suit(), 'd');
+        assert_eq!(dragon_tile.rank(), 'R');
+        assert_eq!(dragon_tile.to_string(), "Rd".to_string());
+    }
 
     #[test]
     fn test_count_tiles_by_suit_rank() {
