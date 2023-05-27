@@ -11,6 +11,9 @@ const DRAGON_TILES: [&str; 3] = ["G", "R", "W"];
 const HONOR_SUITS: [&str; 2] = ["w", "d"];
 const NUMBER_SUITS: [&str; 3] = ["m", "p", "s"];
 
+const TILE_SUITS_CHARS: [char; 5] = ['m', 'p', 's', 'w', 'd'];
+
+
 // fn check_valid_tile_string(tile_str: &String) {
 //     assert!(tile_str.len() == 2);
 //     let tile_rank = tile_str.get(0..1).expect("Expected tile rank");
@@ -224,6 +227,8 @@ struct Tile {
 
 impl Tile {
     // TODO return TileSuit enum instead
+    /// The suit of the tile, represented by a single character
+    /// e.g. for 3-sou: 's', for green dragon: 'd', for south wind: 'w'
     fn suit(&self) -> char {
         if self.serial < (4 * 9) {
             'm'
@@ -241,6 +246,8 @@ impl Tile {
     }
 
     // TODO return TileRank enum instead
+    /// The rank (aka value) of the tile, represented by a single character
+    /// e.g. for 3-sou: '3', for green dragon: 'G', for south wind: 'S'
     fn rank(&self) -> char {
         if self.suit() == 'm' || self.suit() == 'p' || self.suit() == 's' {
             // numbered suits
@@ -281,6 +288,9 @@ impl Tile {
         }
     }
 
+    // TODO implement this as Display trait instead?
+    /// Represents the tile as a two character string: the rank followed by the suit
+    /// e.g. for 8-man: "8m" , for north wind: "Nw", for red dragon: "Rd"
     fn to_string(&self) -> String {
         let mut tile_string = String::new();
         tile_string.push(self.rank());
@@ -288,7 +298,11 @@ impl Tile {
         tile_string
     }
 
+    // constructors
+
     // TODO use TileSuit and TileRank enum instead
+    /// Constructs a Tile from its suit and rank
+    /// e.g. 'm', '7' -> 7-man
     fn from_suit_and_rank(suit: char, rank: char, copy: u32) -> Self {
         // compute serial number based on suit and rank
         // assert suit is valid ([mpswd])
@@ -321,6 +335,8 @@ impl Tile {
         }
     }
 
+    /// Constructs a Tile from the same 2-character representation used by `to_string()`
+    /// e.g. "7m" -> 7-man
     fn from_string(tile_string: &str) -> Self {
         // parse into suit and rank
         // assert tile_string length is 2
@@ -334,6 +350,38 @@ impl Tile {
         } else {
             panic!("invalid tile string {}", tile_string);
         }
+    }
+
+    // helper functions
+
+    /// If the tile is rank 1 or 9 in a numbered suit
+    fn is_terminal(&self) -> bool {
+        // example yaku:
+        // - chanta (at least 1 terminal or honor tile in each meld and in the pair)
+        // - junchan (at least 1 terminal tile in each meld and in the pair)
+        // - chinroutou (hand is entirely terminal tiles)
+        (self.rank() == '1' || self.rank() == '9') && (self.suit() == 'm' || self.suit() == 'p' || self.suit() == 's')
+    }
+
+    /// If the tile is a wind tile or a dragon tile (honor tiles are also known as word tiles)
+    fn is_honor(&self) -> bool {
+        // example yaku:
+        // - honroutou (hand is entirely terminal or honor tiles)
+        // - tsuuiisou (hand is entirely honor tiles)
+        self.suit() == 'w' || self.suit() == 'd'
+    }
+
+    /// If the tile is rank 2-8 in a numbered suit, i.e. is not an honor tile or a terminal tile
+    fn is_simple(&self) -> bool {
+        // example yaku:
+        // - tanyou (hand is entirely simple tiles)
+        !self.is_honor() && !self.is_terminal()
+    }
+
+    /// If the tile is painted with only green - i.e. 2,3,4,6,8-sou and green dragon
+    fn is_all_green(&self) -> bool {
+        // used in the ryuuiisou yaku (hand is entirely made of tiles that are all green)
+        (self.suit() == 'd' && self.rank() == 'G') || (self.suit() == 's' && (self.rank() == '2' || self.rank() == '3' || self.rank() == '4' || self.rank() == '6' || self.rank() == '8'))
     }
 }
 
@@ -915,6 +963,104 @@ mod tests {
         assert_eq!(counts.get("m").unwrap().get("8"), Some(&2));
         assert_eq!(counts.get("d").unwrap().get("G"), Some(&2));
         assert_eq!(counts.get("w").unwrap().get("W"), Some(&3));
+    }
+
+    // verify the count of tiles of each suit if you iterate through all serial numbers
+    #[test]
+    fn test_tile_suit_counts() {
+        let num_tiles = 3 * 4 * 9 + 4 * 4 + 3 * 4;
+
+        let mut suit_counts = HashMap::new();
+        for serial in 0..num_tiles {
+            let tile = Tile {serial};
+            let count = suit_counts.entry(tile.suit()).or_insert(0);
+            *count += 1;
+        }
+
+        assert_eq!(suit_counts.get(&'m'), Some(&(4 * 9)));
+        assert_eq!(suit_counts.get(&'p'), Some(&(4 * 9)));
+        assert_eq!(suit_counts.get(&'s'), Some(&(4 * 9)));
+        assert_eq!(suit_counts.get(&'w'), Some(&(4 * 4)));
+        assert_eq!(suit_counts.get(&'d'), Some(&(4 * 3)));
+
+        for (key, _val) in suit_counts.iter() {
+            if !TILE_SUITS_CHARS.contains(key) {
+                panic!("invalid suit found in hash map! {}", key);
+            }
+        }
+    }
+
+    // verify the count of terminal tiles, honor tiles, simple tiles, all green tiles (i.e. test each helper function)
+    #[test]
+    fn test_terminal_tile_counts() {
+        let num_tiles = 3 * 4 * 9 + 4 * 4 + 3 * 4;
+        // 3 suits * 2 ranks per suit (1 and 9) * 4 copies
+        let expected_num_terminal_tiles: u32 = 3 * 4 * 2;
+
+        let mut num_terminal_tiles: u32 = 0;
+        for serial in 0..num_tiles {
+            let tile = Tile {serial};
+            if tile.is_terminal() {
+                num_terminal_tiles += 1;
+            }
+        }
+        let num_terminal_tiles = num_terminal_tiles;
+
+        assert_eq!(num_terminal_tiles, expected_num_terminal_tiles);
+    }
+
+    #[test]
+    fn test_honor_tile_counts() {
+        let num_tiles = 3 * 4 * 9 + 4 * 4 + 3 * 4;
+        // (4 winds + 3 dragons) * 4 copies
+        let expected_num_honor_tiles: u32 = (4 + 3) * 4;
+
+        let mut num_honor_tiles: u32 = 0;
+        for serial in 0..num_tiles {
+            let tile = Tile {serial};
+            if tile.is_honor() {
+                num_honor_tiles += 1;
+            }
+        }
+        let num_honor_tiles = num_honor_tiles;
+
+        assert_eq!(num_honor_tiles, expected_num_honor_tiles);
+    }
+
+    #[test]
+    fn test_simple_tile_counts() {
+        let num_tiles = 3 * 4 * 9 + 4 * 4 + 3 * 4;
+        // 3 suits * 7 ranks per suit (2 through 8, inclusive) * 4 copies
+        let expected_num_simple_tiles: u32 = 3 * 7 * 4;
+
+        let mut num_simple_tiles: u32 = 0;
+        for serial in 0..num_tiles {
+            let tile = Tile {serial};
+            if tile.is_simple() {
+                num_simple_tiles += 1;
+            }
+        }
+        let num_simple_tiles = num_simple_tiles;
+
+        assert_eq!(num_simple_tiles, expected_num_simple_tiles);
+    }
+
+    #[test]
+    fn test_all_green_tile_counts() {
+        let num_tiles = 3 * 4 * 9 + 4 * 4 + 3 * 4;
+        // 6 tiles (green dragon + 2, 3, 4, 6, 8 sou) * 4 copies
+        let expected_num_all_green_tiles: u32 = 6 * 4;
+
+        let mut num_all_green_tiles: u32 = 0;
+        for serial in 0..num_tiles {
+            let tile = Tile {serial};
+            if tile.is_all_green() {
+                num_all_green_tiles += 1;
+            }
+        }
+        let num_all_green_tiles = num_all_green_tiles;
+
+        assert_eq!(num_all_green_tiles, expected_num_all_green_tiles);
     }
 
     #[test]
