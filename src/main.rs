@@ -212,27 +212,13 @@ impl Tile {
 }
 
 fn main() {
-    // let tile = Tile { suit: TileSuit::Man, rank: NumberTileType::Five};
-    // println!("It's a tile: {}", tile.repr());
-
-    let mut hand: Vec<String> = Vec::new();
-    hand.push(String::from("1s"));
-    hand.push(String::from("2s"));
-    hand.push(String::from("3s"));
-    hand.push(String::from("4s"));
-    hand.push(String::from("5s"));
-    hand.push(String::from("6s"));
-    hand.push(String::from("7s"));
-    hand.push(String::from("8s"));
-    hand.push(String::from("9s"));
-    hand.push(String::from("Wd"));
-    hand.push(String::from("Wd"));
-    hand.push(String::from("Wd"));
-    hand.push(String::from("Nw"));
-    hand.push(String::from("Nw"));
-    println!("hand:");
-    for tile in &hand {
-        println!("{tile}");
+    for serial in 0..NUM_TILES {
+        let tile = Tile {serial};
+        // print!("{} ", tile.to_string());
+        print!("{} ", tile.to_human_string());
+        if (serial < 3 * 36 && serial % 9 == 8) || (serial >= 3 * 36 && (serial - 3 * 36) % 7 == 6) {
+            println!("");
+        }
     }
 }
 

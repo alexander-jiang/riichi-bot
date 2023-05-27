@@ -42,6 +42,7 @@
 
 
 ### May 27 2023
-* spent ~0.75 hours
+* spent ~1.5 hours
 * day 2 of refactor to use Rust structs
+* learning about why the rust compiler complains about unused functions when they are used within the test modules, source: [stackoverflow](https://stackoverflow.com/questions/68836263/why-is-rust-complaining-about-an-unused-function-when-it-is-only-used-from-tests)
 
