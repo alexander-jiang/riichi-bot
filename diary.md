@@ -31,5 +31,17 @@
 * my plan for today is to add more unit tests for the hand grouping function
 * if I have time, I can try to implement the yaku checks, as a hand with no yaku is not technically a winning hand
 
+### May 23 2023
+* spent ~0.5 hours on plane thinking about the different entities needed to represent game state: tiles, player hands, winning hand groupings, etc.
+* wrote these ideas down for later implementation / refactor of existing code
 
+
+### May 26 2023
+* spent ~0.75 hours on refactor to use Rust structs to represent tiles, hand melds, hand groups, winning hands, etc.
+* started with the tile struct, read the Rust book section on structs, implementation blocks, methods, etc. [here](https://doc.rust-lang.org/book/ch05-01-defining-structs.html)
+
+
+### May 27 2023
+* spent ~0.75 hours
+* day 2 of refactor to use Rust structs
 
