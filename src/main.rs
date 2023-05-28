@@ -13,6 +13,13 @@ pub enum TileSuit {
     Honor,
 }
 
+impl TileSuit {
+    /// If the tile suit is a numbered suit
+    fn is_number(&self) -> bool {
+        self == &Self::Man || self == &Self::Pin || self == &Self::Sou
+    }
+}
+
 impl TryFrom<char> for TileSuit {
     type Error = ();
 
@@ -241,7 +248,7 @@ impl Tile {
             char::from(self.suit())
         } else if self.is_honor() {
             // must be honor tile
-            matches!(self.rank(), TileRank::Honor(_));
+            assert!(matches!(self.rank(), TileRank::Honor(_)));
             match self.rank() {
                 TileRank::Honor(tile_rank) => match tile_rank {
                     HonorTileRank::East  => 'w',
@@ -266,7 +273,7 @@ impl Tile {
             char::from(self.rank())
         } else if self.is_honor() {
             // must be honor tile
-            matches!(self.rank(), TileRank::Honor(_));
+            assert!(matches!(self.rank(), TileRank::Honor(_)));
             match self.rank() {
                 TileRank::Honor(tile_rank) => match tile_rank {
                     HonorTileRank::East  => 'E',
@@ -307,19 +314,20 @@ impl Tile {
 
     /// Constructs a Tile from its suit and rank (in MSPZ notation)
     /// e.g. 'm', '7' -> 7-man; 's', '0' -> red-5-sou; 'z', '1' -> East wind
-    pub fn from_suit_and_rank(suit: char, rank: char, copy: u32) -> Self {
+    pub fn from_suit_and_rank(suit: TileSuit, rank: TileRank, copy: u32) -> Self {
         // compute serial number based on suit and rank
         // assert suit is valid ([mpsz])
         // assert rank is valid ([0-9])
         // assert copy is valid (0-3)
-        if suit == 'm' || suit == 'p' || suit == 's' {
+        if suit == TileSuit::Man || suit == TileSuit::Pin || suit == TileSuit::Sou {
+            assert!(matches!(rank, TileRank::Number(_)));
             let suit_serial_start = match suit {
-                'm' => 0 * (4 * 9),
-                'p' => 1 * (4 * 9),
-                's' => 2 * (4 * 9),
-                _   => panic!("Invalid numbered suit {}", suit),
+                TileSuit::Man => 0 * (4 * 9),
+                TileSuit::Pin => 1 * (4 * 9),
+                TileSuit::Sou => 2 * (4 * 9),
+                _   => panic!("Invalid suit for numbered tile"),
             };
-            let rank_digit = rank.to_digit(10).expect("Invalid numbered tile rank char (valid ranks are 0-9)");
+            let rank_digit = char::from(rank).to_digit(10).expect("Invalid numbered tile rank char (valid ranks are 0-9)");
             if rank_digit == 0 {
                 // red fives take the place of the first copy of a five in the serial number ordering
                 assert!(copy == 0, "One copy of red fives only");
@@ -332,13 +340,14 @@ impl Tile {
                 assert!(copy < 4, "Only four copies of numbered tiles (except fives)");
                 Self { serial: suit_serial_start + (rank_digit - 1) + copy * 9}
             }
-        } else if suit == 'z' {
+        } else if suit == TileSuit::Honor {
+            assert!(matches!(rank, TileRank::Honor(_)));
             assert!(copy < 4, "Only four copies of honor tiles");
-            let rank_digit = rank.to_digit(8).expect("Invalid honor tile rank char (valid ranks are 1-7)");
+            let rank_digit = char::from(rank).to_digit(8).expect("Invalid honor tile rank char (valid ranks are 1-7)");
             assert!(rank_digit >= 1 && rank_digit <= 7, "Invalid honor tile rank char (valid ranks are 1-7)");
             Self { serial: 3 * (4 * 9) + (rank_digit - 1) + copy * 7 }
         } else {
-            panic!("Invalid tile suit char {}", suit);
+            panic!("Invalid tile suit {:?}", suit);
         }
     }
 
@@ -348,15 +357,23 @@ impl Tile {
         // parse into suit and rank
         // assert tile_string length is 2
         let mut tile_chars = tile_string.chars();
-        let rank = tile_chars.next();
-        let suit = tile_chars.next();
+        let rank_char = tile_chars.next().expect("Must have tile rank char in string");
+        let suit_char = tile_chars.next().expect("Must have tile suit char in string");
 
-        if rank.is_some() && suit.is_some() {
-            // TODO why should the copy always be 0?
-            Self::from_suit_and_rank(suit.expect("Must have tile suit"), rank.expect("Must have tile rank"), 0)
+        let tile_suit = TileSuit::try_from(suit_char).expect("Failed conversion to TileSuit");
+
+        let rank = if tile_suit.is_number() {
+            let tile_rank = NumberTileRank::try_from(rank_char);
+            let number_tile_rank = tile_rank.expect("Invalid number tile rank");
+            TileRank::Number(number_tile_rank)
         } else {
-            panic!("invalid tile string {}", tile_string);
-        }
+            let tile_rank = HonorTileRank::try_from(rank_char);
+            let honor_tile_rank = tile_rank.expect("Invalid honor tile rank");
+            TileRank::Honor(honor_tile_rank)
+        };
+
+        // TODO why should the copy always be 0?
+        Self::from_suit_and_rank(tile_suit, rank, 0)
     }
 
     // helper functions
@@ -500,104 +517,104 @@ mod tests {
     #[test]
     fn test_tile_from_and_to_suit_rank() {
         // 1-man, first copy, serial number 0
-        let man_tile = Tile::from_suit_and_rank('m', '1', 0);
-        assert_eq!(man_tile.suit(), 'm');
-        assert_eq!(man_tile.rank(), '1');
+        let man_tile = Tile::from_suit_and_rank(TileSuit::Man, TileRank::Number(NumberTileRank::One), 0);
+        assert_eq!(char::from(man_tile.suit()), 'm');
+        assert_eq!(char::from(man_tile.rank()), '1');
         assert_eq!(man_tile.serial, 0 + 0 + 0 * 9);
 
         // red-5-man, serial number 4
-        let man_red_five = Tile::from_suit_and_rank('m', '0', 0);
-        assert_eq!(man_red_five.suit(), 'm');
-        assert_eq!(man_red_five.rank(), '0');
+        let man_red_five = Tile::from_suit_and_rank(TileSuit::Man, TileRank::Number(NumberTileRank::RedFive), 0);
+        assert_eq!(char::from(man_red_five.suit()), 'm');
+        assert_eq!(char::from(man_red_five.rank()), '0');
         assert_eq!(man_red_five.serial, 0 + 4 + 0 * 9);
 
         // 5-man, first copy, serial number 13 (since the red-5-man is serial number 4)
-        let man_red_five = Tile::from_suit_and_rank('m', '5', 0);
-        assert_eq!(man_red_five.suit(), 'm');
-        assert_eq!(man_red_five.rank(), '5');
+        let man_red_five = Tile::from_suit_and_rank(TileSuit::Man, TileRank::Number(NumberTileRank::Five), 0);
+        assert_eq!(char::from(man_red_five.suit()), 'm');
+        assert_eq!(char::from(man_red_five.rank()), '5');
         assert_eq!(man_red_five.serial, 0 + 4 + 1 * 9);
 
         // 5-man, third copy, serial number 31 (since the red-5-man is serial number 4)
-        let man_red_five = Tile::from_suit_and_rank('m', '5', 2);
-        assert_eq!(man_red_five.suit(), 'm');
-        assert_eq!(man_red_five.rank(), '5');
+        let man_red_five = Tile::from_suit_and_rank(TileSuit::Man, TileRank::Number(NumberTileRank::Five), 2);
+        assert_eq!(char::from(man_red_five.suit()), 'm');
+        assert_eq!(char::from(man_red_five.rank()), '5');
         assert_eq!(man_red_five.serial, 0 + 4 + 3 * 9);
 
         // 4-pin, third copy, serial number 57
-        let pin_tile = Tile::from_suit_and_rank('p', '4', 2);
-        assert_eq!(pin_tile.suit(), 'p');
-        assert_eq!(pin_tile.rank(), '4');
+        let pin_tile = Tile::from_suit_and_rank(TileSuit::Pin, TileRank::Number(NumberTileRank::Four), 2);
+        assert_eq!(char::from(pin_tile.suit()), 'p');
+        assert_eq!(char::from(pin_tile.rank()), '4');
         assert_eq!(pin_tile.serial, (4 * 9) + 3 + 2 * 9);
 
         // 9-sou, fourth copy, serial number 107
-        let sou_tile = Tile::from_suit_and_rank('s', '9', 3);
-        assert_eq!(sou_tile.suit(), 's');
-        assert_eq!(sou_tile.rank(), '9');
+        let sou_tile = Tile::from_suit_and_rank(TileSuit::Sou, TileRank::Number(NumberTileRank::Nine), 3);
+        assert_eq!(char::from(sou_tile.suit()), 's');
+        assert_eq!(char::from(sou_tile.rank()), '9');
         assert_eq!(sou_tile.serial, 2 * (4 * 9) + 8 + 3 * 9);
 
         // west wind, third copy, serial number 124
-        let wind_tile = Tile::from_suit_and_rank('z', '3', 2);
-        assert_eq!(wind_tile.suit(), 'z');
-        assert_eq!(wind_tile.rank(), '3');
+        let wind_tile = Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::West), 2);
+        assert_eq!(char::from(wind_tile.suit()), 'z');
+        assert_eq!(char::from(wind_tile.rank()), '3');
         assert_eq!(wind_tile.serial, 3 * (4 * 9) + 2 + 2 * 7);
 
         // red dragon, first copy, serial number 114
-        let dragon_tile = Tile::from_suit_and_rank('z', '7', 0);
-        assert_eq!(dragon_tile.suit(), 'z');
-        assert_eq!(dragon_tile.rank(), '7');
+        let dragon_tile = Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::Red), 0);
+        assert_eq!(char::from(dragon_tile.suit()), 'z');
+        assert_eq!(char::from(dragon_tile.rank()), '7');
         assert_eq!(dragon_tile.serial, 3 * (4 * 9) + 6 + 0 * 7);
     }
 
     #[test]
     fn test_tile_from_and_to_string() {
         let man_tile = Tile::from_string("1m");
-        assert_eq!(man_tile.suit(), 'm');
-        assert_eq!(man_tile.rank(), '1');
+        assert_eq!(char::from(man_tile.suit()), 'm');
+        assert_eq!(char::from(man_tile.rank()), '1');
         assert_eq!(man_tile.to_string(), "1m".to_string());
 
         let pin_tile = Tile::from_string("4p");
-        assert_eq!(pin_tile.suit(), 'p');
-        assert_eq!(pin_tile.rank(), '4');
+        assert_eq!(char::from(pin_tile.suit()), 'p');
+        assert_eq!(char::from(pin_tile.rank()), '4');
         assert_eq!(pin_tile.to_string(), "4p".to_string());
 
         let sou_tile = Tile::from_string("9s");
-        assert_eq!(sou_tile.suit(), 's');
-        assert_eq!(sou_tile.rank(), '9');
+        assert_eq!(char::from(sou_tile.suit()), 's');
+        assert_eq!(char::from(sou_tile.rank()), '9');
         assert_eq!(sou_tile.to_string(), "9s".to_string());
 
         let east_wind_tile = Tile::from_string("1z");
-        assert_eq!(east_wind_tile.suit(), 'z');
-        assert_eq!(east_wind_tile.rank(), '1');
+        assert_eq!(char::from(east_wind_tile.suit()), 'z');
+        assert_eq!(char::from(east_wind_tile.rank()), '1');
         assert_eq!(east_wind_tile.to_string(), "1z".to_string());
 
         let south_wind_tile = Tile::from_string("2z");
-        assert_eq!(south_wind_tile.suit(), 'z');
-        assert_eq!(south_wind_tile.rank(), '2');
+        assert_eq!(char::from(south_wind_tile.suit()), 'z');
+        assert_eq!(char::from(south_wind_tile.rank()), '2');
         assert_eq!(south_wind_tile.to_string(), "2z".to_string());
 
         let west_wind_tile = Tile::from_string("3z");
-        assert_eq!(west_wind_tile.suit(), 'z');
-        assert_eq!(west_wind_tile.rank(), '3');
+        assert_eq!(char::from(west_wind_tile.suit()), 'z');
+        assert_eq!(char::from(west_wind_tile.rank()), '3');
         assert_eq!(west_wind_tile.to_string(), "3z".to_string());
 
         let north_wind_tile = Tile::from_string("4z");
-        assert_eq!(north_wind_tile.suit(), 'z');
-        assert_eq!(north_wind_tile.rank(), '4');
+        assert_eq!(char::from(north_wind_tile.suit()), 'z');
+        assert_eq!(char::from(north_wind_tile.rank()), '4');
         assert_eq!(north_wind_tile.to_string(), "4z".to_string());
 
         let white_dragon_tile = Tile::from_string("5z");
-        assert_eq!(white_dragon_tile.suit(), 'z');
-        assert_eq!(white_dragon_tile.rank(), '5');
+        assert_eq!(char::from(white_dragon_tile.suit()), 'z');
+        assert_eq!(char::from(white_dragon_tile.rank()), '5');
         assert_eq!(white_dragon_tile.to_string(), "5z".to_string());
 
         let green_dragon_tile = Tile::from_string("6z");
-        assert_eq!(green_dragon_tile.suit(), 'z');
-        assert_eq!(green_dragon_tile.rank(), '6');
+        assert_eq!(char::from(green_dragon_tile.suit()), 'z');
+        assert_eq!(char::from(green_dragon_tile.rank()), '6');
         assert_eq!(green_dragon_tile.to_string(), "6z".to_string());
 
         let red_dragon_tile = Tile::from_string("7z");
-        assert_eq!(red_dragon_tile.suit(), 'z');
-        assert_eq!(red_dragon_tile.rank(), '7');
+        assert_eq!(char::from(red_dragon_tile.suit()), 'z');
+        assert_eq!(char::from(red_dragon_tile.rank()), '7');
         assert_eq!(red_dragon_tile.to_string(), "7z".to_string());
     }
 
@@ -661,7 +678,7 @@ mod tests {
         let mut suit_counts = HashMap::new();
         for serial in 0..NUM_TILES {
             let tile = Tile {serial};
-            let count = suit_counts.entry(tile.suit()).or_insert(0);
+            let count = suit_counts.entry(char::from(tile.suit())).or_insert(0);
             *count += 1;
         }
 
