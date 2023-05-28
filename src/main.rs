@@ -3,6 +3,134 @@ pub const TILE_SUITS_CHARS: [char; 4] = ['m', 'p', 's', 'z'];
 // number of tiles in a standard riichi mahjong set
 pub const NUM_TILES: u32 = 3 * 4 * 9 + 4 * (4 + 3);
 
+#[derive(Debug, PartialEq)]
+pub enum TileSuit {
+    Man,
+    Pin,
+    Sou,
+    Honor,
+}
+
+// conversions from enum to char and vice versa
+impl TryFrom<char> for TileSuit {
+    type Error = ();
+
+    fn try_from(suit: char) -> Result<Self, Self::Error> {
+        match suit {
+            'm' => Ok(Self::Man),
+            'p' => Ok(Self::Pin),
+            's' => Ok(Self::Sou),
+            'z' => Ok(Self::Honor),
+            _   => Err(()),
+        }
+    }
+}
+
+impl From<TileSuit> for char {
+    fn from(tile_suit: TileSuit) -> char {
+        match tile_suit {
+            TileSuit::Man => 'm',
+            TileSuit::Pin => 'p',
+            TileSuit::Sou => 's',
+            TileSuit::Honor => 'z',
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum NumberTileRank {
+    RedFive = 0,
+    One ,
+    Two,
+    Three,
+    Four,
+    Five,
+    Six,
+    Seven,
+    Eight,
+    Nine,
+}
+
+// conversions from enum to char and vice versa
+impl TryFrom<char> for NumberTileRank {
+    type Error = &'static str;
+    fn try_from(rank: char) -> Result<Self, Self::Error> {
+        match rank {
+            '0' => Ok(Self::RedFive),
+            '1' => Ok(Self::One),
+            '2' => Ok(Self::Two),
+            '3' => Ok(Self::Three),
+            '4' => Ok(Self::Four),
+            '5' => Ok(Self::Five),
+            '6' => Ok(Self::Six),
+            '7' => Ok(Self::Seven),
+            '8' => Ok(Self::Eight),
+            '9' => Ok(Self::Nine),
+            _   => Err("Invalid number tile rank char!"),
+        }
+    }
+}
+
+impl From<NumberTileRank> for char {
+    fn from(tile_rank: NumberTileRank) -> char {
+        match tile_rank {
+            NumberTileRank::RedFive => '0',
+            NumberTileRank::One     => '1',
+            NumberTileRank::Two     => '2',
+            NumberTileRank::Three   => '3',
+            NumberTileRank::Four    => '4',
+            NumberTileRank::Five    => '5',
+            NumberTileRank::Six     => '6',
+            NumberTileRank::Seven   => '7',
+            NumberTileRank::Eight   => '8',
+            NumberTileRank::Nine    => '9',
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum HonorTileRank {
+    East = 1,
+    South,
+    West,
+    North,
+    White,
+    Green,
+    Red,
+}
+
+// conversions from enum to char and vice versa
+impl TryFrom<char> for HonorTileRank {
+    type Error = &'static str;
+    fn try_from(rank: char) -> Result<Self, Self::Error> {
+        match rank {
+            '1' => Ok(Self::East),
+            '2' => Ok(Self::South),
+            '3' => Ok(Self::West),
+            '4' => Ok(Self::North),
+            '5' => Ok(Self::White),
+            '6' => Ok(Self::Green),
+            '7' => Ok(Self::Red),
+            _   => Err("Invalid honor tile rank char!"),
+        }
+    }
+}
+
+impl From<HonorTileRank> for char {
+    fn from(tile_rank: HonorTileRank) -> char {
+        match tile_rank {
+            HonorTileRank::East  => '1',
+            HonorTileRank::South => '2',
+            HonorTileRank::West  => '3',
+            HonorTileRank::North => '4',
+            HonorTileRank::White => '5',
+            HonorTileRank::Green => '6',
+            HonorTileRank::Red   => '7',
+        }
+    }
+}
+
+
 #[derive(Debug)]
 pub struct Tile {
     serial: u32,
@@ -228,6 +356,73 @@ mod tests {
     use super::*;
 
     use std::collections::HashMap;
+
+    #[test]
+    fn test_convert_between_tile_suit_enum_and_char() {
+        // char to TileSuit via TileSuit::try_from()
+        assert_eq!(TileSuit::try_from('m'), Ok(TileSuit::Man));
+        assert_eq!(TileSuit::try_from('p'), Ok(TileSuit::Pin));
+        assert_eq!(TileSuit::try_from('s'), Ok(TileSuit::Sou));
+        assert_eq!(TileSuit::try_from('z'), Ok(TileSuit::Honor));
+        assert!(TileSuit::try_from('d').is_err());
+
+        // TileSuit to char via char::from()
+        assert_eq!(char::from(TileSuit::Man), 'm');
+        assert_eq!(char::from(TileSuit::Pin), 'p');
+        assert_eq!(char::from(TileSuit::Sou), 's');
+        assert_eq!(char::from(TileSuit::Honor), 'z');
+    }
+
+    #[test]
+    fn test_convert_between_number_tile_rank_enum_and_char() {
+        // char to NumberTileRank via NumberTileRank::try_from()
+        assert_eq!(NumberTileRank::try_from('0'), Ok(NumberTileRank::RedFive));
+        assert_eq!(NumberTileRank::try_from('1'), Ok(NumberTileRank::One));
+        assert_eq!(NumberTileRank::try_from('2'), Ok(NumberTileRank::Two));
+        assert_eq!(NumberTileRank::try_from('3'), Ok(NumberTileRank::Three));
+        assert_eq!(NumberTileRank::try_from('4'), Ok(NumberTileRank::Four));
+        assert_eq!(NumberTileRank::try_from('5'), Ok(NumberTileRank::Five));
+        assert_eq!(NumberTileRank::try_from('6'), Ok(NumberTileRank::Six));
+        assert_eq!(NumberTileRank::try_from('7'), Ok(NumberTileRank::Seven));
+        assert_eq!(NumberTileRank::try_from('8'), Ok(NumberTileRank::Eight));
+        assert_eq!(NumberTileRank::try_from('9'), Ok(NumberTileRank::Nine));
+        assert!(NumberTileRank::try_from('a').is_err());
+
+        // NumberTileRank to char via char::from()
+        assert_eq!(char::from(NumberTileRank::RedFive), '0');
+        assert_eq!(char::from(NumberTileRank::One), '1');
+        assert_eq!(char::from(NumberTileRank::Two), '2');
+        assert_eq!(char::from(NumberTileRank::Three), '3');
+        assert_eq!(char::from(NumberTileRank::Four), '4');
+        assert_eq!(char::from(NumberTileRank::Five), '5');
+        assert_eq!(char::from(NumberTileRank::Six), '6');
+        assert_eq!(char::from(NumberTileRank::Seven), '7');
+        assert_eq!(char::from(NumberTileRank::Eight), '8');
+        assert_eq!(char::from(NumberTileRank::Nine), '9');
+    }
+
+    #[test]
+    fn test_convert_between_honor_tile_rank_enum_and_char() {
+        // char to HonorTileRank via HonorTileRank::try_from()
+        assert_eq!(HonorTileRank::try_from('1'), Ok(HonorTileRank::East));
+        assert_eq!(HonorTileRank::try_from('2'), Ok(HonorTileRank::South));
+        assert_eq!(HonorTileRank::try_from('3'), Ok(HonorTileRank::West));
+        assert_eq!(HonorTileRank::try_from('4'), Ok(HonorTileRank::North));
+        assert_eq!(HonorTileRank::try_from('5'), Ok(HonorTileRank::White));
+        assert_eq!(HonorTileRank::try_from('6'), Ok(HonorTileRank::Green));
+        assert_eq!(HonorTileRank::try_from('7'), Ok(HonorTileRank::Red));
+        assert!(HonorTileRank::try_from('0').is_err());
+        assert!(HonorTileRank::try_from('8').is_err());
+
+        // HonorTileRank to char via char::from()
+        assert_eq!(char::from(HonorTileRank::East), '1');
+        assert_eq!(char::from(HonorTileRank::South), '2');
+        assert_eq!(char::from(HonorTileRank::West), '3');
+        assert_eq!(char::from(HonorTileRank::North), '4');
+        assert_eq!(char::from(HonorTileRank::White), '5');
+        assert_eq!(char::from(HonorTileRank::Green), '6');
+        assert_eq!(char::from(HonorTileRank::Red), '7');
+    }
 
     #[test]
     fn test_tile_from_and_to_suit_rank() {
