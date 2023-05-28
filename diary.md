@@ -42,7 +42,8 @@
 
 
 ### May 27 2023
-* spent ~1.5 hours
-* day 2 of refactor to use Rust structs
+* spent ~3 hours
+* day 2 of refactor to use Rust structs & enums
 * learning about why the rust compiler complains about unused functions when they are used within the test modules, source: [stackoverflow](https://stackoverflow.com/questions/68836263/why-is-rust-complaining-about-an-unused-function-when-it-is-only-used-from-tests)
-
+* learning about From/Into and TryFrom/TryInto traits - see [stackoverflow](https://stackoverflow.com/questions/35283736/whats-the-closest-i-can-get-to-discriminating-an-enum-by-a-char), and [rust by example section on Try and From](https://doc.rust-lang.org/rust-by-example/conversion/from_into.html)
+* getting more comfortable with enums, see above stackoverflow link and the rust programming language book [section on enums](https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html) and the rust by example [section on enums](https://doc.rust-lang.org/rust-by-example/custom_types/enum.html)

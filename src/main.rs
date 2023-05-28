@@ -3,6 +3,8 @@ pub const TILE_SUITS_CHARS: [char; 4] = ['m', 'p', 's', 'z'];
 // number of tiles in a standard riichi mahjong set
 pub const NUM_TILES: u32 = 3 * 4 * 9 + 4 * (4 + 3);
 
+
+/// The possible suits of a tile
 #[derive(Debug, PartialEq)]
 pub enum TileSuit {
     Man,
@@ -11,10 +13,11 @@ pub enum TileSuit {
     Honor,
 }
 
-// conversions from enum to char and vice versa
 impl TryFrom<char> for TileSuit {
     type Error = ();
 
+    /// attempts to parse TileSuit from character using MSPZ notation:
+    /// tile suit is a single character `'m'` (man), `'p'` (pin), `'s'` (sou), or `'z'` (honors).
     fn try_from(suit: char) -> Result<Self, Self::Error> {
         match suit {
             'm' => Ok(Self::Man),
@@ -27,6 +30,8 @@ impl TryFrom<char> for TileSuit {
 }
 
 impl From<TileSuit> for char {
+    /// converts TileSuit to character representation in MSPZ notation:
+    /// tile suit is a single character `'m'` (man), `'p'` (pin), `'s'` (sou), or `'z'` (honors).
     fn from(tile_suit: TileSuit) -> char {
         match tile_suit {
             TileSuit::Man => 'm',
@@ -37,6 +42,8 @@ impl From<TileSuit> for char {
     }
 }
 
+
+/// The possible ranks (aka values) of a tile in a numbered suit (i.e. man, pin, or sou)
 #[derive(Debug, PartialEq)]
 pub enum NumberTileRank {
     RedFive = 0,
@@ -51,9 +58,11 @@ pub enum NumberTileRank {
     Nine,
 }
 
-// conversions from enum to char and vice versa
 impl TryFrom<char> for NumberTileRank {
     type Error = &'static str;
+
+    /// attempts to parse NumberTileRank from character using MSPZ notation:
+    /// for numbered suits, tile rank is a single character `'0'` to `'9'` where 0 represents a red five.
     fn try_from(rank: char) -> Result<Self, Self::Error> {
         match rank {
             '0' => Ok(Self::RedFive),
@@ -72,6 +81,8 @@ impl TryFrom<char> for NumberTileRank {
 }
 
 impl From<NumberTileRank> for char {
+    /// converts NumberTileRank to character representation in MSPZ notation:
+    /// for numbered suits, tile rank is a single character `'0'` to `'9'` where 0 represents a red five.
     fn from(tile_rank: NumberTileRank) -> char {
         match tile_rank {
             NumberTileRank::RedFive => '0',
@@ -88,6 +99,8 @@ impl From<NumberTileRank> for char {
     }
 }
 
+
+/// The possible ranks (aka values) of a tile in a honor suit (i.e. winds or dragons)
 #[derive(Debug, PartialEq)]
 pub enum HonorTileRank {
     East = 1,
@@ -102,6 +115,10 @@ pub enum HonorTileRank {
 // conversions from enum to char and vice versa
 impl TryFrom<char> for HonorTileRank {
     type Error = &'static str;
+
+    /// attempts to parse HonorTileRank from character using MSPZ notation:
+    /// for honor suits, tile rank is a single character `'1'` to `'7'` where 1-4 represents a wind direction
+    /// (East, South, West, North, respectively), and 5-7 represents a dragon color (White, Green, Red, respectively).
     fn try_from(rank: char) -> Result<Self, Self::Error> {
         match rank {
             '1' => Ok(Self::East),
@@ -117,6 +134,9 @@ impl TryFrom<char> for HonorTileRank {
 }
 
 impl From<HonorTileRank> for char {
+    /// converts HonorTileRank to character representation in MSPZ notation:
+    /// for honor suits, tile rank is a single character `'1'` to `'7'` where 1-4 represents a wind direction
+    /// (East, South, West, North, respectively), and 5-7 represents a dragon color (White, Green, Red, respectively).
     fn from(tile_rank: HonorTileRank) -> char {
         match tile_rank {
             HonorTileRank::East  => '1',
@@ -131,50 +151,86 @@ impl From<HonorTileRank> for char {
 }
 
 
+/// The possible ranks (aka values) of a tile
+#[derive(Debug, PartialEq)]
+pub enum TileRank {
+    Number(NumberTileRank),
+    Honor(HonorTileRank),
+}
+
+impl From<TileRank> for char {
+    /// converts TileRank (either NumberTileRank or HonorTileRank) to character representation in MSPZ notation:
+    /// see documentation for `From<NumberTileRank>` and for `From<HonorTileRank>` for documentation on how tile ranks are represented
+    /// for numbered tiles and honor tiles, respectively
+    fn from(tile_rank_type: TileRank) -> char {
+        match tile_rank_type {
+            TileRank::Number(tile_rank) => char::from(tile_rank),
+            TileRank::Honor(tile_rank) => char::from(tile_rank),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Tile {
     serial: u32,
 }
 
 impl Tile {
-    /// The suit of the tile in MSPZ notation, a single character `'m'` (man), `'p'` (pin), `'s'` (sou), or `'z'` (honors).
-    /// e.g. for 3-sou: 's', for green dragon: 'z'
-    pub fn suit(&self) -> char {
+    // TODO use this function when initializing tiles via serial number?
+    pub fn is_valid_serial(&self) -> bool {
+        self.serial < NUM_TILES
+    }
+
+    /// The suit of the tile
+    pub fn suit(&self) -> TileSuit {
         if self.serial < (4 * 9) {
-            'm'
+            TileSuit::Man
         } else if self.serial >= (4 * 9) && self.serial < (2 * 4 * 9) {
-            'p'
+            TileSuit::Pin
         } else if self.serial >= (2 * 4 * 9) && self.serial < (3 * 4 * 9) {
-            's'
-        } else if self.serial >= (3 * 4 * 9) && self.serial < (3 * 4 * 9 + 4 * 4 + 3 * 4) {
-            'z'
+            TileSuit::Sou
         } else {
-            panic!("Invalid tile serial number! {}", self.serial);
+            TileSuit::Honor
         }
     }
 
-    /// The rank (aka value) of the tile in MSPZ notation, a single character `'0'` to `'9'`
-    /// Red fives are 0, honor tiles are numbered: East is 1, then South, West, North, White, Green, and Red is 7
-    /// e.g. for 3-sou: '3', for green dragon: '6', for south wind: '2', for red five (in any suit): '0'
-    pub fn rank(&self) -> char {
+    /// The rank (aka value) of the tile
+    pub fn rank(&self) -> TileRank {
         if self.is_number_suit() {
             // numbered suits
-            let rank = self.serial % 9;
-            let rank_char = char::from_digit(rank + 1, 10).expect("Invalid rank char for numbered tile");
+            let rank_index = self.serial % 9;
 
-            if rank_char == '5' {
-                let copy = (self.serial % 36) / 9;
-                // one "red five" tile from each numbered suit
-                // in serial number ordering, the red-five is in the first set of 1-9 per suit
-                if copy < 1 { '0' } else { '5' }
-            } else {
-                rank_char
+            match rank_index {
+                0 => TileRank::Number(NumberTileRank::One),
+                1 => TileRank::Number(NumberTileRank::Two),
+                2 => TileRank::Number(NumberTileRank::Three),
+                3 => TileRank::Number(NumberTileRank::Four),
+                4 => {
+                    let copy = (self.serial % 36) / 9;
+                    // one "red five" tile from each numbered suit
+                    // in serial number ordering, the red-five is in the first set of 1-9 per suit
+                    if copy < 1 { TileRank::Number(NumberTileRank::RedFive) } else { TileRank::Number(NumberTileRank::Five) }
+                },
+                5 => TileRank::Number(NumberTileRank::Six),
+                6 => TileRank::Number(NumberTileRank::Seven),
+                7 => TileRank::Number(NumberTileRank::Eight),
+                8 => TileRank::Number(NumberTileRank::Nine),
+                _ => panic!("Invalid rank index for number tile"),
             }
-        } else if self.is_honor() {
-            let rank = (self.serial - (3 * 36)) % 7;
-            char::from_digit(rank + 1, 10).expect("Invalid rank char for honor tile")
         } else {
-            panic!("Invalid tile serial number! {}", self.serial);
+            // must be an honor tile
+            let rank_index = (self.serial - (3 * 36)) % 7;
+
+            match rank_index {
+                0 => TileRank::Honor(HonorTileRank::East),
+                1 => TileRank::Honor(HonorTileRank::South),
+                2 => TileRank::Honor(HonorTileRank::West),
+                3 => TileRank::Honor(HonorTileRank::North),
+                4 => TileRank::Honor(HonorTileRank::White),
+                5 => TileRank::Honor(HonorTileRank::Green),
+                6 => TileRank::Honor(HonorTileRank::Red),
+                _ => panic!("Invalid rank index for honor tile"),
+            }
         }
     }
 
@@ -182,17 +238,21 @@ impl Tile {
     /// Same as MSPZ for numbered suits. Uses `'w'` for winds, and `'d'` for dragons.
     pub fn human_suit(&self) -> char {
         if self.is_number_suit() {
-            self.suit()
+            char::from(self.suit())
         } else if self.is_honor() {
+            // must be honor tile
+            matches!(self.rank(), TileRank::Honor(_));
             match self.rank() {
-                '1' => 'w',
-                '2' => 'w',
-                '3' => 'w',
-                '4' => 'w',
-                '5' => 'd',
-                '6' => 'd',
-                '7' => 'd',
-                _   => panic!("invalid rank char {} for honor tile, serial={}", self.rank(), self.serial),
+                TileRank::Honor(tile_rank) => match tile_rank {
+                    HonorTileRank::East  => 'w',
+                    HonorTileRank::South => 'w',
+                    HonorTileRank::West  => 'w',
+                    HonorTileRank::North => 'w',
+                    HonorTileRank::White => 'd',
+                    HonorTileRank::Green => 'd',
+                    HonorTileRank::Red   => 'd',
+                },
+                _ => panic!("rank for honor tile must be TileRank::Honor! serial={}", self.serial),
             }
         } else {
             panic!("Invalid tile serial number! {}", self.serial);
@@ -203,17 +263,21 @@ impl Tile {
     /// For numbered suits: `'1'` to `'9'`, and `'0'` for red five. Honor tiles are their first letter in english (winds: E, S, W, N; dragons: W, G, R)
     pub fn human_rank(&self) -> char {
         if self.is_number_suit() {
-            self.rank()
+            char::from(self.rank())
         } else if self.is_honor() {
+            // must be honor tile
+            matches!(self.rank(), TileRank::Honor(_));
             match self.rank() {
-                '1' => 'E',
-                '2' => 'S',
-                '3' => 'W',
-                '4' => 'N',
-                '5' => 'W',
-                '6' => 'G',
-                '7' => 'R',
-                _   => panic!("invalid rank char {} for honor tile, serial={}", self.rank(), self.serial),
+                TileRank::Honor(tile_rank) => match tile_rank {
+                    HonorTileRank::East  => 'E',
+                    HonorTileRank::South => 'S',
+                    HonorTileRank::West  => 'W',
+                    HonorTileRank::North => 'N',
+                    HonorTileRank::White => 'W',
+                    HonorTileRank::Green => 'G',
+                    HonorTileRank::Red   => 'R',
+                },
+                _ => panic!("rank for honor tile must be TileRank::Honor! serial={}", self.serial),
             }
         } else {
             panic!("Invalid tile serial number! {}", self.serial);
@@ -225,8 +289,8 @@ impl Tile {
     /// e.g. for 8-man: "8m" , for red-5-sou, "0s", for north wind: "4z", for red dragon: "7z"
     pub fn to_string(&self) -> String {
         let mut tile_string = String::new();
-        tile_string.push(self.rank());
-        tile_string.push(self.suit());
+        tile_string.push(char::from(self.rank()));
+        tile_string.push(char::from(self.suit()));
         tile_string
     }
 
@@ -299,7 +363,8 @@ impl Tile {
 
     /// If the tile is in a numbered suit (man, pin, or sou)
     pub fn is_number_suit(&self) -> bool {
-        self.suit() == 'm' || self.suit() == 'p' || self.suit() == 's'
+        // TODO how to enforce that if Tile.suit is a number suit, the tile_rank is TileRank::Number(_)? and vice versa for honor tiles
+        self.suit() == TileSuit::Man || self.suit() == TileSuit::Pin || self.suit() == TileSuit::Sou
     }
 
     /// If the tile is rank 1 or 9 in a numbered suit
@@ -308,7 +373,7 @@ impl Tile {
         // - chanta (at least 1 terminal or honor tile in each meld and in the pair)
         // - junchan (at least 1 terminal tile in each meld and in the pair)
         // - chinroutou (hand is entirely terminal tiles)
-        (self.rank() == '1' || self.rank() == '9') && self.is_number_suit()
+        (char::from(self.rank()) == '1' || char::from(self.rank()) == '9') && self.is_number_suit()
     }
 
     /// If the tile is a wind tile or a dragon tile (honor tiles are also known as word tiles)
@@ -316,7 +381,7 @@ impl Tile {
         // example yaku:
         // - honroutou (hand is entirely terminal or honor tiles)
         // - tsuuiisou (hand is entirely honor tiles)
-        self.suit() == 'z'
+        self.suit() == TileSuit::Honor
     }
 
     /// If the tile is rank 2-8 in a numbered suit, i.e. is not an honor tile or a terminal tile
@@ -329,13 +394,21 @@ impl Tile {
     /// If the tile is painted with only green - i.e. 2,3,4,6,8-sou and green dragon
     pub fn is_all_green(&self) -> bool {
         // used in the ryuuiisou yaku (hand is entirely made of tiles that are all green)
-        (self.suit() == 'z' && self.rank() == '6') || (self.suit() == 's' && (self.rank() == '2' || self.rank() == '3' || self.rank() == '4' || self.rank() == '6' || self.rank() == '8'))
+        (self.is_honor() && self.rank() == TileRank::Honor(HonorTileRank::Green)) || (
+            self.suit() == TileSuit::Sou && (
+                self.rank() == TileRank::Number(NumberTileRank::Two) ||
+                self.rank() == TileRank::Number(NumberTileRank::Three) ||
+                self.rank() == TileRank::Number(NumberTileRank::Four) ||
+                self.rank() == TileRank::Number(NumberTileRank::Six) ||
+                self.rank() == TileRank::Number(NumberTileRank::Eight)
+            )
+        )
     }
 
     /// If the tile is a red five tile
     pub fn is_red_five(&self) -> bool {
         // used for counting dora
-        self.is_number_suit() && self.rank() == '0'
+        self.is_number_suit() && self.rank() == TileRank::Number(NumberTileRank::RedFive)
     }
 }
 
