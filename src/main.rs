@@ -241,6 +241,25 @@ impl Tile {
         }
     }
 
+    /// The numerical value of a tile for the purposes of computing a tile sequence meld/group.
+    /// For a numbered tile, returns a Some<u32> corresponding to the tile's rank e.g. for 3-man, `Some(3u32)`.
+    /// Otherwise, returns None.
+    pub fn sequence_rank_num(&self) -> Option<u32> {
+        if !self.is_number_suit() {
+            None
+        } else {
+            let char_digit = char::from(self.rank())
+                .to_digit(10)
+                .expect("Invalid numbered tile rank char!");
+            if char_digit == 0 {
+                // red five is still a five tile, just represented with a 0
+                Some(5)
+            } else {
+                Some(char_digit)
+            }
+        }
+    }
+
     // TODO helper function for char::from(self.rank()) and char::from(self.suit())?
 
     /// A human-readable suit (not MSPZ notation), a single character.
@@ -457,6 +476,202 @@ impl Tile {
     }
 }
 
+/// A group of tiles - used for identifying winning hand shapes (generally, 4 complete groups and a pair),
+/// and for classifying their value (based on yaku list)
+pub enum TileGroup {
+    /// three tiles with the same suit and same rank
+    Triplet {
+        open: bool,
+        // TODO how to ensure the tiles in this triplet are all the same rank?
+        tiles: [Tile; 3],
+    },
+    /// four tiles with the same suit and same rank
+    Quad {
+        open: bool,
+        added: bool,
+        // TODO how to ensure the tiles in this quad are all the same rank?
+        tiles: [Tile; 4],
+    },
+    /// three tiles in a numbered suit with sequentially increasing rank e.g. 1-2-3 or 6-7-8
+    Sequence {
+        open: bool,
+        // TODO how to ensure the tiles in this sequence form a valid sequence?
+        tiles: [Tile; 3],
+    },
+    /// two tiles with the same suit and same rank
+    Pair { tiles: [Tile; 2] },
+    /// two tiles in a numbered suit that are adjacent ranks and do not include a terminal: e.g. 2-3, 4-5, 7-8
+    OpenWait { tiles: [Tile; 2] },
+    /// two tiles in a numbered suit that are separated by one rank: e.g. 1-3, 4-6, 5-7
+    ClosedWait { tiles: [Tile; 2] },
+    /// two tiles at the edge of a numbered suit: 1-2 or 8-9
+    EdgeWait { tiles: [Tile; 2] },
+    /// a single tile that isn't connected to another
+    SingleTile { tile: Tile },
+}
+
+impl TileGroup {
+    /// Is the tile group complete? (i.e. a triplet, a quad, or a sequence)
+    /// Generally, a winning hand requires 4 complete groups (aka melds) and a pair
+    pub fn is_complete(&self) -> bool {
+        match self {
+            Self::Triplet { .. } => true,
+            Self::Quad { .. } => true,
+            Self::Sequence { .. } => true,
+            // all other groups are incomplete (even the Pair, despite all winning hands requiring a Pair)
+            _ => false,
+        }
+    }
+
+    /// Is the tile group open?
+    /// A tile group being open (instead of closed) may disqualify a hand from winning, or may reduce a winning hand's value.
+    pub fn is_open(&self) -> bool {
+        match self {
+            Self::Triplet { open, .. } => *open,
+            Self::Quad { open, .. } => *open,
+            Self::Sequence { open, .. } => *open,
+            // all other groups cannot be open by the rules
+            _ => false,
+        }
+    }
+
+    // TODO check if group is valid - shouldn't we enforce this on construction?
+    // TODO can refactor some of the common/duplicated code in this function
+    // TODO write tests for this function
+    pub fn is_valid(&self) -> bool {
+        match self {
+            Self::Triplet { tiles, .. } => {
+                // check that all tiles have the same rank & suit
+                let rank = tiles[0].rank();
+                let suit = tiles[0].suit();
+                for index in 1..3 {
+                    if tiles[index].rank() != rank || tiles[index].suit() != suit {
+                        return false;
+                    }
+                }
+                true
+            }
+            Self::Quad { open, added, tiles } => {
+                // an added-quad cannot be closed
+                if *added && !(*open) {
+                    return false;
+                }
+
+                // check that all tiles have the same rank & suit
+                let rank = tiles[0].rank();
+                let suit = tiles[0].suit();
+                for index in 1..4 {
+                    if tiles[index].rank() != rank || tiles[index].suit() != suit {
+                        return false;
+                    }
+                }
+                true
+            }
+            Self::Sequence { tiles, .. } => {
+                let suit = tiles[0].suit();
+                // all tiles must be in the same numbered suit (no sequences possible in honors suits)
+                if !suit.is_number() {
+                    return false;
+                }
+                for index in 1..3 {
+                    if tiles[index].suit() != suit {
+                        return false;
+                    }
+                }
+
+                // TODO check that the tile ranks increase sequentially
+
+                // check that both tiles have adjacent ranks
+                let rank0 = tiles[0]
+                    .sequence_rank_num()
+                    .expect("Tile should be in a numbered suit");
+                let rank1 = tiles[1]
+                    .sequence_rank_num()
+                    .expect("Tile should be in a numbered suit");
+                let rank2 = tiles[2]
+                    .sequence_rank_num()
+                    .expect("Tile should be in a numbered suit");
+                let mut tile_seq_nums = [rank0, rank1, rank2];
+                tile_seq_nums.sort();
+                rank0 + 1 == rank1 && rank1 + 1 == rank2
+            }
+            Self::Pair { tiles } => {
+                // check that both tiles have the same rank & suit
+                let rank = tiles[0].rank();
+                let suit = tiles[0].suit();
+                tiles[1].rank() == rank && tiles[1].suit() == suit
+            }
+            Self::OpenWait { tiles, .. } => {
+                // both tiles must be in the same numbered suit (no sequences possible in honors suits)
+                let suit = tiles[0].suit();
+                if !suit.is_number() || tiles[1].suit() != suit {
+                    return false;
+                }
+
+                // neither tile can be a terminal tile
+                if tiles[0].is_terminal() || tiles[1].is_terminal() {
+                    return false;
+                }
+
+                // check that both tiles have adjacent ranks
+                let rank0 = tiles[0]
+                    .sequence_rank_num()
+                    .expect("Tile should be in a numbered suit");
+                let rank1 = tiles[1]
+                    .sequence_rank_num()
+                    .expect("Tile should be in a numbered suit");
+                let mut tile_seq_nums = [rank0, rank1];
+                tile_seq_nums.sort();
+                rank0 + 1 == rank1
+            }
+            Self::ClosedWait { tiles, .. } => {
+                // both tiles must be in the same numbered suit (no sequences possible in honors suits)
+                let suit = tiles[0].suit();
+                if !suit.is_number() || tiles[1].suit() != suit {
+                    return false;
+                }
+
+                // check that both tiles are separated by 1 rank
+                let rank0 = tiles[0]
+                    .sequence_rank_num()
+                    .expect("Tile should be in a numbered suit");
+                let rank1 = tiles[1]
+                    .sequence_rank_num()
+                    .expect("Tile should be in a numbered suit");
+                let mut tile_seq_nums = [rank0, rank1];
+                tile_seq_nums.sort();
+                rank0 + 2 == rank1
+            }
+            Self::EdgeWait { tiles, .. } => {
+                // both tiles must be in the same numbered suit (no sequences possible in honors suits)
+                let suit = tiles[0].suit();
+                if !suit.is_number() || tiles[1].suit() != suit {
+                    return false;
+                }
+
+                // of the two tiles, exactly one tile must be a terminal tile
+                if (tiles[0].is_terminal() && tiles[1].is_terminal())
+                    || (!tiles[0].is_terminal() && !tiles[1].is_terminal())
+                {
+                    return false;
+                }
+
+                // check that both tiles have adjacent ranks
+                let rank0 = tiles[0]
+                    .sequence_rank_num()
+                    .expect("Tile should be in a numbered suit");
+                let rank1 = tiles[1]
+                    .sequence_rank_num()
+                    .expect("Tile should be in a numbered suit");
+                let mut tile_seq_nums = [rank0, rank1];
+                tile_seq_nums.sort();
+                rank0 + 1 == rank1
+            }
+            Self::SingleTile { .. } => true,
+        }
+    }
+}
+
 fn main() {
     for serial in 0..NUM_TILES {
         let tile = Tile { serial };
@@ -653,6 +868,47 @@ mod tests {
         assert_eq!(char::from(red_dragon_tile.suit()), 'z');
         assert_eq!(char::from(red_dragon_tile.rank()), '7');
         assert_eq!(red_dragon_tile.to_string(), "7z".to_string());
+    }
+
+    #[test]
+    fn test_tile_sequence_rank_num() {
+        let man_tile = Tile::from_string("1m");
+        assert_eq!(man_tile.sequence_rank_num(), Some(1));
+
+        let pin_tile = Tile::from_string("4p");
+        assert_eq!(pin_tile.sequence_rank_num(), Some(4));
+
+        let pin_normal_five_tile = Tile::from_string("5p");
+        assert_eq!(pin_normal_five_tile.sequence_rank_num(), Some(5));
+
+        // red-five tiles should return Some(5) (red-five tiles are interchangeable with normal-five tiles in sequences)
+        let pin_red_five_tile = Tile::from_string("0p");
+        assert_eq!(pin_red_five_tile.sequence_rank_num(), Some(5));
+
+        let sou_tile = Tile::from_string("9s");
+        assert_eq!(sou_tile.sequence_rank_num(), Some(9));
+
+        // honor tiles should return None (honor tiles cannot form a sequence)
+        let east_wind_tile = Tile::from_string("1z");
+        assert_eq!(east_wind_tile.sequence_rank_num(), None);
+
+        let south_wind_tile = Tile::from_string("2z");
+        assert_eq!(south_wind_tile.sequence_rank_num(), None);
+
+        let west_wind_tile = Tile::from_string("3z");
+        assert_eq!(west_wind_tile.sequence_rank_num(), None);
+
+        let north_wind_tile = Tile::from_string("4z");
+        assert_eq!(north_wind_tile.sequence_rank_num(), None);
+
+        let white_dragon_tile = Tile::from_string("5z");
+        assert_eq!(white_dragon_tile.sequence_rank_num(), None);
+
+        let green_dragon_tile = Tile::from_string("6z");
+        assert_eq!(green_dragon_tile.sequence_rank_num(), None);
+
+        let red_dragon_tile = Tile::from_string("7z");
+        assert_eq!(red_dragon_tile.sequence_rank_num(), None);
     }
 
     #[test]
