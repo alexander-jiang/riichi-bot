@@ -1094,7 +1094,6 @@ mod tests {
         assert_eq!(num_red_fives, expected_num_red_fives);
     }
 
-    // TODO need to test with red-fives vs. normal-fives
     #[test]
     fn test_count_tiles_by_suit_rank() {
         let tiles = Vec::from([
@@ -1162,6 +1161,71 @@ mod tests {
                 .unwrap()
                 .get(&TileRank::Honor(HonorTileRank::West)),
             Some(&3)
+        );
+    }
+
+    #[test]
+    fn test_count_tiles_by_suit_rank_red_fives() {
+        let tiles = Vec::from([
+            Tile::from_string("1m"),
+            Tile::from_string("5m"),
+            Tile::from_string("5m"),
+            Tile::from_string("0m"),
+            Tile::from_string("5s"),
+            Tile::from_string("5s"),
+            Tile::from_string("5s"),
+            Tile::from_string("0p"),
+        ]);
+
+        let counts = count_tiles_by_suit_rank(&tiles);
+        assert_eq!(
+            counts
+                .get(&TileSuit::Man)
+                .unwrap()
+                .get(&TileRank::Number(NumberTileRank::One)),
+            Some(&1)
+        );
+        assert_eq!(
+            counts
+                .get(&TileSuit::Man)
+                .unwrap()
+                .get(&TileRank::Number(NumberTileRank::Five)),
+            Some(&2)
+        );
+        assert_eq!(
+            counts
+                .get(&TileSuit::Man)
+                .unwrap()
+                .get(&TileRank::Number(NumberTileRank::RedFive)),
+            Some(&1)
+        );
+        assert_eq!(
+            counts
+                .get(&TileSuit::Sou)
+                .unwrap()
+                .get(&TileRank::Number(NumberTileRank::Five)),
+            Some(&3)
+        );
+        assert_eq!(
+            counts
+                .get(&TileSuit::Sou)
+                .unwrap()
+                .get(&TileRank::Number(NumberTileRank::RedFive)),
+            None
+        );
+        assert_eq!(
+            counts
+                .get(&TileSuit::Pin)
+                .unwrap()
+                .get(&TileRank::Number(NumberTileRank::Five)),
+            None
+        );
+        assert_eq!(
+            counts
+                .get(&TileSuit::Pin)
+                .unwrap()
+                .get(&TileRank::Number(NumberTileRank::RedFive)),
+            Some(&1)
         );
     }
 }
