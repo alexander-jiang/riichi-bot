@@ -1095,6 +1095,33 @@ mod tests {
     }
 
     #[test]
+    fn test_tile_group_is_valid() {
+        let valid_triplet_group = TileGroup::Triplet {
+            open: true,
+            tiles: [
+                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::Red), 0),
+                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::Red), 1),
+                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::Red), 2),
+            ],
+        };
+        assert!(valid_triplet_group.is_valid());
+        assert!(valid_triplet_group.is_complete());
+        assert!(valid_triplet_group.is_open());
+
+        let invalid_triplet_group = TileGroup::Triplet {
+            open: true,
+            tiles: [
+                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::East), 0),
+                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::South), 1),
+                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::West), 2),
+            ],
+        };
+        assert!(!invalid_triplet_group.is_valid());
+
+        // TODO add more test cases for different group types (quad, sequences, open wait, etc.)
+    }
+
+    #[test]
     fn test_count_tiles_by_suit_rank() {
         let tiles = Vec::from([
             Tile::from_string("1m"),
