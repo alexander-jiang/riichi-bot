@@ -241,6 +241,8 @@ impl Tile {
         }
     }
 
+    // TODO helper function for char::from(self.rank()) and char::from(self.suit())?
+
     /// A human-readable suit (not MSPZ notation), a single character.
     /// Same as MSPZ for numbered suits. Uses `'w'` for winds, and `'d'` for dragons.
     pub fn human_suit(&self) -> char {
