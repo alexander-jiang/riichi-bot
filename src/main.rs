@@ -672,6 +672,7 @@ impl TileGroup {
     }
 }
 
+
 fn main() {
     for serial in 0..NUM_TILES {
         let tile = Tile { serial };
@@ -683,6 +684,7 @@ fn main() {
         }
     }
 }
+
 
 #[cfg(test)]
 mod tests {
