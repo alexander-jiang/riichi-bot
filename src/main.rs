@@ -175,7 +175,7 @@ impl From<TileRank> for char {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Tile {
     serial: u32,
 }
@@ -343,12 +343,12 @@ impl Tile {
 
     /// Constructs a Tile from its suit and rank (in MSPZ notation)
     /// e.g. 'm', '7' -> 7-man; 's', '0' -> red-5-sou; 'z', '1' -> East wind
-    pub fn from_suit_and_rank(suit: TileSuit, rank: TileRank, copy: u32) -> Self {
+    pub fn from_suit_and_rank(suit: &TileSuit, rank: &TileRank, copy: u32) -> Self {
         // compute serial number based on suit and rank
         // assert suit is valid ([mpsz])
         // assert rank is valid ([0-9])
         // assert copy is valid (0-3)
-        if suit == TileSuit::Man || suit == TileSuit::Pin || suit == TileSuit::Sou {
+        if *suit == TileSuit::Man || *suit == TileSuit::Pin || *suit == TileSuit::Sou {
             assert!(matches!(rank, TileRank::Number(_)));
             let suit_serial_start = match suit {
                 TileSuit::Man => 0 * (4 * 9),
@@ -356,7 +356,7 @@ impl Tile {
                 TileSuit::Sou => 2 * (4 * 9),
                 _ => panic!("Invalid suit for numbered tile"),
             };
-            let rank_digit = char::from(rank)
+            let rank_digit = char::from(*rank)
                 .to_digit(10)
                 .expect("Invalid numbered tile rank char (valid ranks are 0-9)");
             if rank_digit == 0 {
@@ -380,10 +380,10 @@ impl Tile {
                     serial: suit_serial_start + (rank_digit - 1) + copy * 9,
                 }
             }
-        } else if suit == TileSuit::Honor {
+        } else if *suit == TileSuit::Honor {
             assert!(matches!(rank, TileRank::Honor(_)));
             assert!(copy < 4, "Only four copies of honor tiles");
-            let rank_digit = char::from(rank)
+            let rank_digit = char::from(*rank)
                 .to_digit(8)
                 .expect("Invalid honor tile rank char (valid ranks are 1-7)");
             assert!(
@@ -424,7 +424,7 @@ impl Tile {
         };
 
         // TODO why should the copy always be 0?
-        Self::from_suit_and_rank(tile_suit, rank, 0)
+        Self::from_suit_and_rank(&tile_suit, &rank, 0)
     }
 
     // helper functions
@@ -480,6 +480,7 @@ impl Tile {
 
 /// A group of tiles - used for identifying winning hand shapes (generally, 4 complete groups and a pair),
 /// and for classifying their value (based on yaku list)
+#[derive(Debug, Clone)]
 pub enum TileGroup {
     /// three tiles with the same suit and same rank
     Triplet {
@@ -694,6 +695,563 @@ pub fn count_tiles_by_suit_rank(tiles: &Vec<Tile>) -> HashMap<TileSuit, HashMap<
     tile_counts_by_suit
 }
 
+fn get_pair_group(tile_groups: &Vec<TileGroup>) -> Option<Tile> {
+    for tile_group in tile_groups {
+        match *tile_group {
+            TileGroup::Pair { tiles } => {
+                return Some(tiles[0]);
+            }
+            _ => {}
+        }
+    }
+    return None;
+}
+
+fn first_copy_index(
+    tiles: &Vec<Tile>,
+    tile_rank: &TileRank,
+    tile_suit: &TileSuit,
+) -> Option<usize> {
+    // println!("tile_rank to find: {:?}, tile_suit to find: {:?}", tile_rank, tile_suit);
+    for tile_idx in 0..tiles.len() {
+        let tile = tiles
+            .get(tile_idx)
+            .expect("Vector should include this index");
+        // println!("tile: {:?}", tile.to_string());
+
+        // TODO match red fives?
+        if tile.suit() == *tile_suit && tile.rank() == *tile_rank {
+            return Some(tile_idx);
+        }
+    }
+    None
+}
+
+fn remove_first_copy(
+    tiles: Vec<Tile>,
+    tile_rank: &TileRank,
+    tile_suit: &TileSuit,
+) -> (Vec<Tile>, Option<Tile>) {
+    let found_idx: Option<usize> = first_copy_index(&tiles, tile_rank, tile_suit);
+    match found_idx {
+        Some(index_to_remove) => {
+            let mut new_tiles = tiles.clone();
+            let removed_tile = new_tiles
+                .get(index_to_remove)
+                .expect("Index to remove should be valid in vec")
+                .clone();
+            new_tiles.swap_remove(index_to_remove);
+            (new_tiles, Some(removed_tile))
+        }
+        None => (tiles, None),
+    }
+}
+
+fn hand_grouping(tiles: &Vec<Tile>, hand_groups: &Vec<TileGroup>) -> Option<Vec<Vec<TileGroup>>> {
+    // returns Some if the remaining tiles can be grouped (three of a kind, four of a kind, or a sequence) and exactly one pair
+    // can return multiple values if there are multiple valid groupings
+    // TODO is this possible?
+
+    // example: if the parameter partial_hand contains a pair already, and the only way to use a tile is in a pair, then this function would return none
+
+    // println!("{} remaining tiles: {:?}", tiles.len(), tiles);
+
+    if tiles.is_empty() {
+        // println!("partial hand so far:");
+        // println!("pair tile: {:?}", get_pair_group(hand_groups));
+        // println!("melds: {:?}", hand_groups);
+        if get_pair_group(hand_groups).is_some() && hand_groups.len() == 5 {
+            println!("found winning hand: {:?}", hand_groups);
+            return Some(vec![hand_groups.to_vec()]);
+        } else {
+            println!(
+                "invalid hand with no tiles remaining, num melds = {}, pair_tile = {:?}",
+                hand_groups.len(),
+                get_pair_group(hand_groups)
+            );
+            return None;
+        }
+    }
+    if tiles.len() == 1 {
+        return None;
+    }
+    if tiles.len() == 2 {
+        // if there are only two tiles left, the only way this can be a winning hand is if
+        // the remaining tiles form the pair
+        let candidate_pair = TileGroup::Pair {
+            tiles: [tiles[0], tiles[1]],
+        };
+        if !candidate_pair.is_valid() {
+            // invalid pair (i.e. not the same tile rank and suit) -> not winning hand
+            return None;
+        }
+        if get_pair_group(hand_groups).is_some() {
+            // already has a pair -> not winning hand
+            return None;
+        }
+        let mut new_groups = hand_groups.to_vec();
+        new_groups.push(candidate_pair);
+        println!("found winning hand: {:?}", new_groups);
+        return Some(vec![new_groups]);
+    }
+
+    // this works with partial hand states e.g. excluding tiles from open melds, and when working recursively
+    let remaining_tiles = tiles.clone();
+
+    let tile_counts_by_suit = count_tiles_by_suit_rank(&remaining_tiles);
+
+    // check honor tiles:
+    // - any isolated honors? if so, not winning
+    // - if there is a pair, that must be the only pair in the hand
+    let honor_suit = TileSuit::Honor;
+    if let Some(honor_counts) = tile_counts_by_suit.get(&honor_suit) {
+        for (tile_rank, tile_count) in honor_counts {
+            let considered_tile = Tile::from_suit_and_rank(&honor_suit, tile_rank, 0);
+            let considered_tile_str = considered_tile.to_string();
+
+            if tile_count == &0 {
+                continue;
+            }
+            if tile_count == &1 {
+                // isolated honor tile -> not winning hand
+                println!("isolated honor tile {considered_tile_str}");
+                return None;
+            } else if tile_count == &2 {
+                if get_pair_group(hand_groups).is_some() {
+                    // honor tile must be the pair, but can only have one pair in the winning hand
+                    println!("pair of honor tile {considered_tile_str} but already have a pair");
+                    return None;
+                } else {
+                    // remove all copies of this tile, honor tiles can't be used in sequences, so there's
+                    // no way for a single honor tile type to be used in more than one meld/group
+
+                    // TODO improve the logic here
+                    // remove the pair of tiles from the vec
+                    let mut remaining_tiles = tiles.clone();
+                    let mut removed_tiles = Vec::new();
+                    for _copies in 0..2 {
+                        for (tile_index, tile) in remaining_tiles.iter().enumerate() {
+                            if tile.suit() == honor_suit && tile.rank() == *tile_rank {
+                                removed_tiles.push(tile.clone());
+                                remaining_tiles.swap_remove(tile_index);
+                                break;
+                            }
+                        }
+                    }
+                    // println!("found pair of {}, remaining tiles: {:?}", considered_tile_str, remaining_tiles);
+
+                    // create the new pair group with the correct tiles
+                    let pair_group = TileGroup::Pair {
+                        tiles: [
+                            *(removed_tiles
+                                .get(0)
+                                .expect("Should have removed at least one tile")),
+                            *(removed_tiles
+                                .get(1)
+                                .expect("Should have removed at least two tiles")),
+                        ],
+                    };
+                    assert!(pair_group.is_valid());
+
+                    let mut new_groups = hand_groups.clone();
+                    new_groups.push(pair_group);
+
+                    // if this doesn't work, there is no other option - so we can return here without trying other alternatives
+                    return hand_grouping(&remaining_tiles, &new_groups);
+                }
+            } else if tile_count == &3 || tile_count == &4 {
+                // a triplet or a quad
+
+                // remove all copies of this tile, honor tiles can't be used in sequences, so there's
+                // no way for a single honor tile type to be used in more than one meld/group
+
+                // TODO improve the logic here
+                // remove the tiles from the vec
+                let mut remaining_tiles = tiles.clone();
+                let mut removed_tiles = Vec::new();
+                for _copies in 0..*tile_count {
+                    for (tile_index, tile) in remaining_tiles.iter().enumerate() {
+                        if tile.suit() == honor_suit && tile.rank() == *tile_rank {
+                            removed_tiles.push(tile.clone());
+                            remaining_tiles.swap_remove(tile_index);
+                            break;
+                        }
+                    }
+                }
+                // println!("found set of {}, remaining tiles: {:?}", considered_tile_str, remaining_tiles);
+
+                // create the new group with the correct tiles
+                if removed_tiles.len() == 3 {
+                    let triplet_group = TileGroup::Triplet {
+                        open: false,
+                        tiles: [
+                            *(removed_tiles
+                                .get(0)
+                                .expect("Should have removed at least one tile")),
+                            *(removed_tiles
+                                .get(1)
+                                .expect("Should have removed at least two tiles")),
+                            *(removed_tiles
+                                .get(2)
+                                .expect("Should have removed at least three tiles")),
+                        ],
+                    };
+                    assert!(triplet_group.is_valid());
+
+                    let mut new_groups = hand_groups.clone();
+                    new_groups.push(triplet_group);
+
+                    // if this doesn't work, there is no other option - so we can return here without trying other alternatives
+                    return hand_grouping(&remaining_tiles, &new_groups);
+                } else if removed_tiles.len() == 4 {
+                    let quad_group = TileGroup::Quad {
+                        open: false,
+                        added: false,
+                        tiles: [
+                            *(removed_tiles
+                                .get(0)
+                                .expect("Should have removed at least one tile")),
+                            *(removed_tiles
+                                .get(1)
+                                .expect("Should have removed at least two tiles")),
+                            *(removed_tiles
+                                .get(2)
+                                .expect("Should have removed at least three tiles")),
+                            *(removed_tiles
+                                .get(3)
+                                .expect("Should have removed at least four tiles")),
+                        ],
+                    };
+                    assert!(quad_group.is_valid());
+
+                    let mut new_groups = hand_groups.clone();
+                    new_groups.push(quad_group);
+
+                    // if this doesn't work, there is no other option - so we can return here without trying other alternatives
+                    return hand_grouping(&remaining_tiles, &new_groups);
+                } else {
+                    panic!("Should have only three or four tiles!");
+                }
+            } else {
+                println!("impossible, cannot be more than 4 tiles!");
+                return None;
+            }
+        }
+    }
+
+    // check number suits
+    for tile_suit in [TileSuit::Man, TileSuit::Pin, TileSuit::Sou] {
+        if let Some(tile_counts) = tile_counts_by_suit.get(&tile_suit) {
+            // TODO what about red five?
+            for rank in 1..=9 {
+                let tile_rank = TileRank::Number(
+                    NumberTileRank::try_from(
+                        char::from_digit(rank, 10).expect("Valid rank integer for char"),
+                    )
+                    .expect("valid tile rank"),
+                );
+
+                // TODO what about red five? e.g. 4m 0m 6m is a sequence
+                let tile_count = tile_counts.get(&tile_rank).unwrap_or(&0);
+                if tile_count == &0 {
+                    continue;
+                }
+
+                let mut winning_hands: Vec<Vec<TileGroup>> = Vec::new();
+                if tile_count >= &1 {
+                    // single number tile can be used for sequence
+
+                    // check for presence of higher rank tiles
+                    // TODO refactor?
+                    let second_rank = rank + 1;
+                    let third_rank = rank + 2;
+                    let second_tile_rank = NumberTileRank::try_from(
+                        char::from_digit(second_rank, 10).expect("Valid rank integer for char"),
+                    );
+                    let third_tile_rank = NumberTileRank::try_from(
+                        char::from_digit(third_rank, 10).expect("Valid rank integer for char"),
+                    );
+
+                    if second_tile_rank.is_ok()
+                        && third_tile_rank.is_ok()
+                        && tile_counts
+                            .get(
+                                &(TileRank::Number(
+                                    second_tile_rank.expect("Result should not be Err!"),
+                                )),
+                            )
+                            .unwrap_or(&0)
+                            > &0
+                        && tile_counts
+                            .get(
+                                &(TileRank::Number(
+                                    third_tile_rank.expect("Result should not be Err!"),
+                                )),
+                            )
+                            .unwrap_or(&0)
+                            > &0
+                    {
+                        // println!("checking for sequence starting at {new_tile_str}");
+                        let second_tile_rank =
+                            TileRank::Number(second_tile_rank.expect("Result should not be Err!"));
+                        let third_tile_rank =
+                            TileRank::Number(third_tile_rank.expect("Result should not be Err!"));
+
+                        // build remaining tiles by removing one copy of each of the three tiles in the sequence
+                        let remaining_tiles = tiles.clone();
+                        let (remaining_tiles, removed_first_tile) =
+                            remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                        let (remaining_tiles, removed_second_tile) =
+                            remove_first_copy(remaining_tiles, &second_tile_rank, &tile_suit);
+                        let (remaining_tiles, removed_third_tile) =
+                            remove_first_copy(remaining_tiles, &third_tile_rank, &tile_suit);
+                        let mut removed_tiles = Vec::new();
+                        match removed_first_tile {
+                            Some(removed_first_tile) => removed_tiles.push(removed_first_tile),
+                            None => panic!("Expected to remove a tile!"),
+                        };
+                        match removed_second_tile {
+                            Some(removed_second_tile) => removed_tiles.push(removed_second_tile),
+                            None => panic!("Expected to remove a tile!"),
+                        };
+                        match removed_third_tile {
+                            Some(removed_third_tile) => removed_tiles.push(removed_third_tile),
+                            None => panic!("Expected to remove a tile!"),
+                        };
+
+                        // new group
+                        let new_sequence_group = TileGroup::Sequence {
+                            open: false,
+                            tiles: [
+                                removed_first_tile.expect("Should have removed at least one tile"),
+                                removed_second_tile
+                                    .expect("Should have removed at least two tiles"),
+                                removed_third_tile
+                                    .expect("Should have removed at least three tiles"),
+                            ],
+                        };
+
+                        // if any existing winning hands use this sequence, you may still need to make this recursive call
+                        // e.g. for a hand with two identical sequences (e.g. 334455m, a valid winning hand will include multiple
+                        // identical melds)
+
+                        // recursive call
+                        let mut new_groups = hand_groups.clone();
+                        new_groups.push(new_sequence_group);
+
+                        if let Some(new_winning_hands) =
+                            hand_grouping(&remaining_tiles, &new_groups)
+                        {
+                            winning_hands.extend(new_winning_hands);
+                        }
+                    }
+                }
+                if tile_count >= &2 {
+                    // two copies of number tile can be used for pair
+
+                    // make sure there is no existing tile marked as pair
+                    if !get_pair_group(hand_groups).is_some() {
+                        // build remaining tiles by removing two copies of the tile
+                        let remaining_tiles = tiles.clone();
+                        let (remaining_tiles, removed_first_tile) =
+                            remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                        let (remaining_tiles, removed_second_tile) =
+                            remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                        let mut removed_tiles = Vec::new();
+                        match removed_first_tile {
+                            Some(removed_first_tile) => removed_tiles.push(removed_first_tile),
+                            None => panic!("Expected to remove a tile!"),
+                        };
+                        match removed_second_tile {
+                            Some(removed_second_tile) => removed_tiles.push(removed_second_tile),
+                            None => panic!("Expected to remove a tile!"),
+                        };
+
+                        // new group
+                        let new_pair_group = TileGroup::Pair {
+                            tiles: [
+                                removed_first_tile.expect("Should have removed at least one tile"),
+                                removed_second_tile
+                                    .expect("Should have removed at least two tiles"),
+                            ],
+                        };
+                        // println!("found pair of {}, remaining tiles: {:?}", new_tile_str, remaining_tiles);
+
+                        // if any existing winning hands use a pair of this tile, don't make this recursive call!
+                        // otherwise you'll end up with duplicated winning hands
+                        let has_winning_hand_with_this_pair = winning_hands
+                            .iter()
+                            .filter(|&winning_hand|
+                            // does this WinningHand include a TileGroup::Pair of this tile?
+                            match get_pair_group(winning_hand) {
+                                Some(existing_pair_tile) => existing_pair_tile.rank() == tile_rank && existing_pair_tile.suit() == tile_suit,
+                                None => false,
+                            })
+                            .next()
+                            .is_some();
+
+                        if !has_winning_hand_with_this_pair {
+                            // recursive call
+                            let mut new_groups = hand_groups.clone();
+                            new_groups.push(new_pair_group);
+
+                            if let Some(new_winning_hands) =
+                                hand_grouping(&remaining_tiles, &new_groups)
+                            {
+                                winning_hands.extend(new_winning_hands);
+                            }
+                        }
+                    }
+                }
+                if tile_count >= &3 {
+                    // three copies of number tile can be used for triplet
+                    // println!("checking for triplet of {new_tile_str}");
+
+                    // build remaining tiles by removing three copies of the tile
+                    let remaining_tiles = tiles.clone();
+                    let (remaining_tiles, removed_first_tile) =
+                        remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                    let (remaining_tiles, removed_second_tile) =
+                        remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                    let (remaining_tiles, removed_third_tile) =
+                        remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                    let mut removed_tiles = Vec::new();
+                    match removed_first_tile {
+                        Some(removed_first_tile) => removed_tiles.push(removed_first_tile),
+                        None => panic!("Expected to remove a tile!"),
+                    };
+                    match removed_second_tile {
+                        Some(removed_second_tile) => removed_tiles.push(removed_second_tile),
+                        None => panic!("Expected to remove a tile!"),
+                    };
+                    match removed_third_tile {
+                        Some(removed_third_tile) => removed_tiles.push(removed_third_tile),
+                        None => panic!("Expected to remove a tile!"),
+                    };
+
+                    // new group
+                    let new_triplet_group = TileGroup::Triplet {
+                        open: false,
+                        tiles: [
+                            removed_first_tile.expect("Should have removed at least one tile"),
+                            removed_second_tile.expect("Should have removed at least two tiles"),
+                            removed_third_tile.expect("Should have removed at least three tiles"),
+                        ],
+                    };
+
+                    // if any existing winning hands use a triplet of this tile, don't make this recursive call!
+                    // otherwise you'll end up with duplicated winning hands
+                    let has_winning_hand_with_triplet = winning_hands
+                        .iter()
+                        .filter(|&winning_hand|
+                        // does this WinningHand include a HandMeld that is a triplet of this tile?
+                        (*winning_hand).iter().filter(|&meld|
+                            match *meld {
+                                TileGroup::Triplet { tiles, .. } => tiles[0].suit() == tile_suit && tiles[0].rank() == tile_rank,
+                                _ => false,
+                            }
+                        ).next().is_some())
+                        .next()
+                        .is_some();
+
+                    if !has_winning_hand_with_triplet {
+                        // recursive call
+                        let mut new_groups = hand_groups.clone();
+                        new_groups.push(new_triplet_group);
+
+                        if let Some(new_winning_hands) =
+                            hand_grouping(&remaining_tiles, &new_groups)
+                        {
+                            winning_hands.extend(new_winning_hands);
+                        }
+                    }
+                }
+                if tile_count >= &4 {
+                    // three copies of number tile can be used for quad
+                    // println!("checking for quad of {new_tile_str}");
+
+                    // build remaining tiles by removing four copies of the tile
+                    let remaining_tiles = tiles.clone();
+                    let (remaining_tiles, removed_first_tile) =
+                        remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                    let (remaining_tiles, removed_second_tile) =
+                        remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                    let (remaining_tiles, removed_third_tile) =
+                        remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                    let (remaining_tiles, removed_fourth_tile) =
+                        remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                    let mut removed_tiles = Vec::new();
+                    match removed_first_tile {
+                        Some(removed_first_tile) => removed_tiles.push(removed_first_tile),
+                        None => panic!("Expected to remove a tile!"),
+                    };
+                    match removed_second_tile {
+                        Some(removed_second_tile) => removed_tiles.push(removed_second_tile),
+                        None => panic!("Expected to remove a tile!"),
+                    };
+                    match removed_third_tile {
+                        Some(removed_third_tile) => removed_tiles.push(removed_third_tile),
+                        None => panic!("Expected to remove a tile!"),
+                    };
+                    match removed_fourth_tile {
+                        Some(removed_fourth_tile) => removed_tiles.push(removed_fourth_tile),
+                        None => panic!("Expected to remove a tile!"),
+                    };
+
+                    // new group
+                    let new_quad_group = TileGroup::Quad {
+                        open: false,
+                        added: false,
+                        tiles: [
+                            removed_first_tile.expect("Should have removed at least one tile"),
+                            removed_second_tile.expect("Should have removed at least two tiles"),
+                            removed_third_tile.expect("Should have removed at least three tiles"),
+                            removed_fourth_tile.expect("Should have removed at least four tiles"),
+                        ],
+                    };
+
+                    // if any existing winning hands use a quad of this tile, don't make this recursive call!
+                    // otherwise you'll end up with duplicated winning hands
+                    let has_winning_hand_with_quad = winning_hands
+                        .iter()
+                        .filter(|&winning_hand|
+                        // does this WinningHand include a HandMeld that is a quad of this tile?
+                        (*winning_hand).iter().filter(|&meld|
+                            match *meld {
+                                TileGroup::Quad { tiles, .. } => tiles[0].suit() == tile_suit && tiles[0].rank() == tile_rank,
+                                _ => false,
+                            }
+                        ).next().is_some())
+                        .next()
+                        .is_some();
+
+                    if !has_winning_hand_with_quad {
+                        // recursive call
+                        let mut new_groups = hand_groups.clone();
+                        new_groups.push(new_quad_group);
+
+                        if let Some(new_winning_hands) =
+                            hand_grouping(&remaining_tiles, &new_groups)
+                        {
+                            winning_hands.extend(new_winning_hands);
+                        }
+                    }
+                }
+
+                // we have to use this tile in the winning hand somehow - if there's no winning hands at this point,
+                // then there are no winning hands at all
+                return if winning_hands.is_empty() {
+                    None
+                } else {
+                    Some(winning_hands)
+                };
+            }
+        }
+    }
+
+    return None;
+}
+
 fn main() {
     for serial in 0..NUM_TILES {
         let tile = Tile { serial };
@@ -784,56 +1342,59 @@ mod tests {
     fn test_tile_from_and_to_suit_rank() {
         // 1-man, first copy, serial number 0
         let man_tile =
-            Tile::from_suit_and_rank(TileSuit::Man, TileRank::Number(NumberTileRank::One), 0);
+            Tile::from_suit_and_rank(&TileSuit::Man, &TileRank::Number(NumberTileRank::One), 0);
         assert_eq!(char::from(man_tile.suit()), 'm');
         assert_eq!(char::from(man_tile.rank()), '1');
         assert_eq!(man_tile.serial, 0 + 0 + 0 * 9);
 
         // red-5-man, serial number 4
-        let man_red_five =
-            Tile::from_suit_and_rank(TileSuit::Man, TileRank::Number(NumberTileRank::RedFive), 0);
+        let man_red_five = Tile::from_suit_and_rank(
+            &TileSuit::Man,
+            &TileRank::Number(NumberTileRank::RedFive),
+            0,
+        );
         assert_eq!(char::from(man_red_five.suit()), 'm');
         assert_eq!(char::from(man_red_five.rank()), '0');
         assert_eq!(man_red_five.serial, 0 + 4 + 0 * 9);
 
         // 5-man, first copy, serial number 13 (since the red-5-man is serial number 4)
         let man_red_five =
-            Tile::from_suit_and_rank(TileSuit::Man, TileRank::Number(NumberTileRank::Five), 0);
+            Tile::from_suit_and_rank(&TileSuit::Man, &TileRank::Number(NumberTileRank::Five), 0);
         assert_eq!(char::from(man_red_five.suit()), 'm');
         assert_eq!(char::from(man_red_five.rank()), '5');
         assert_eq!(man_red_five.serial, 0 + 4 + 1 * 9);
 
         // 5-man, third copy, serial number 31 (since the red-5-man is serial number 4)
         let man_red_five =
-            Tile::from_suit_and_rank(TileSuit::Man, TileRank::Number(NumberTileRank::Five), 2);
+            Tile::from_suit_and_rank(&TileSuit::Man, &TileRank::Number(NumberTileRank::Five), 2);
         assert_eq!(char::from(man_red_five.suit()), 'm');
         assert_eq!(char::from(man_red_five.rank()), '5');
         assert_eq!(man_red_five.serial, 0 + 4 + 3 * 9);
 
         // 4-pin, third copy, serial number 57
         let pin_tile =
-            Tile::from_suit_and_rank(TileSuit::Pin, TileRank::Number(NumberTileRank::Four), 2);
+            Tile::from_suit_and_rank(&TileSuit::Pin, &TileRank::Number(NumberTileRank::Four), 2);
         assert_eq!(char::from(pin_tile.suit()), 'p');
         assert_eq!(char::from(pin_tile.rank()), '4');
         assert_eq!(pin_tile.serial, (4 * 9) + 3 + 2 * 9);
 
         // 9-sou, fourth copy, serial number 107
         let sou_tile =
-            Tile::from_suit_and_rank(TileSuit::Sou, TileRank::Number(NumberTileRank::Nine), 3);
+            Tile::from_suit_and_rank(&TileSuit::Sou, &TileRank::Number(NumberTileRank::Nine), 3);
         assert_eq!(char::from(sou_tile.suit()), 's');
         assert_eq!(char::from(sou_tile.rank()), '9');
         assert_eq!(sou_tile.serial, 2 * (4 * 9) + 8 + 3 * 9);
 
         // west wind, third copy, serial number 124
         let wind_tile =
-            Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::West), 2);
+            Tile::from_suit_and_rank(&TileSuit::Honor, &TileRank::Honor(HonorTileRank::West), 2);
         assert_eq!(char::from(wind_tile.suit()), 'z');
         assert_eq!(char::from(wind_tile.rank()), '3');
         assert_eq!(wind_tile.serial, 3 * (4 * 9) + 2 + 2 * 7);
 
         // red dragon, first copy, serial number 114
         let dragon_tile =
-            Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::Red), 0);
+            Tile::from_suit_and_rank(&TileSuit::Honor, &TileRank::Honor(HonorTileRank::Red), 0);
         assert_eq!(char::from(dragon_tile.suit()), 'z');
         assert_eq!(char::from(dragon_tile.rank()), '7');
         assert_eq!(dragon_tile.serial, 3 * (4 * 9) + 6 + 0 * 7);
@@ -1099,9 +1660,9 @@ mod tests {
         let valid_triplet_group = TileGroup::Triplet {
             open: true,
             tiles: [
-                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::Red), 0),
-                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::Red), 1),
-                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::Red), 2),
+                Tile::from_suit_and_rank(&TileSuit::Honor, &TileRank::Honor(HonorTileRank::Red), 0),
+                Tile::from_suit_and_rank(&TileSuit::Honor, &TileRank::Honor(HonorTileRank::Red), 1),
+                Tile::from_suit_and_rank(&TileSuit::Honor, &TileRank::Honor(HonorTileRank::Red), 2),
             ],
         };
         assert!(valid_triplet_group.is_valid());
@@ -1111,9 +1672,21 @@ mod tests {
         let invalid_triplet_group = TileGroup::Triplet {
             open: true,
             tiles: [
-                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::East), 0),
-                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::South), 1),
-                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::West), 2),
+                Tile::from_suit_and_rank(
+                    &TileSuit::Honor,
+                    &TileRank::Honor(HonorTileRank::East),
+                    0,
+                ),
+                Tile::from_suit_and_rank(
+                    &TileSuit::Honor,
+                    &TileRank::Honor(HonorTileRank::South),
+                    1,
+                ),
+                Tile::from_suit_and_rank(
+                    &TileSuit::Honor,
+                    &TileRank::Honor(HonorTileRank::West),
+                    2,
+                ),
             ],
         };
         assert!(!invalid_triplet_group.is_valid());
