@@ -6,7 +6,7 @@ pub const TILE_SUITS_CHARS: [char; 4] = ['m', 'p', 's', 'z'];
 pub const NUM_TILES: u32 = 3 * 4 * 9 + 4 * (4 + 3);
 
 /// The possible suits of a tile
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum TileSuit {
     Man,
     Pin,
@@ -51,7 +51,7 @@ impl From<TileSuit> for char {
 }
 
 /// The possible ranks (aka values) of a tile in a numbered suit (i.e. man, pin, or sou)
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum NumberTileRank {
     RedFive = 0,
     One,
@@ -107,7 +107,7 @@ impl From<NumberTileRank> for char {
 }
 
 /// The possible ranks (aka values) of a tile in a honor suit (i.e. winds or dragons)
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum HonorTileRank {
     East = 1,
     South,
@@ -157,7 +157,7 @@ impl From<HonorTileRank> for char {
 }
 
 /// The possible ranks (aka values) of a tile
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum TileRank {
     Number(NumberTileRank),
     Honor(HonorTileRank),
@@ -343,12 +343,12 @@ impl Tile {
 
     /// Constructs a Tile from its suit and rank (in MSPZ notation)
     /// e.g. 'm', '7' -> 7-man; 's', '0' -> red-5-sou; 'z', '1' -> East wind
-    pub fn from_suit_and_rank(suit: &TileSuit, rank: &TileRank, copy: u32) -> Self {
+    pub fn from_suit_and_rank(suit: TileSuit, rank: TileRank, copy: u32) -> Self {
         // compute serial number based on suit and rank
         // assert suit is valid ([mpsz])
         // assert rank is valid ([0-9])
         // assert copy is valid (0-3)
-        if *suit == TileSuit::Man || *suit == TileSuit::Pin || *suit == TileSuit::Sou {
+        if suit == TileSuit::Man || suit == TileSuit::Pin || suit == TileSuit::Sou {
             assert!(matches!(rank, TileRank::Number(_)));
             let suit_serial_start = match suit {
                 TileSuit::Man => 0 * (4 * 9),
@@ -356,7 +356,7 @@ impl Tile {
                 TileSuit::Sou => 2 * (4 * 9),
                 _ => panic!("Invalid suit for numbered tile"),
             };
-            let rank_digit = char::from(*rank)
+            let rank_digit = char::from(rank)
                 .to_digit(10)
                 .expect("Invalid numbered tile rank char (valid ranks are 0-9)");
             if rank_digit == 0 {
@@ -380,10 +380,10 @@ impl Tile {
                     serial: suit_serial_start + (rank_digit - 1) + copy * 9,
                 }
             }
-        } else if *suit == TileSuit::Honor {
+        } else if suit == TileSuit::Honor {
             assert!(matches!(rank, TileRank::Honor(_)));
             assert!(copy < 4, "Only four copies of honor tiles");
-            let rank_digit = char::from(*rank)
+            let rank_digit = char::from(rank)
                 .to_digit(8)
                 .expect("Invalid honor tile rank char (valid ranks are 1-7)");
             assert!(
@@ -424,7 +424,7 @@ impl Tile {
         };
 
         // TODO why should the copy always be 0?
-        Self::from_suit_and_rank(&tile_suit, &rank, 0)
+        Self::from_suit_and_rank(tile_suit, rank, 0)
     }
 
     // helper functions
@@ -707,11 +707,7 @@ fn get_pair_group(tile_groups: &Vec<TileGroup>) -> Option<Tile> {
     return None;
 }
 
-fn first_copy_index(
-    tiles: &Vec<Tile>,
-    tile_rank: &TileRank,
-    tile_suit: &TileSuit,
-) -> Option<usize> {
+fn first_copy_index(tiles: &Vec<Tile>, tile_rank: TileRank, tile_suit: TileSuit) -> Option<usize> {
     // println!("tile_rank to find: {:?}, tile_suit to find: {:?}", tile_rank, tile_suit);
     for tile_idx in 0..tiles.len() {
         let tile = tiles
@@ -720,7 +716,7 @@ fn first_copy_index(
         // println!("tile: {:?}", tile.to_string());
 
         // TODO match red fives?
-        if tile.suit() == *tile_suit && tile.rank() == *tile_rank {
+        if tile.suit() == tile_suit && tile.rank() == tile_rank {
             return Some(tile_idx);
         }
     }
@@ -729,8 +725,8 @@ fn first_copy_index(
 
 fn remove_first_copy(
     tiles: Vec<Tile>,
-    tile_rank: &TileRank,
-    tile_suit: &TileSuit,
+    tile_rank: TileRank,
+    tile_suit: TileSuit,
 ) -> (Vec<Tile>, Option<Tile>) {
     let found_idx: Option<usize> = first_copy_index(&tiles, tile_rank, tile_suit);
     match found_idx {
@@ -806,7 +802,7 @@ fn hand_grouping(tiles: &Vec<Tile>, hand_groups: &Vec<TileGroup>) -> Option<Vec<
     let honor_suit = TileSuit::Honor;
     if let Some(honor_counts) = tile_counts_by_suit.get(&honor_suit) {
         for (tile_rank, tile_count) in honor_counts {
-            let considered_tile = Tile::from_suit_and_rank(&honor_suit, tile_rank, 0);
+            let considered_tile = Tile::from_suit_and_rank(honor_suit, *tile_rank, 0);
             let considered_tile_str = considered_tile.to_string();
 
             if tile_count == &0 {
@@ -1000,11 +996,11 @@ fn hand_grouping(tiles: &Vec<Tile>, hand_groups: &Vec<TileGroup>) -> Option<Vec<
                         // build remaining tiles by removing one copy of each of the three tiles in the sequence
                         let remaining_tiles = tiles.clone();
                         let (remaining_tiles, removed_first_tile) =
-                            remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                            remove_first_copy(remaining_tiles, tile_rank, tile_suit);
                         let (remaining_tiles, removed_second_tile) =
-                            remove_first_copy(remaining_tiles, &second_tile_rank, &tile_suit);
+                            remove_first_copy(remaining_tiles, second_tile_rank, tile_suit);
                         let (remaining_tiles, removed_third_tile) =
-                            remove_first_copy(remaining_tiles, &third_tile_rank, &tile_suit);
+                            remove_first_copy(remaining_tiles, third_tile_rank, tile_suit);
                         let mut removed_tiles = Vec::new();
                         match removed_first_tile {
                             Some(removed_first_tile) => removed_tiles.push(removed_first_tile),
@@ -1054,9 +1050,9 @@ fn hand_grouping(tiles: &Vec<Tile>, hand_groups: &Vec<TileGroup>) -> Option<Vec<
                         // build remaining tiles by removing two copies of the tile
                         let remaining_tiles = tiles.clone();
                         let (remaining_tiles, removed_first_tile) =
-                            remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                            remove_first_copy(remaining_tiles, tile_rank, tile_suit);
                         let (remaining_tiles, removed_second_tile) =
-                            remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                            remove_first_copy(remaining_tiles, tile_rank, tile_suit);
                         let mut removed_tiles = Vec::new();
                         match removed_first_tile {
                             Some(removed_first_tile) => removed_tiles.push(removed_first_tile),
@@ -1110,11 +1106,11 @@ fn hand_grouping(tiles: &Vec<Tile>, hand_groups: &Vec<TileGroup>) -> Option<Vec<
                     // build remaining tiles by removing three copies of the tile
                     let remaining_tiles = tiles.clone();
                     let (remaining_tiles, removed_first_tile) =
-                        remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit);
                     let (remaining_tiles, removed_second_tile) =
-                        remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit);
                     let (remaining_tiles, removed_third_tile) =
-                        remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit);
                     let mut removed_tiles = Vec::new();
                     match removed_first_tile {
                         Some(removed_first_tile) => removed_tiles.push(removed_first_tile),
@@ -1173,13 +1169,13 @@ fn hand_grouping(tiles: &Vec<Tile>, hand_groups: &Vec<TileGroup>) -> Option<Vec<
                     // build remaining tiles by removing four copies of the tile
                     let remaining_tiles = tiles.clone();
                     let (remaining_tiles, removed_first_tile) =
-                        remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit);
                     let (remaining_tiles, removed_second_tile) =
-                        remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit);
                     let (remaining_tiles, removed_third_tile) =
-                        remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit);
                     let (remaining_tiles, removed_fourth_tile) =
-                        remove_first_copy(remaining_tiles, &tile_rank, &tile_suit);
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit);
                     let mut removed_tiles = Vec::new();
                     match removed_first_tile {
                         Some(removed_first_tile) => removed_tiles.push(removed_first_tile),
@@ -1342,59 +1338,56 @@ mod tests {
     fn test_tile_from_and_to_suit_rank() {
         // 1-man, first copy, serial number 0
         let man_tile =
-            Tile::from_suit_and_rank(&TileSuit::Man, &TileRank::Number(NumberTileRank::One), 0);
+            Tile::from_suit_and_rank(TileSuit::Man, TileRank::Number(NumberTileRank::One), 0);
         assert_eq!(char::from(man_tile.suit()), 'm');
         assert_eq!(char::from(man_tile.rank()), '1');
         assert_eq!(man_tile.serial, 0 + 0 + 0 * 9);
 
         // red-5-man, serial number 4
-        let man_red_five = Tile::from_suit_and_rank(
-            &TileSuit::Man,
-            &TileRank::Number(NumberTileRank::RedFive),
-            0,
-        );
+        let man_red_five =
+            Tile::from_suit_and_rank(TileSuit::Man, TileRank::Number(NumberTileRank::RedFive), 0);
         assert_eq!(char::from(man_red_five.suit()), 'm');
         assert_eq!(char::from(man_red_five.rank()), '0');
         assert_eq!(man_red_five.serial, 0 + 4 + 0 * 9);
 
         // 5-man, first copy, serial number 13 (since the red-5-man is serial number 4)
         let man_red_five =
-            Tile::from_suit_and_rank(&TileSuit::Man, &TileRank::Number(NumberTileRank::Five), 0);
+            Tile::from_suit_and_rank(TileSuit::Man, TileRank::Number(NumberTileRank::Five), 0);
         assert_eq!(char::from(man_red_five.suit()), 'm');
         assert_eq!(char::from(man_red_five.rank()), '5');
         assert_eq!(man_red_five.serial, 0 + 4 + 1 * 9);
 
         // 5-man, third copy, serial number 31 (since the red-5-man is serial number 4)
         let man_red_five =
-            Tile::from_suit_and_rank(&TileSuit::Man, &TileRank::Number(NumberTileRank::Five), 2);
+            Tile::from_suit_and_rank(TileSuit::Man, TileRank::Number(NumberTileRank::Five), 2);
         assert_eq!(char::from(man_red_five.suit()), 'm');
         assert_eq!(char::from(man_red_five.rank()), '5');
         assert_eq!(man_red_five.serial, 0 + 4 + 3 * 9);
 
         // 4-pin, third copy, serial number 57
         let pin_tile =
-            Tile::from_suit_and_rank(&TileSuit::Pin, &TileRank::Number(NumberTileRank::Four), 2);
+            Tile::from_suit_and_rank(TileSuit::Pin, TileRank::Number(NumberTileRank::Four), 2);
         assert_eq!(char::from(pin_tile.suit()), 'p');
         assert_eq!(char::from(pin_tile.rank()), '4');
         assert_eq!(pin_tile.serial, (4 * 9) + 3 + 2 * 9);
 
         // 9-sou, fourth copy, serial number 107
         let sou_tile =
-            Tile::from_suit_and_rank(&TileSuit::Sou, &TileRank::Number(NumberTileRank::Nine), 3);
+            Tile::from_suit_and_rank(TileSuit::Sou, TileRank::Number(NumberTileRank::Nine), 3);
         assert_eq!(char::from(sou_tile.suit()), 's');
         assert_eq!(char::from(sou_tile.rank()), '9');
         assert_eq!(sou_tile.serial, 2 * (4 * 9) + 8 + 3 * 9);
 
         // west wind, third copy, serial number 124
         let wind_tile =
-            Tile::from_suit_and_rank(&TileSuit::Honor, &TileRank::Honor(HonorTileRank::West), 2);
+            Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::West), 2);
         assert_eq!(char::from(wind_tile.suit()), 'z');
         assert_eq!(char::from(wind_tile.rank()), '3');
         assert_eq!(wind_tile.serial, 3 * (4 * 9) + 2 + 2 * 7);
 
         // red dragon, first copy, serial number 114
         let dragon_tile =
-            Tile::from_suit_and_rank(&TileSuit::Honor, &TileRank::Honor(HonorTileRank::Red), 0);
+            Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::Red), 0);
         assert_eq!(char::from(dragon_tile.suit()), 'z');
         assert_eq!(char::from(dragon_tile.rank()), '7');
         assert_eq!(dragon_tile.serial, 3 * (4 * 9) + 6 + 0 * 7);
@@ -1660,9 +1653,9 @@ mod tests {
         let valid_triplet_group = TileGroup::Triplet {
             open: true,
             tiles: [
-                Tile::from_suit_and_rank(&TileSuit::Honor, &TileRank::Honor(HonorTileRank::Red), 0),
-                Tile::from_suit_and_rank(&TileSuit::Honor, &TileRank::Honor(HonorTileRank::Red), 1),
-                Tile::from_suit_and_rank(&TileSuit::Honor, &TileRank::Honor(HonorTileRank::Red), 2),
+                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::Red), 0),
+                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::Red), 1),
+                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::Red), 2),
             ],
         };
         assert!(valid_triplet_group.is_valid());
@@ -1672,21 +1665,9 @@ mod tests {
         let invalid_triplet_group = TileGroup::Triplet {
             open: true,
             tiles: [
-                Tile::from_suit_and_rank(
-                    &TileSuit::Honor,
-                    &TileRank::Honor(HonorTileRank::East),
-                    0,
-                ),
-                Tile::from_suit_and_rank(
-                    &TileSuit::Honor,
-                    &TileRank::Honor(HonorTileRank::South),
-                    1,
-                ),
-                Tile::from_suit_and_rank(
-                    &TileSuit::Honor,
-                    &TileRank::Honor(HonorTileRank::West),
-                    2,
-                ),
+                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::East), 0),
+                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::South), 1),
+                Tile::from_suit_and_rank(TileSuit::Honor, TileRank::Honor(HonorTileRank::West), 2),
             ],
         };
         assert!(!invalid_triplet_group.is_valid());
