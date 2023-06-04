@@ -75,6 +75,6 @@
 
 ### Jun 4 2023
 
-- spent ~2 hours
+- spent ~2.5 hours
 - refactor of the base Tile, TileGroup, etc. structs / entities is complete, I've moved onto adding new structs to represent the player state, the state of the game/round/hand, which we can use to identify yaku
 - I'm also starting to split up the code into separate source files as the single main.rs file was getting a bit too large
