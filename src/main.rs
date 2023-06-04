@@ -1,5 +1,7 @@
 use std::collections::HashMap;
+pub mod state;
 pub mod tiles;
+pub mod yaku;
 
 pub fn count_tiles_by_suit_rank(
     tiles: &Vec<tiles::Tile>,
@@ -91,9 +93,9 @@ pub fn remove_first_copy(
     }
 }
 
-pub fn hand_grouping(
+pub fn tile_grouping(
     tiles: &Vec<tiles::Tile>,
-    hand_groups: &Vec<tiles::TileGroup>,
+    tile_groups: &Vec<tiles::TileGroup>,
 ) -> Option<Vec<Vec<tiles::TileGroup>>> {
     // returns Some if the remaining tiles can be grouped (three of a kind, four of a kind, or a sequence) and exactly one pair
     // can return multiple values if there are multiple valid groupings
@@ -107,14 +109,14 @@ pub fn hand_grouping(
         // println!("partial hand so far:");
         // println!("pair tile: {:?}", get_pair_group(hand_groups));
         // println!("melds: {:?}", hand_groups);
-        if get_pair_group(hand_groups).is_some() && hand_groups.len() == 5 {
-            println!("found winning hand: {:?}", hand_groups);
-            return Some(vec![hand_groups.to_vec()]);
+        if get_pair_group(tile_groups).is_some() && tile_groups.len() == 5 {
+            println!("found winning hand: {:?}", tile_groups);
+            return Some(vec![tile_groups.to_vec()]);
         } else {
             println!(
                 "invalid hand with no tiles remaining, num melds = {}, pair_tile = {:?}",
-                hand_groups.len(),
-                get_pair_group(hand_groups)
+                tile_groups.len(),
+                get_pair_group(tile_groups)
             );
             return None;
         }
@@ -137,12 +139,12 @@ pub fn hand_grouping(
             println!("invalid grouping: last two tiles aren't a pair");
             return None;
         }
-        if get_pair_group(hand_groups).is_some() {
+        if get_pair_group(tile_groups).is_some() {
             // already has a pair -> not winning hand
             println!("invalid grouping: already have one pair");
             return None;
         }
-        let mut new_groups = hand_groups.to_vec();
+        let mut new_groups = tile_groups.to_vec();
         new_groups.push(candidate_pair);
         println!("found winning hand: {:?}", new_groups);
         return Some(vec![new_groups]);
@@ -172,7 +174,7 @@ pub fn hand_grouping(
                 println!("isolated honor tile {considered_tile_str}");
                 return None;
             } else if tile_count == &2 {
-                if get_pair_group(hand_groups).is_some() {
+                if get_pair_group(tile_groups).is_some() {
                     // honor tile must be the pair, but can only have one pair in the winning hand
                     println!("pair of honor tile {considered_tile_str} but already have a pair");
                     return None;
@@ -208,11 +210,11 @@ pub fn hand_grouping(
                     };
                     assert!(pair_group.is_valid());
 
-                    let mut new_groups = hand_groups.clone();
+                    let mut new_groups = tile_groups.clone();
                     new_groups.push(pair_group);
 
                     // if this doesn't work, there is no other option - so we can return here without trying other alternatives
-                    return hand_grouping(&remaining_tiles, &new_groups);
+                    return tile_grouping(&remaining_tiles, &new_groups);
                 }
             } else if tile_count == &3 || tile_count == &4 {
                 // a triplet or a quad
@@ -253,11 +255,11 @@ pub fn hand_grouping(
                     };
                     assert!(triplet_group.is_valid());
 
-                    let mut new_groups = hand_groups.clone();
+                    let mut new_groups = tile_groups.clone();
                     new_groups.push(triplet_group);
 
                     // if this doesn't work, there is no other option - so we can return here without trying other alternatives
-                    return hand_grouping(&remaining_tiles, &new_groups);
+                    return tile_grouping(&remaining_tiles, &new_groups);
                 } else if removed_tiles.len() == 4 {
                     let quad_group = tiles::TileGroup::Quad {
                         open: false,
@@ -279,11 +281,11 @@ pub fn hand_grouping(
                     };
                     assert!(quad_group.is_valid());
 
-                    let mut new_groups = hand_groups.clone();
+                    let mut new_groups = tile_groups.clone();
                     new_groups.push(quad_group);
 
                     // if this doesn't work, there is no other option - so we can return here without trying other alternatives
-                    return hand_grouping(&remaining_tiles, &new_groups);
+                    return tile_grouping(&remaining_tiles, &new_groups);
                 } else {
                     panic!("Should have only three or four tiles!");
                 }
@@ -404,7 +406,7 @@ pub fn hand_grouping(
                         // identical melds)
 
                         // recursive call
-                        let mut new_groups = hand_groups.clone();
+                        let mut new_groups = tile_groups.clone();
                         new_groups.push(new_sequence_group);
                         println!(
                             "recursive call: using sequence starting at {}{}",
@@ -413,7 +415,7 @@ pub fn hand_grouping(
                         );
 
                         if let Some(new_winning_hands) =
-                            hand_grouping(&remaining_tiles, &new_groups)
+                            tile_grouping(&remaining_tiles, &new_groups)
                         {
                             winning_hands.extend(new_winning_hands);
                         }
@@ -423,7 +425,7 @@ pub fn hand_grouping(
                     // two copies of number tile can be used for pair
 
                     // make sure there is no existing tile marked as pair
-                    if !get_pair_group(hand_groups).is_some() {
+                    if !get_pair_group(tile_groups).is_some() {
                         // build remaining tiles by removing two copies of the tile
                         let remaining_tiles = tiles.clone();
                         let (remaining_tiles, removed_first_tile) =
@@ -471,11 +473,11 @@ pub fn hand_grouping(
                                 char::from(tile_suit)
                             );
 
-                            let mut new_groups = hand_groups.clone();
+                            let mut new_groups = tile_groups.clone();
                             new_groups.push(new_pair_group);
 
                             if let Some(new_winning_hands) =
-                                hand_grouping(&remaining_tiles, &new_groups)
+                                tile_grouping(&remaining_tiles, &new_groups)
                             {
                                 winning_hands.extend(new_winning_hands);
                             }
@@ -541,11 +543,11 @@ pub fn hand_grouping(
                             char::from(tile_suit)
                         );
 
-                        let mut new_groups = hand_groups.clone();
+                        let mut new_groups = tile_groups.clone();
                         new_groups.push(new_triplet_group);
 
                         if let Some(new_winning_hands) =
-                            hand_grouping(&remaining_tiles, &new_groups)
+                            tile_grouping(&remaining_tiles, &new_groups)
                         {
                             winning_hands.extend(new_winning_hands);
                         }
@@ -618,11 +620,11 @@ pub fn hand_grouping(
                             char::from(tile_suit)
                         );
 
-                        let mut new_groups = hand_groups.clone();
+                        let mut new_groups = tile_groups.clone();
                         new_groups.push(new_quad_group);
 
                         if let Some(new_winning_hands) =
-                            hand_grouping(&remaining_tiles, &new_groups)
+                            tile_grouping(&remaining_tiles, &new_groups)
                         {
                             winning_hands.extend(new_winning_hands);
                         }
@@ -820,7 +822,7 @@ mod tests {
     // winning hands taken from my Mahjong Soul logs
     // game: 4-player East round, Silver room, 2023-06-03 09:26
     #[test]
-    fn test_hand_grouping_1() {
+    fn test_tile_grouping_1() {
         // round: East 1 (0 repeat), winning hand by North (riichi, ron)
         // scoring: 3 han, 40 fu = 5200 pts (riichi, ippatsu, dora x1 (3m))
         let winning_tiles = Vec::from([
@@ -840,11 +842,11 @@ mod tests {
             tiles::Tile::from_string("3m"),
         ]);
 
-        let hand_groups: Vec<tiles::TileGroup> = Vec::new();
-        let winning_hand_groups = hand_grouping(&winning_tiles, &hand_groups);
-        assert!(winning_hand_groups.is_some());
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let winning_tile_groups = tile_grouping(&winning_tiles, &tile_groups);
+        assert!(winning_tile_groups.is_some());
         assert!(
-            winning_hand_groups
+            winning_tile_groups
                 .expect("Expect one winning grouping")
                 .len()
                 == 1
@@ -852,7 +854,7 @@ mod tests {
     }
 
     #[test]
-    fn test_hand_grouping_2() {
+    fn test_tile_grouping_2() {
         // round: East 2 (0 repeat), winning hand by North (riichi, ron)
         // scoring: 3 han, 40 fu = 5200 pts (riichi, red five x1, ura dora x1 (4m))
         let winning_tiles = Vec::from([
@@ -872,11 +874,11 @@ mod tests {
             tiles::Tile::from_string("7m"),
         ]);
 
-        let hand_groups: Vec<tiles::TileGroup> = Vec::new();
-        let winning_hand_groups = hand_grouping(&winning_tiles, &hand_groups);
-        assert!(winning_hand_groups.is_some());
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let winning_tile_groups = tile_grouping(&winning_tiles, &tile_groups);
+        assert!(winning_tile_groups.is_some());
         assert!(
-            winning_hand_groups
+            winning_tile_groups
                 .expect("Expect one winning grouping")
                 .len()
                 == 1
@@ -884,7 +886,7 @@ mod tests {
     }
 
     #[test]
-    fn test_hand_grouping_3() {
+    fn test_tile_grouping_3() {
         // round: East 3 (0 repeat), winning hand by North (riichi, ron)
         // scoring: 4 han, 40 fu = mangan (8000 pts) (riichi, pure double sequence, red five x1, ura dora x1 (2m))
         let winning_tiles = Vec::from([
@@ -904,11 +906,11 @@ mod tests {
             tiles::Tile::from_string("4p"),
         ]);
 
-        let hand_groups: Vec<tiles::TileGroup> = Vec::new();
-        let winning_hand_groups = hand_grouping(&winning_tiles, &hand_groups);
-        assert!(winning_hand_groups.is_some());
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let winning_tile_groups = tile_grouping(&winning_tiles, &tile_groups);
+        assert!(winning_tile_groups.is_some());
         assert!(
-            winning_hand_groups
+            winning_tile_groups
                 .expect("Expect one winning grouping")
                 .len()
                 == 1
@@ -916,7 +918,7 @@ mod tests {
     }
 
     #[test]
-    fn test_hand_grouping_4() {
+    fn test_tile_grouping_4() {
         // round: East 4 (0 repeat), winning hand by West (open hand, ron)
         // scoring: 4 han, 30 fu = 7700 pts (white dragon, dora x3 (7m, 8p))
         let winning_tiles = Vec::from([
@@ -930,7 +932,7 @@ mod tests {
             tiles::Tile::from_string("2m"),
         ]);
 
-        let hand_groups: Vec<tiles::TileGroup> = vec![
+        let tile_groups: Vec<tiles::TileGroup> = vec![
             tiles::TileGroup::Sequence {
                 open: true,
                 tiles: [
@@ -948,20 +950,16 @@ mod tests {
                 ],
             },
         ];
-        let winning_hand_groups = hand_grouping(&winning_tiles, &hand_groups);
-        assert!(winning_hand_groups.is_some());
-        assert!(
-            winning_hand_groups
-                .expect("Expect one winning grouping")
-                .len()
-                == 1
-        );
+        let winning_tile_groups = tile_grouping(&winning_tiles, &tile_groups);
+        assert!(winning_tile_groups.is_some());
+        let winning_tile_groups = winning_tile_groups.expect("Expect one winning grouping");
+        assert!(winning_tile_groups.len() == 1);
     }
 
     // winning hands taken from my Mahjong Soul logs
-    // game: 4-player East round, Silver room,
+    // game: 4-player East round, Silver room, 2023-06-03 01:15
     #[test]
-    fn test_hand_grouping_5() {
+    fn test_tile_grouping_5() {
         // round: East 1 (0 repeat), winning hand by North (riichi, ron)
         // scoring: 5 han, 40 fu = mangan (8000 pts) (riichi, mixed triple sequence, red five x1)
         let winning_tiles = Vec::from([
@@ -981,11 +979,11 @@ mod tests {
             tiles::Tile::from_string("4p"),
         ]);
 
-        let hand_groups: Vec<tiles::TileGroup> = Vec::new();
-        let winning_hand_groups = hand_grouping(&winning_tiles, &hand_groups);
-        assert!(winning_hand_groups.is_some());
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let winning_tile_groups = tile_grouping(&winning_tiles, &tile_groups);
+        assert!(winning_tile_groups.is_some());
         assert!(
-            winning_hand_groups
+            winning_tile_groups
                 .expect("Expect one winning grouping")
                 .len()
                 == 1
@@ -993,7 +991,7 @@ mod tests {
     }
 
     #[test]
-    fn test_hand_grouping_6() {
+    fn test_tile_grouping_6() {
         // round: East 2 (1 repeat), winning hand by East (riichi, ron)
         // scoring: 2 han, 40 fu = 2600 pts (riichi, ura dora x1 (4m))
         let winning_tiles = Vec::from([
@@ -1013,11 +1011,11 @@ mod tests {
             tiles::Tile::from_string("7s"),
         ]);
 
-        let hand_groups: Vec<tiles::TileGroup> = Vec::new();
-        let winning_hand_groups = hand_grouping(&winning_tiles, &hand_groups);
-        assert!(winning_hand_groups.is_some());
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let winning_tile_groups = tile_grouping(&winning_tiles, &tile_groups);
+        assert!(winning_tile_groups.is_some());
         assert!(
-            winning_hand_groups
+            winning_tile_groups
                 .expect("Expect one winning grouping")
                 .len()
                 == 1
@@ -1025,7 +1023,7 @@ mod tests {
     }
 
     #[test]
-    fn test_hand_grouping_7() {
+    fn test_tile_grouping_7() {
         // round: East 3 (1 repeat), winning hand by North (riichi, ron)
         // scoring: 3 han, 30 fu = 3900 pts (riichi, pinfu, ura dora x1 (3p))
         let winning_tiles = Vec::from([
@@ -1045,11 +1043,11 @@ mod tests {
             tiles::Tile::from_string("1m"),
         ]);
 
-        let hand_groups: Vec<tiles::TileGroup> = Vec::new();
-        let winning_hand_groups = hand_grouping(&winning_tiles, &hand_groups);
-        assert!(winning_hand_groups.is_some());
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let winning_tile_groups = tile_grouping(&winning_tiles, &tile_groups);
+        assert!(winning_tile_groups.is_some());
         assert!(
-            winning_hand_groups
+            winning_tile_groups
                 .expect("Expect one winning grouping")
                 .len()
                 == 1
@@ -1057,7 +1055,7 @@ mod tests {
     }
 
     #[test]
-    fn test_hand_grouping_8() {
+    fn test_tile_grouping_8() {
         // round: East 4 (0 repeat), winning hand by North (open hand, ron)
         // scoring: 2 han, 30 fu = 2000 pts (all simples, red five x1)
         let winning_tiles = Vec::from([
@@ -1071,7 +1069,7 @@ mod tests {
             tiles::Tile::from_string("4s"),
         ]);
 
-        let hand_groups: Vec<tiles::TileGroup> = vec![
+        let tile_groups: Vec<tiles::TileGroup> = vec![
             tiles::TileGroup::Triplet {
                 open: true,
                 tiles: [
@@ -1089,10 +1087,10 @@ mod tests {
                 ],
             },
         ];
-        let winning_hand_groups = hand_grouping(&winning_tiles, &hand_groups);
-        assert!(winning_hand_groups.is_some());
+        let winning_tile_groups = tile_grouping(&winning_tiles, &tile_groups);
+        assert!(winning_tile_groups.is_some());
         assert!(
-            winning_hand_groups
+            winning_tile_groups
                 .expect("Expect one winning grouping")
                 .len()
                 == 1
@@ -1100,7 +1098,7 @@ mod tests {
     }
 
     #[test]
-    fn test_hand_grouping_9() {
+    fn test_tile_grouping_9() {
         // round: East 4 (0 repeat), winning hand by East (open hand, ron)
         // scoring: 3 han, 30 fu = 5800 pts (all simples, all triplets)
         let winning_tiles = Vec::from([
@@ -1114,7 +1112,7 @@ mod tests {
             tiles::Tile::from_string("4s"),
         ]);
 
-        let hand_groups: Vec<tiles::TileGroup> = vec![
+        let tile_groups: Vec<tiles::TileGroup> = vec![
             tiles::TileGroup::Triplet {
                 open: true,
                 tiles: [
@@ -1132,10 +1130,10 @@ mod tests {
                 ],
             },
         ];
-        let winning_hand_groups = hand_grouping(&winning_tiles, &hand_groups);
-        assert!(winning_hand_groups.is_some());
+        let winning_tile_groups = tile_grouping(&winning_tiles, &tile_groups);
+        assert!(winning_tile_groups.is_some());
         assert!(
-            winning_hand_groups
+            winning_tile_groups
                 .expect("Expect one winning grouping")
                 .len()
                 == 1
@@ -1143,7 +1141,7 @@ mod tests {
     }
 
     #[test]
-    fn test_hand_grouping_multiple_groupings() {
+    fn test_tile_grouping_multiple_groupings() {
         // example of hand with multiple valid winning groupings (scoring needs to consider which grouping produces the
         // highest score, prioritizing higher han value, then higher fu value)
         // example hand from: https://riichi.wiki/Fu#Maximal_Score
@@ -1164,17 +1162,17 @@ mod tests {
             tiles::Tile::from_string("9s"),
         ]);
 
-        let hand_groups: Vec<tiles::TileGroup> = Vec::new();
-        let winning_hand_groups = hand_grouping(&winning_tiles, &hand_groups);
-        assert!(winning_hand_groups.is_some());
-        let winning_hand_groups = winning_hand_groups.expect("Expect some winning groupings");
-        assert!(winning_hand_groups.len() == 2);
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let winning_tile_groups = tile_grouping(&winning_tiles, &tile_groups);
+        assert!(winning_tile_groups.is_some());
+        let winning_tile_groups = winning_tile_groups.expect("Expect some winning groupings");
+        assert!(winning_tile_groups.len() == 2);
 
         // the pair is either the 6p or the 9p
-        let first_winning_grouping = winning_hand_groups
+        let first_winning_grouping = winning_tile_groups
             .get(0)
             .expect("Expect two winning groupings");
-        let second_winning_grouping = winning_hand_groups
+        let second_winning_grouping = winning_tile_groups
             .get(1)
             .expect("Expect two winning groupings");
         let grouping_pair_tiles = [

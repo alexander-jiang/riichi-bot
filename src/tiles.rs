@@ -469,6 +469,71 @@ impl Tile {
         self.suit() == TileSuit::Honor
     }
 
+    /// If the tile is a dragon tile (all dragons count for yakuhai)
+    pub fn is_dragon(&self) -> bool {
+        self.suit() == TileSuit::Honor
+            && (self.rank() == TileRank::Honor(HonorTileRank::Green)
+                || self.rank() == TileRank::Honor(HonorTileRank::Red)
+                || self.rank() == TileRank::Honor(HonorTileRank::White))
+    }
+
+    /// Is this tile a dora tile based on the indicator tile?
+    // TODO add test
+    pub fn dora_from_indicator(&self, dora_indicator: &Tile) -> bool {
+        if self.suit() != dora_indicator.suit() {
+            return false;
+        }
+        match self.suit() {
+            TileSuit::Honor => {
+                let indicated_dora_rank = match dora_indicator.rank() {
+                    TileRank::Honor(indicator_rank) => match indicator_rank {
+                        HonorTileRank::East => HonorTileRank::South,
+                        HonorTileRank::South => HonorTileRank::West,
+                        HonorTileRank::West => HonorTileRank::North,
+                        HonorTileRank::North => HonorTileRank::East,
+                        HonorTileRank::White => HonorTileRank::Green,
+                        HonorTileRank::Green => HonorTileRank::Red,
+                        HonorTileRank::Red => HonorTileRank::White,
+                    },
+                    _ => panic!("Expected dora indicator to be an honor tile!"),
+                };
+                match self.rank() {
+                    TileRank::Honor(self_rank) => self_rank == indicated_dora_rank,
+                    _ => panic!("Expected this tile to also be an honor tile!"),
+                }
+            }
+            _ => {
+                let indicated_dora_rank = match dora_indicator.rank() {
+                    TileRank::Number(indicator_rank) => match indicator_rank {
+                        NumberTileRank::One => NumberTileRank::Two,
+                        NumberTileRank::Two => NumberTileRank::Three,
+                        NumberTileRank::Three => NumberTileRank::Four,
+                        NumberTileRank::Four => NumberTileRank::Five,
+                        NumberTileRank::RedFive => NumberTileRank::Six,
+                        NumberTileRank::Five => NumberTileRank::Six,
+                        NumberTileRank::Six => NumberTileRank::Seven,
+                        NumberTileRank::Seven => NumberTileRank::Eight,
+                        NumberTileRank::Eight => NumberTileRank::Nine,
+                        NumberTileRank::Nine => NumberTileRank::One,
+                    },
+                    _ => panic!("Expected dora indicator to be a number tile!"),
+                };
+                match self.rank() {
+                    TileRank::Number(self_rank) => {
+                        // if the dora indicator is a 4, then both red-five and normal-five count as dora tiles
+                        if self_rank == NumberTileRank::RedFive
+                            && indicated_dora_rank == NumberTileRank::Five
+                        {
+                            return true;
+                        }
+                        self_rank == indicated_dora_rank
+                    }
+                    _ => panic!("Expected this tile to also be a number tile!"),
+                }
+            }
+        }
+    }
+
     /// If the tile is rank 2-8 in a numbered suit, i.e. is not an honor tile or a terminal tile
     pub fn is_simple(&self) -> bool {
         // example yaku:
@@ -689,8 +754,6 @@ impl TileGroup {
         }
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -922,51 +985,71 @@ mod tests {
     #[test]
     fn test_tile_human_and_mspz_notation() {
         let man_tile = Tile::from_string("1m");
+        assert!(!man_tile.is_honor());
+        assert!(!man_tile.is_dragon());
         assert_eq!(man_tile.human_suit(), 'm');
         assert_eq!(man_tile.human_rank(), '1');
         assert_eq!(man_tile.to_human_string(), "1m".to_string());
 
         let pin_tile = Tile::from_string("4p");
+        assert!(!pin_tile.is_honor());
+        assert!(!pin_tile.is_dragon());
         assert_eq!(pin_tile.human_suit(), 'p');
         assert_eq!(pin_tile.human_rank(), '4');
         assert_eq!(pin_tile.to_human_string(), "4p".to_string());
 
         let sou_tile = Tile::from_string("9s");
+        assert!(!sou_tile.is_honor());
+        assert!(!sou_tile.is_dragon());
         assert_eq!(sou_tile.human_suit(), 's');
         assert_eq!(sou_tile.human_rank(), '9');
         assert_eq!(sou_tile.to_human_string(), "9s".to_string());
 
         let east_wind_tile = Tile::from_string("1z");
+        assert!(east_wind_tile.is_honor());
+        assert!(!east_wind_tile.is_dragon());
         assert_eq!(east_wind_tile.human_suit(), 'w');
         assert_eq!(east_wind_tile.human_rank(), 'E');
         assert_eq!(east_wind_tile.to_human_string(), "Ew".to_string());
 
         let south_wind_tile = Tile::from_string("2z");
+        assert!(south_wind_tile.is_honor());
+        assert!(!south_wind_tile.is_dragon());
         assert_eq!(south_wind_tile.human_suit(), 'w');
         assert_eq!(south_wind_tile.human_rank(), 'S');
         assert_eq!(south_wind_tile.to_human_string(), "Sw".to_string());
 
         let west_wind_tile = Tile::from_string("3z");
+        assert!(west_wind_tile.is_honor());
+        assert!(!west_wind_tile.is_dragon());
         assert_eq!(west_wind_tile.human_suit(), 'w');
         assert_eq!(west_wind_tile.human_rank(), 'W');
         assert_eq!(west_wind_tile.to_human_string(), "Ww".to_string());
 
         let north_wind_tile = Tile::from_string("4z");
+        assert!(north_wind_tile.is_honor());
+        assert!(!north_wind_tile.is_dragon());
         assert_eq!(north_wind_tile.human_suit(), 'w');
         assert_eq!(north_wind_tile.human_rank(), 'N');
         assert_eq!(north_wind_tile.to_human_string(), "Nw".to_string());
 
         let white_dragon_tile = Tile::from_string("5z");
+        assert!(white_dragon_tile.is_honor());
+        assert!(white_dragon_tile.is_dragon());
         assert_eq!(white_dragon_tile.human_suit(), 'd');
         assert_eq!(white_dragon_tile.human_rank(), 'W');
         assert_eq!(white_dragon_tile.to_human_string(), "Wd".to_string());
 
         let green_dragon_tile = Tile::from_string("6z");
+        assert!(green_dragon_tile.is_honor());
+        assert!(green_dragon_tile.is_dragon());
         assert_eq!(green_dragon_tile.human_suit(), 'd');
         assert_eq!(green_dragon_tile.human_rank(), 'G');
         assert_eq!(green_dragon_tile.to_human_string(), "Gd".to_string());
 
         let red_dragon_tile = Tile::from_string("7z");
+        assert!(red_dragon_tile.is_honor());
+        assert!(red_dragon_tile.is_dragon());
         assert_eq!(red_dragon_tile.human_suit(), 'd');
         assert_eq!(red_dragon_tile.human_rank(), 'R');
         assert_eq!(red_dragon_tile.to_human_string(), "Rd".to_string());
@@ -1027,6 +1110,23 @@ mod tests {
         let num_honor_tiles = num_honor_tiles;
 
         assert_eq!(num_honor_tiles, expected_num_honor_tiles);
+    }
+
+    #[test]
+    fn test_dragon_tile_counts() {
+        // 3 dragons * 4 copies
+        let expected_num_dragon_tiles: u32 = 3 * 4;
+
+        let mut num_dragon_tiles: u32 = 0;
+        for serial in 0..NUM_TILES {
+            let tile = Tile { serial };
+            if tile.is_dragon() {
+                num_dragon_tiles += 1;
+            }
+        }
+        let num_dragon_tiles = num_dragon_tiles;
+
+        assert_eq!(num_dragon_tiles, expected_num_dragon_tiles);
     }
 
     #[test]
