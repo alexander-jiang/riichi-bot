@@ -478,8 +478,7 @@ impl Tile {
     }
 
     /// Is this tile a dora tile based on the indicator tile?
-    // TODO add test
-    pub fn dora_from_indicator(&self, dora_indicator: &Tile) -> bool {
+    pub fn is_dora_from_indicator(&self, dora_indicator: &Tile) -> bool {
         if self.suit() != dora_indicator.suit() {
             return false;
         }
@@ -1205,5 +1204,112 @@ mod tests {
         assert!(!invalid_triplet_group.is_valid());
 
         // TODO add more test cases for different group types (quad, sequences, open wait, etc.)
+    }
+
+    #[test]
+    fn test_is_dora_from_indicator_four() {
+        let indicator = Tile::from_string("4m");
+        // indicated dora is 5-man
+        assert!(Tile::from_string("5m").is_dora_from_indicator(&indicator));
+        // red-5-man also is dora (worth 2 han: 1 from red-five, and 1 from dora)
+        assert!(Tile::from_string("0m").is_dora_from_indicator(&indicator));
+        // other man tiles are not dora
+        assert!(!Tile::from_string("4m").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("3m").is_dora_from_indicator(&indicator));
+        // 5-pin, 5-sou, white dragon (5z), and red-fives in pin and sou are not dora
+        assert!(!Tile::from_string("5p").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("5s").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("5z").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("0p").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("0s").is_dora_from_indicator(&indicator));
+    }
+
+    #[test]
+    fn test_is_dora_from_indicator_red_five() {
+        let indicator = Tile::from_string("0p");
+        // indicated dora is 6-pin
+        assert!(Tile::from_string("6p").is_dora_from_indicator(&indicator));
+        // other pin tiles are not dora
+        assert!(!Tile::from_string("5p").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("4p").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("1p").is_dora_from_indicator(&indicator));
+        // 6-man, 6-sou, green dragon (6z) are not dora
+        assert!(!Tile::from_string("6m").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("6s").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("6z").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("1m").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("1s").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("1z").is_dora_from_indicator(&indicator));
+    }
+
+    #[test]
+    fn test_is_dora_from_indicator_normal_five() {
+        let indicator = Tile::from_string("5s");
+        // indicated dora is 6-sou
+        assert!(Tile::from_string("6s").is_dora_from_indicator(&indicator));
+        // other sou tiles are not dora
+        assert!(!Tile::from_string("0s").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("5s").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("4s").is_dora_from_indicator(&indicator));
+        // 6-man, 6-pin, green dragon (6z) are not dora
+        assert!(!Tile::from_string("6m").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("6p").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("6z").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("1m").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("1p").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("1z").is_dora_from_indicator(&indicator));
+    }
+
+    #[test]
+    fn test_is_dora_from_indicator_nine() {
+        let indicator = Tile::from_string("9m");
+        // indicated dora is 1-man, 9 wraps to 1
+        assert!(Tile::from_string("1m").is_dora_from_indicator(&indicator));
+        // other man tiles are not dora
+        assert!(!Tile::from_string("0m").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("9m").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("8m").is_dora_from_indicator(&indicator));
+        // 1-pin, 1-sou, east wind (1z) are not dora
+        assert!(!Tile::from_string("1p").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("1s").is_dora_from_indicator(&indicator));
+        assert!(!Tile::from_string("1z").is_dora_from_indicator(&indicator));
+    }
+
+    #[test]
+    fn test_is_dora_from_indicator_winds() {
+        let indicator = Tile::from_string("1z");
+        // indicated dora is south wind (2z)
+        assert!(Tile::from_string("2z").is_dora_from_indicator(&indicator));
+
+        let indicator = Tile::from_string("2z");
+        // indicated dora is west wind (3z)
+        assert!(Tile::from_string("3z").is_dora_from_indicator(&indicator));
+
+        let indicator = Tile::from_string("3z");
+        // indicated dora is north wind (4z)
+        assert!(Tile::from_string("4z").is_dora_from_indicator(&indicator));
+
+        let indicator = Tile::from_string("4z");
+        // indicated dora is east wind (1z), north wraps to east
+        assert!(Tile::from_string("1z").is_dora_from_indicator(&indicator));
+        // white dragon (5z) is not dora
+        assert!(!Tile::from_string("5z").is_dora_from_indicator(&indicator));
+    }
+
+    #[test]
+    fn test_is_dora_from_indicator_dragons() {
+        let indicator = Tile::from_string("5z");
+        // indicated dora is green dragon (6z)
+        assert!(Tile::from_string("6z").is_dora_from_indicator(&indicator));
+
+        let indicator = Tile::from_string("6z");
+        // indicated dora is red dragon (7z)
+        assert!(Tile::from_string("7z").is_dora_from_indicator(&indicator));
+
+        let indicator = Tile::from_string("7z");
+        // indicated dora is white dragon (5z), red wraps to white
+        assert!(Tile::from_string("5z").is_dora_from_indicator(&indicator));
+        // east wind (1z) is not dora
+        assert!(!Tile::from_string("1z").is_dora_from_indicator(&indicator));
     }
 }

@@ -71,4 +71,10 @@
 
 - spent ~2 hours
 - day 6 of refactor to use Rust structs & enums: fixing up the hand_grouping function to handle red-fives appropriately, did some trait implementations on the TileSuit / TileRank enums and the Tile struct
-- some learning of the "cannot move out of \*\*\* which is behind a shared reference" error: https://stackoverflow.com/questions/61995143/cannot-move-out-of-which-is-behind-a-shared-reference
+- some learning of the "cannot move out of XYZ which is behind a shared reference" error: https://stackoverflow.com/questions/61995143/cannot-move-out-of-which-is-behind-a-shared-reference
+
+### Jun 4 2023
+
+- spent ~2 hours
+- refactor of the base Tile, TileGroup, etc. structs / entities is complete, I've moved onto adding new structs to represent the player state, the state of the game/round/hand, which we can use to identify yaku
+- I'm also starting to split up the code into separate source files as the single main.rs file was getting a bit too large
