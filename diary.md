@@ -66,3 +66,8 @@
 - spent ~1 hour
 - day 5 of refactor to use Rust structs & enums: still implementing the hand_grouping function, got some progress but there are a few compiler errors I need to resolve
 - I also will need to add a lot of test cases to handle the red-five tiles as the same rank as normal five tiles -> perhaps need to update `count_tiles_by_suit_rank` to count red-five and normal-five as the same? or just consider them as the same when calling `count_tiles_by_suit_rank` in `hand_grouping` function?
+
+### Jun 3 2023
+
+- spent ~2 hours
+- day 6 of refactor to use Rust structs & enums: fixing up the hand_grouping function to handle red-fives appropriately, did some trait implementations on the TileSuit / TileRank enums and the Tile struct
