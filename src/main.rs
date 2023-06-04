@@ -1065,7 +1065,7 @@ mod tests {
             tiles::Tile::from_string("2p"),
             tiles::Tile::from_string("2p"),
             tiles::Tile::from_string("3p"),
-            tiles::Tile::from_string("5p"), // TODO is this supposed to be a 4p tile?
+            tiles::Tile::from_string("4p"),
             tiles::Tile::from_string("3s"),
             tiles::Tile::from_string("0s"),
             tiles::Tile::from_string("4s"),
