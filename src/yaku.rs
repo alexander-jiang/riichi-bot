@@ -106,6 +106,7 @@ pub fn has_yakuhai_yaku(
     hand_state: &state::HandState,
     player_state: &state::PlayerState,
 ) -> bool {
+    // yakuhai can be scored with open hand
     let round_wind_rank = hand_state.round_wind.to_rank();
     let seat_wind_rank = player_state.seat_wind.to_rank();
     for tile_group in tile_grouping {
@@ -134,6 +135,144 @@ pub fn has_yakuhai_yaku(
         }
     }
     false
+}
+
+pub fn has_riichi_yaku(
+    _tile_grouping: &Vec<tiles::TileGroup>,
+    _hand_state: &state::HandState,
+    player_state: &state::PlayerState,
+) -> bool {
+    // TODO in_riichi assumes player's hand is closed
+    player_state.in_riichi
+}
+
+pub fn has_tanyao(
+    tile_grouping: &Vec<tiles::TileGroup>,
+    _hand_state: &state::HandState,
+    _player_state: &state::PlayerState,
+) -> bool {
+    // tanyao can be scored with open hand
+    for tile_group in tile_grouping {
+        match tile_group {
+            tiles::TileGroup::Quad { tiles, .. } => {
+                assert!(tile_group.is_valid());
+                if !tiles[0].is_simple() {
+                    return false;
+                }
+            }
+            tiles::TileGroup::Triplet { tiles, .. } => {
+                assert!(tile_group.is_valid());
+                if !tiles[0].is_simple() {
+                    return false;
+                }
+            }
+            tiles::TileGroup::Sequence { tiles, .. } => {
+                assert!(tile_group.is_valid());
+                if !tiles[0].is_simple() || !tiles[1].is_simple() || !tiles[2].is_simple() {
+                    return false;
+                }
+            }
+            tiles::TileGroup::Pair { tiles, .. } => {
+                assert!(tile_group.is_valid());
+                if !tiles[0].is_simple() {
+                    return false;
+                }
+            }
+            // all other tile groups are invalid (should not be found in a complete hand)
+            _ => {
+                panic!("Invalid tile group for a complete hand");
+            }
+        }
+    }
+    true
+}
+
+pub fn has_pinfu(
+    tile_grouping: &Vec<tiles::TileGroup>,
+    hand_state: &state::HandState,
+    player_state: &state::PlayerState,
+) -> bool {
+    // pinfu is closed only, no quads or triplets allowed (only sequences + non-yakuhai pair)
+    let round_wind_rank = hand_state.round_wind.to_rank();
+    let seat_wind_rank = player_state.seat_wind.to_rank();
+    let mut num_closed_sequences = 0;
+    for tile_group in tile_grouping {
+        match tile_group {
+            tiles::TileGroup::Quad { .. } => {
+                return false;
+            }
+            tiles::TileGroup::Triplet { .. } => {
+                return false;
+            }
+            tiles::TileGroup::Sequence { open, .. } => {
+                assert!(tile_group.is_valid());
+                if !open {
+                    return false;
+                }
+                num_closed_sequences += 1;
+            }
+            tiles::TileGroup::Pair { tiles, .. } => {
+                assert!(tile_group.is_valid());
+                if tiles[0].is_dragon()
+                    || (tiles[0].is_honor()
+                        && (tiles[0].rank() == round_wind_rank
+                            || tiles[0].rank() == seat_wind_rank))
+                {
+                    return false;
+                }
+            }
+            // all other tile groups are invalid (should not be found in a complete hand)
+            _ => {
+                panic!("Invalid tile group for a complete hand");
+            }
+        }
+    }
+    // pinfu must not be thirteen orphans or seven pairs
+    if num_closed_sequences != 4 {
+        return false;
+    }
+    // TODO additionally must check the wait pattern (must be a open-wait i.e. two-sided wait, not a closed-wait, edge-wait, or pair-wait)
+    true
+}
+
+pub fn scoring_fu(
+    player_tiles: &Vec<tiles::Tile>,
+    added_tile: &tiles::Tile,
+    hand_state: &state::HandState,
+    player_state: &state::PlayerState,
+) -> u32 {
+    // assert this is a winning hand, and get hand grouping
+    let tile_grouping: Vec<tiles::TileGroup> = Vec::new();
+
+    // TODO first check special case for chiitoitsu (seven pairs), always 25 fu
+
+    // fu from tile groups (triplets and quads earn fu based on open/closed and if the tile is simple or not)
+    // fu from waits
+    // fu from pair (earns 2 fu if the tile would be yakuhai, 4 fu if the wind is both seat and dealer wind)
+    // fu from winning condition
+    let is_hand_closed: bool = true;
+    let winning_condition = player_state.winning_tile_source;
+
+    let fu_from_winning_condition = match winning_condition.expect("Must be a winning tile source")
+    {
+        state::WinningTileSource::Discard => {
+            if is_hand_closed {
+                10
+            } else {
+                // TODO if no fu from tile groups or waiting pattern, then the 20 fu hand is forced to 30 fu
+                0
+            }
+        }
+        state::WinningTileSource::SelfDraw => {
+            // TODO if the closed hand with tsumo satisfies all other criteria for pinfu, these 2 fu are not awarded (the 1 han for pinfu is awarded instead)
+            2
+        }
+        state::WinningTileSource::DeadWall => {
+            // TODO some scoring rule variations (rishan fu) don't award 2 fu for tsumo win off of kan replacement tile, as winning off of this tile awards the rinshan yaku (1 han)
+            2
+        }
+    };
+    todo!()
 }
 
 #[cfg(test)]

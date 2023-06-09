@@ -36,6 +36,7 @@ impl Dragon {
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum WinningTileSource {
     // i.e. ron
     Discard,
