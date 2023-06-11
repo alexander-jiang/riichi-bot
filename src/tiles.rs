@@ -754,6 +754,18 @@ impl TileGroup {
     }
 }
 
+pub fn get_pair_group(tile_groups: &Vec<TileGroup>) -> Option<Tile> {
+    for tile_group in tile_groups {
+        match *tile_group {
+            TileGroup::Pair { tiles } => {
+                return Some(tiles[0]);
+            }
+            _ => {}
+        }
+    }
+    return None;
+}
+
 #[cfg(test)]
 mod tests {
     // importing names from outer (for mod tests) scope.

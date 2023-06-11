@@ -1,4 +1,4 @@
-use crate::{state, tiles};
+use crate::{state, tile_grouping, tiles};
 
 pub enum Yaku {
     // 1 han
@@ -101,40 +101,54 @@ impl Yaku {
     }
 }
 
-pub fn has_yakuhai_yaku(
+pub fn is_yakuhai_tile(
+    tile: &tiles::Tile,
+    round_wind_rank: tiles::TileRank,
+    seat_wind_rank: tiles::TileRank,
+) -> bool {
+    tile.is_dragon()
+        || (tile.is_honor() && (tile.rank() == round_wind_rank || tile.rank() == seat_wind_rank))
+}
+
+/// There can be multiple groups that contribute to the yakuhai yaku
+pub fn han_from_yakuhai_yaku(
     tile_grouping: &Vec<tiles::TileGroup>,
     hand_state: &state::HandState,
     player_state: &state::PlayerState,
-) -> bool {
+) -> Option<u32> {
     // yakuhai can be scored with open hand
     let round_wind_rank = hand_state.round_wind.to_rank();
     let seat_wind_rank = player_state.seat_wind.to_rank();
+    // you can get multiple han from yakuhai if the round wind + seat wind is the same, if there are multiple groups
+    let mut yakuhai_han: u32 = 0;
     for tile_group in tile_grouping {
         match tile_group {
             tiles::TileGroup::Triplet { tiles, .. } => {
                 assert!(tile_group.is_valid());
-                if tiles[0].is_dragon()
-                    || (tiles[0].is_honor()
-                        && (tiles[0].rank() == round_wind_rank
-                            || tiles[0].rank() == seat_wind_rank))
-                {
-                    return true;
+                if is_yakuhai_tile(&tiles[0], round_wind_rank, seat_wind_rank) {
+                    yakuhai_han += 1;
+                }
+                if tiles[0].rank() == round_wind_rank && tiles[0].rank() == seat_wind_rank {
+                    yakuhai_han += 1;
                 }
             }
             tiles::TileGroup::Quad { tiles, .. } => {
                 assert!(tile_group.is_valid());
-                if tiles[0].is_dragon()
-                    || (tiles[0].is_honor()
-                        && (tiles[0].rank() == round_wind_rank
-                            || tiles[0].rank() == seat_wind_rank))
-                {
-                    return true;
+                if is_yakuhai_tile(&tiles[0], round_wind_rank, seat_wind_rank) {
+                    yakuhai_han += 1;
+                }
+                if tiles[0].rank() == round_wind_rank && tiles[0].rank() == seat_wind_rank {
+                    yakuhai_han += 1;
                 }
             }
             _ => continue,
         }
     }
-    false
+    if yakuhai_han == 0 {
+        None
+    } else {
+        Some(yakuhai_han)
+    }
 }
 
 pub fn has_riichi_yaku(
@@ -213,11 +227,7 @@ pub fn has_pinfu(
             }
             tiles::TileGroup::Pair { tiles, .. } => {
                 assert!(tile_group.is_valid());
-                if tiles[0].is_dragon()
-                    || (tiles[0].is_honor()
-                        && (tiles[0].rank() == round_wind_rank
-                            || tiles[0].rank() == seat_wind_rank))
-                {
+                if is_yakuhai_tile(&tiles[0], round_wind_rank, seat_wind_rank) {
                     return false;
                 }
             }
@@ -235,20 +245,81 @@ pub fn has_pinfu(
     true
 }
 
+// TODO do we assume that the winning grouping is already checked as a winning hand?
+// TODO we need to make sure that the fu is scored using the grouping that produces the maximum han
 pub fn scoring_fu(
     player_tiles: &Vec<tiles::Tile>,
     added_tile: &tiles::Tile,
+    tile_grouping: &Vec<tiles::TileGroup>,
     hand_state: &state::HandState,
     player_state: &state::PlayerState,
 ) -> u32 {
-    // assert this is a winning hand, and get hand grouping
-    let tile_grouping: Vec<tiles::TileGroup> = Vec::new();
+    let mut new_tiles = player_tiles.clone();
+    new_tiles.push(added_tile.clone());
+    let _existing_tile_groups: Vec<tiles::TileGroup> = Vec::new();
 
-    // TODO first check special case for chiitoitsu (seven pairs), always 25 fu
+    // special case: chiitoitsu (seven pairs) is always scored as 25 fu
+    if let Some(_seven_pairs_groups) =
+        tile_grouping::seven_pairs_tile_grouping(&new_tiles, &_existing_tile_groups)
+    {
+        return 25;
+    }
+
+    // assert this is a winning hand, and get hand grouping(s)
+    let _tile_groups = tile_grouping::tile_grouping(&new_tiles, &_existing_tile_groups)
+        .expect("Should be a winning hand");
+
+    // TODO we need to make sure that the fu is consistent with the grouping that scores the maximum han
 
     // fu from tile groups (triplets and quads earn fu based on open/closed and if the tile is simple or not)
-    // fu from waits
+    let mut fu_from_groups = 0;
+    for tile_group in tile_grouping {
+        fu_from_groups += match tile_group {
+            tiles::TileGroup::Triplet { open, tiles } => {
+                assert!(tile_group.is_valid());
+                let mut triplet_fu = 2;
+                if !tiles[0].is_simple() {
+                    triplet_fu *= 2;
+                }
+                if !open {
+                    triplet_fu *= 2;
+                }
+                triplet_fu
+            }
+            tiles::TileGroup::Quad { open, tiles, .. } => {
+                assert!(tile_group.is_valid());
+                let mut quad_fu = 8;
+                if !tiles[0].is_simple() {
+                    quad_fu *= 2;
+                }
+                if !open {
+                    quad_fu *= 2;
+                }
+                quad_fu
+            }
+            _ => 0,
+        };
+    }
+    let fu_from_groups = fu_from_groups;
+
+    // TODO fu from waits
+    let fu_from_wait = 0;
+
     // fu from pair (earns 2 fu if the tile would be yakuhai, 4 fu if the wind is both seat and dealer wind)
+    let round_wind_rank = hand_state.round_wind.to_rank();
+    let seat_wind_rank = player_state.seat_wind.to_rank();
+    let pair_tile =
+        tiles::get_pair_group(&tile_grouping).expect("Should be a pair in winning hand");
+    let fu_from_pair = if is_yakuhai_tile(&pair_tile, round_wind_rank, seat_wind_rank) {
+        if pair_tile.rank() == round_wind_rank && pair_tile.rank() == seat_wind_rank {
+            4
+        } else {
+            2
+        }
+    } else {
+        0
+    };
+
     // fu from winning condition
     let is_hand_closed: bool = true;
     let winning_condition = player_state.winning_tile_source;
@@ -271,8 +342,13 @@ pub fn scoring_fu(
             // TODO some scoring rule variations (rishan fu) don't award 2 fu for tsumo win off of kan replacement tile, as winning off of this tile awards the rinshan yaku (1 han)
             2
         }
+        state::WinningTileSource::RobbingKan => {
+            // TODO is there any fu for robbing a kan?
+            0
+        }
     };
-    todo!()
+
+    fu_from_groups + fu_from_pair + fu_from_wait + fu_from_winning_condition
 }
 
 #[cfg(test)]
@@ -364,6 +440,249 @@ mod tests {
             any_discards_called_by_others: false,
             winning_tile_source: Some(state::WinningTileSource::Discard), // from East (opposite player / toimen)
         };
-        assert!(has_yakuhai_yaku(&tile_groups, &hand_state, &player_state));
+        assert_eq!(
+            han_from_yakuhai_yaku(&tile_groups, &hand_state, &player_state),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn test_yakuhai_same_round_and_seat_wind() {
+        // test multiple han from yakuhai
+        let tile_groups: Vec<tiles::TileGroup> = vec![
+            tiles::TileGroup::Triplet {
+                open: true,
+                tiles: [
+                    tiles::Tile::from_string("2z"), // south wind
+                    tiles::Tile::from_string("2z"),
+                    tiles::Tile::from_string("2z"),
+                ],
+            },
+            tiles::TileGroup::Triplet {
+                open: true,
+                tiles: [
+                    tiles::Tile::from_string("1z"), // east wind
+                    tiles::Tile::from_string("1z"),
+                    tiles::Tile::from_string("1z"),
+                ],
+            },
+            tiles::TileGroup::Sequence {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("1s"),
+                    tiles::Tile::from_string("2s"),
+                    tiles::Tile::from_string("3s"),
+                ],
+            },
+            tiles::TileGroup::Triplet {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("7z"), // red dragon
+                    tiles::Tile::from_string("7z"),
+                    tiles::Tile::from_string("7z"),
+                ],
+            },
+            tiles::TileGroup::Pair {
+                tiles: [
+                    tiles::Tile::from_string("8m"),
+                    tiles::Tile::from_string("8m"),
+                ],
+            },
+        ];
+
+        // check yaku
+        let hand_state = state::HandState {
+            round_wind: state::WindDirection::South,
+            any_calls_made: true,
+            tiles_remaining: 10,
+            dora_indicators: vec![tiles::Tile::from_string("1m")],
+            riichi_sticks: 0,
+            honba_sticks: 0,
+        };
+        let player_state = state::PlayerState {
+            discards: vec![
+                tiles::Tile::from_string("8p"),
+                tiles::Tile::from_string("1s"),
+                tiles::Tile::from_string("0p"),
+                tiles::Tile::from_string("2p"),
+                tiles::Tile::from_string("6m"),
+                tiles::Tile::from_string("4p"),
+                tiles::Tile::from_string("8m"),
+                tiles::Tile::from_string("1s"),
+            ],
+            seat_wind: state::WindDirection::South,
+            in_riichi: false,
+            in_double_riichi: false,
+            in_ippatsu_turn: false,
+            any_discards_called_by_others: false,
+            winning_tile_source: Some(state::WinningTileSource::Discard), // from East (opposite player / toimen)
+        };
+        // south wind = 2 han (seat wind + round wind)
+        // east wind = 0 han
+        // red dragon = 1 han
+        assert_eq!(
+            han_from_yakuhai_yaku(&tile_groups, &hand_state, &player_state),
+            Some(3)
+        );
+    }
+
+    #[test]
+    fn test_yakuhai_quads() {
+        // test yakuhai from quads
+        let tile_groups: Vec<tiles::TileGroup> = vec![
+            tiles::TileGroup::Sequence {
+                open: true,
+                tiles: [
+                    tiles::Tile::from_string("2p"),
+                    tiles::Tile::from_string("3p"),
+                    tiles::Tile::from_string("1p"),
+                ],
+            },
+            tiles::TileGroup::Quad {
+                open: true,
+                added: false,
+                tiles: [
+                    tiles::Tile::from_string("1z"), // east wind
+                    tiles::Tile::from_string("1z"),
+                    tiles::Tile::from_string("1z"),
+                    tiles::Tile::from_string("1z"),
+                ],
+            },
+            tiles::TileGroup::Sequence {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("1s"),
+                    tiles::Tile::from_string("2s"),
+                    tiles::Tile::from_string("3s"),
+                ],
+            },
+            tiles::TileGroup::Triplet {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("7s"),
+                    tiles::Tile::from_string("7s"),
+                    tiles::Tile::from_string("7s"),
+                ],
+            },
+            tiles::TileGroup::Pair {
+                tiles: [
+                    tiles::Tile::from_string("8m"),
+                    tiles::Tile::from_string("8m"),
+                ],
+            },
+        ];
+
+        // check yaku
+        let hand_state = state::HandState {
+            round_wind: state::WindDirection::East,
+            any_calls_made: true,
+            tiles_remaining: 10,
+            dora_indicators: vec![tiles::Tile::from_string("1m")],
+            riichi_sticks: 0,
+            honba_sticks: 0,
+        };
+        let player_state = state::PlayerState {
+            discards: vec![
+                tiles::Tile::from_string("8p"),
+                tiles::Tile::from_string("1s"),
+                tiles::Tile::from_string("0p"),
+                tiles::Tile::from_string("2p"),
+                tiles::Tile::from_string("6m"),
+                tiles::Tile::from_string("4p"),
+                tiles::Tile::from_string("8m"),
+                tiles::Tile::from_string("1s"),
+            ],
+            seat_wind: state::WindDirection::West,
+            in_riichi: false,
+            in_double_riichi: false,
+            in_ippatsu_turn: false,
+            any_discards_called_by_others: false,
+            winning_tile_source: Some(state::WinningTileSource::Discard), // from East (opposite player / toimen)
+        };
+        // east wind = 1 han (round wind)
+        assert_eq!(
+            han_from_yakuhai_yaku(&tile_groups, &hand_state, &player_state),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn test_yakuhai_not_from_guest_winds() {
+        // test no yakuhai from guest winds (neither seat wind nor round wind)
+        let tile_groups: Vec<tiles::TileGroup> = vec![
+            tiles::TileGroup::Sequence {
+                open: true,
+                tiles: [
+                    tiles::Tile::from_string("2p"),
+                    tiles::Tile::from_string("3p"),
+                    tiles::Tile::from_string("1p"),
+                ],
+            },
+            tiles::TileGroup::Quad {
+                open: true,
+                added: false,
+                tiles: [
+                    tiles::Tile::from_string("2z"), // south wind
+                    tiles::Tile::from_string("2z"),
+                    tiles::Tile::from_string("2z"),
+                    tiles::Tile::from_string("2z"),
+                ],
+            },
+            tiles::TileGroup::Sequence {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("1s"),
+                    tiles::Tile::from_string("2s"),
+                    tiles::Tile::from_string("3s"),
+                ],
+            },
+            tiles::TileGroup::Triplet {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("7s"),
+                    tiles::Tile::from_string("7s"),
+                    tiles::Tile::from_string("7s"),
+                ],
+            },
+            tiles::TileGroup::Pair {
+                tiles: [
+                    tiles::Tile::from_string("8m"),
+                    tiles::Tile::from_string("8m"),
+                ],
+            },
+        ];
+
+        // check yaku
+        let hand_state = state::HandState {
+            round_wind: state::WindDirection::East,
+            any_calls_made: true,
+            tiles_remaining: 10,
+            dora_indicators: vec![tiles::Tile::from_string("1m")],
+            riichi_sticks: 0,
+            honba_sticks: 0,
+        };
+        let player_state = state::PlayerState {
+            discards: vec![
+                tiles::Tile::from_string("8p"),
+                tiles::Tile::from_string("1s"),
+                tiles::Tile::from_string("0p"),
+                tiles::Tile::from_string("2p"),
+                tiles::Tile::from_string("6m"),
+                tiles::Tile::from_string("4p"),
+                tiles::Tile::from_string("8m"),
+                tiles::Tile::from_string("1s"),
+            ],
+            seat_wind: state::WindDirection::West,
+            in_riichi: false,
+            in_double_riichi: false,
+            in_ippatsu_turn: false,
+            any_discards_called_by_others: false,
+            winning_tile_source: Some(state::WinningTileSource::Discard), // from East (opposite player / toimen)
+        };
+        // south wind = 0 han (round wind)
+        assert_eq!(
+            han_from_yakuhai_yaku(&tile_groups, &hand_state, &player_state),
+            None
+        );
     }
 }
