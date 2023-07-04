@@ -515,7 +515,7 @@ mod tests {
             in_double_riichi: false,
             in_ippatsu_turn: false,
             any_discards_called_by_others: false,
-            winning_tile_source: Some(state::WinningTileSource::Discard), // from East (opposite player / toimen)
+            winning_tile_source: Some(state::WinningTileSource::Discard),
         };
         // south wind = 2 han (seat wind + round wind)
         // east wind = 0 han
@@ -597,7 +597,7 @@ mod tests {
             in_double_riichi: false,
             in_ippatsu_turn: false,
             any_discards_called_by_others: false,
-            winning_tile_source: Some(state::WinningTileSource::Discard), // from East (opposite player / toimen)
+            winning_tile_source: Some(state::WinningTileSource::Discard),
         };
         // east wind = 1 han (round wind)
         assert_eq!(
@@ -618,12 +618,10 @@ mod tests {
                     tiles::Tile::from_string("1p"),
                 ],
             },
-            tiles::TileGroup::Quad {
+            tiles::TileGroup::Triplet {
                 open: true,
-                added: false,
                 tiles: [
                     tiles::Tile::from_string("2z"), // south wind
-                    tiles::Tile::from_string("2z"),
                     tiles::Tile::from_string("2z"),
                     tiles::Tile::from_string("2z"),
                 ],
@@ -677,12 +675,219 @@ mod tests {
             in_double_riichi: false,
             in_ippatsu_turn: false,
             any_discards_called_by_others: false,
-            winning_tile_source: Some(state::WinningTileSource::Discard), // from East (opposite player / toimen)
+            winning_tile_source: Some(state::WinningTileSource::Discard),
         };
         // south wind = 0 han (round wind)
         assert_eq!(
             han_from_yakuhai_yaku(&tile_groups, &hand_state, &player_state),
             None
         );
+    }
+
+    #[test]
+    fn test_tanyao_closed() {
+        // test tanyao (closed hand)
+        // example hand from https://riichi.wiki/Tanyao
+        let tile_groups: Vec<tiles::TileGroup> = vec![
+            tiles::TileGroup::Triplet {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("2s"),
+                    tiles::Tile::from_string("2s"),
+                    tiles::Tile::from_string("2s"),
+                ],
+            },
+            tiles::TileGroup::Sequence {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("6s"),
+                    tiles::Tile::from_string("7s"),
+                    tiles::Tile::from_string("8s"),
+                ],
+            },
+            tiles::TileGroup::Sequence {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("4m"),
+                    tiles::Tile::from_string("5m"),
+                    tiles::Tile::from_string("6m"),
+                ],
+            },
+            tiles::TileGroup::Triplet {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("3p"),
+                    tiles::Tile::from_string("3p"),
+                    tiles::Tile::from_string("3p"),
+                ],
+            },
+            tiles::TileGroup::Pair {
+                tiles: [
+                    tiles::Tile::from_string("5p"),
+                    tiles::Tile::from_string("5p"),
+                ],
+            },
+        ];
+
+        // check yaku
+        let hand_state = state::HandState {
+            round_wind: state::WindDirection::East,
+            any_calls_made: true,
+            tiles_remaining: 40,
+            dora_indicators: vec![tiles::Tile::from_string("2m")],
+            riichi_sticks: 0,
+            honba_sticks: 0,
+        };
+        let player_state = state::PlayerState {
+            discards: vec![
+                tiles::Tile::from_string("8p"),
+                tiles::Tile::from_string("1s"),
+            ],
+            seat_wind: state::WindDirection::West,
+            in_riichi: false,
+            in_double_riichi: false,
+            in_ippatsu_turn: false,
+            any_discards_called_by_others: false,
+            winning_tile_source: Some(state::WinningTileSource::Discard),
+        };
+        assert!(has_tanyao(&tile_groups, &hand_state, &player_state));
+    }
+
+    #[test]
+    fn test_tanyao_open() {
+        // test tanyao (open hand)
+        // example hand from https://riichi.wiki/Tanyao
+        let tile_groups: Vec<tiles::TileGroup> = vec![
+            tiles::TileGroup::Sequence {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("6m"),
+                    tiles::Tile::from_string("7m"),
+                    tiles::Tile::from_string("8m"),
+                ],
+            },
+            tiles::TileGroup::Sequence {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("3s"),
+                    tiles::Tile::from_string("4s"),
+                    tiles::Tile::from_string("5s"),
+                ],
+            },
+            tiles::TileGroup::Triplet {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("3p"),
+                    tiles::Tile::from_string("3p"),
+                    tiles::Tile::from_string("3p"),
+                ],
+            },
+            tiles::TileGroup::Triplet {
+                open: true,
+                tiles: [
+                    tiles::Tile::from_string("2m"),
+                    tiles::Tile::from_string("2m"),
+                    tiles::Tile::from_string("2m"),
+                ],
+            },
+            tiles::TileGroup::Pair {
+                tiles: [
+                    tiles::Tile::from_string("6p"),
+                    tiles::Tile::from_string("6p"),
+                ],
+            },
+        ];
+
+        // check yaku
+        let hand_state = state::HandState {
+            round_wind: state::WindDirection::East,
+            any_calls_made: true,
+            tiles_remaining: 40,
+            dora_indicators: vec![tiles::Tile::from_string("2m")],
+            riichi_sticks: 0,
+            honba_sticks: 0,
+        };
+        let player_state = state::PlayerState {
+            discards: vec![
+                tiles::Tile::from_string("8p"),
+                tiles::Tile::from_string("1s"),
+            ],
+            seat_wind: state::WindDirection::West,
+            in_riichi: false,
+            in_double_riichi: false,
+            in_ippatsu_turn: false,
+            any_discards_called_by_others: false,
+            winning_tile_source: Some(state::WinningTileSource::Discard),
+        };
+        assert!(has_tanyao(&tile_groups, &hand_state, &player_state));
+    }
+
+    #[test]
+    fn test_pinfu() {
+        // test pinfu
+        // https://riichi.wiki/Pinfu
+        let tile_groups: Vec<tiles::TileGroup> = vec![
+            tiles::TileGroup::Sequence {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("1m"),
+                    tiles::Tile::from_string("2m"),
+                    tiles::Tile::from_string("3m"),
+                ],
+            },
+            tiles::TileGroup::Sequence {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("2s"),
+                    tiles::Tile::from_string("3s"),
+                    tiles::Tile::from_string("4s"),
+                ],
+            },
+            tiles::TileGroup::Sequence {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("7s"),
+                    tiles::Tile::from_string("8s"),
+                    tiles::Tile::from_string("9s"), // winning tile
+                ],
+            },
+            tiles::TileGroup::Sequence {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("5p"),
+                    tiles::Tile::from_string("6p"),
+                    tiles::Tile::from_string("7p"),
+                ],
+            },
+            tiles::TileGroup::Pair {
+                tiles: [
+                    tiles::Tile::from_string("9p"),
+                    tiles::Tile::from_string("9p"),
+                ],
+            },
+        ];
+
+        // check yaku
+        let hand_state = state::HandState {
+            round_wind: state::WindDirection::East,
+            any_calls_made: true,
+            tiles_remaining: 40,
+            dora_indicators: vec![tiles::Tile::from_string("2m")],
+            riichi_sticks: 0,
+            honba_sticks: 0,
+        };
+        let player_state = state::PlayerState {
+            discards: vec![
+                tiles::Tile::from_string("8p"),
+                tiles::Tile::from_string("1s"),
+            ],
+            seat_wind: state::WindDirection::West,
+            in_riichi: false,
+            in_double_riichi: false,
+            in_ippatsu_turn: false,
+            any_discards_called_by_others: false,
+            winning_tile_source: Some(state::WinningTileSource::Discard),
+        };
+        assert!(has_pinfu(&tile_groups, &hand_state, &player_state));
     }
 }

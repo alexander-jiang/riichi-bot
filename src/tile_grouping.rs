@@ -79,6 +79,8 @@ pub fn remove_first_copy(
     }
 }
 
+// TODO check for thirteen orphans tile grouping
+
 /// Returns Some if the tiles can be grouped into the seven pairs yaku (an exception to the standard winning hand shape of 4 melds and a pair)
 pub fn seven_pairs_tile_grouping(
     tiles: &Vec<tiles::Tile>,
@@ -634,6 +636,647 @@ pub fn tile_grouping(
     return None;
 }
 
+pub fn number_pair_groups(tile_groups: &Vec<tiles::TileGroup>) -> usize {
+    tile_groups
+        .iter()
+        .filter(|group| match group {
+            tiles::TileGroup::Pair { .. } => true,
+            _ => false,
+        })
+        .count()
+}
+
+pub fn number_incomplete_groups(tile_groups: &Vec<tiles::TileGroup>) -> usize {
+    tile_groups
+        .iter()
+        .filter(|group| !group.is_complete())
+        .count()
+}
+
+pub fn tenpai_grouping(
+    tiles: &Vec<tiles::Tile>,
+    tile_groups: &Vec<tiles::TileGroup>,
+) -> Option<Vec<Vec<tiles::TileGroup>>> {
+    // returns Some if the remaining tiles can be grouped for tenpai
+    // generally:
+    // 1. three complete groups and a pair, with a fourth incomplete group that is only missing one tile
+    // 2. four complete groups and a single tile
+    // 3. six pairs and a single tile
+    // 4. twelve different terminals and honors, one of which is paired
+    // 5. thirteen different terminals and honors, none of which is paired
+
+    // can return multiple values if there are multiple valid groupings
+
+    println!("{} remaining tiles: {:?}", tiles.len(), tiles);
+
+    if tiles.is_empty() {
+        // println!("partial hand so far:");
+        // println!("pair tile: {:?}", tiles::get_pair_group(hand_groups));
+        // println!("melds: {:?}", hand_groups);
+        if number_incomplete_groups(tile_groups) == 1 {
+            println!("found tenpai hand: {:?}", tile_groups);
+            return Some(vec![tile_groups.to_vec()]);
+        } else if number_incomplete_groups(tile_groups) == 2 && number_pair_groups(tile_groups) >= 1
+        {
+            // if there are two incomplete groups, at least one of them must be a pair
+            println!("found tenpai hand: {:?}", tile_groups);
+            return Some(vec![tile_groups.to_vec()]);
+        } else {
+            println!(
+                "not tenpai hand: with no tiles remaining, num incomplete groups = {}, num pair groups = {}",
+                number_incomplete_groups(tile_groups),
+                number_pair_groups(tile_groups)
+            );
+            return None;
+        }
+    }
+    if tiles.len() == 1 {
+        // println!(
+        //     "invalid grouping: only one tile left {}",
+        //     tiles.get(0).expect("should be one tile left")
+        // );
+        return None;
+    }
+
+    if number_incomplete_groups(tile_groups) > 2
+        || (number_incomplete_groups(tile_groups) == 2 && number_pair_groups(tile_groups) == 0)
+    {
+        println!(
+            "not tenpai hand: num incomplete groups = {}, num pair groups = {}",
+            number_incomplete_groups(tile_groups),
+            number_pair_groups(tile_groups)
+        );
+        return None;
+    }
+
+    // this works with partial hand states e.g. excluding tiles from open melds, and when working recursively
+    let remaining_tiles = tiles.clone();
+
+    // count red-five tiles along with normal five tiles
+    // e.g. 4m 0m 6m is a sequence, just like 4m 5m 6m
+    let tile_counts_by_suit = count_tiles_by_suit_rank(&remaining_tiles, true);
+
+    // check honor tiles:
+    // - any isolated honors? if so, not winning
+    // - if there is a pair, that must be the only pair in the hand
+    let honor_suit = tiles::TileSuit::Honor;
+    if let Some(honor_counts) = tile_counts_by_suit.get(&honor_suit) {
+        for (tile_rank, tile_count) in honor_counts {
+            let considered_tile = tiles::Tile::from_suit_and_rank(honor_suit, *tile_rank, 0);
+            let considered_tile_str = considered_tile.to_string();
+
+            if tile_count == &0 {
+                continue;
+            }
+            if tile_count == &1 {
+                // isolated honor tile
+
+                // remove all copies of this tile, honor tiles can't be used in sequences, so there's
+                // no way for a single honor tile type to be used in more than one meld/group
+
+                // TODO improve the logic here
+                // remove the pair of tiles from the vec
+                let mut remaining_tiles = tiles.clone();
+                let mut removed_tiles = Vec::new();
+                for _copies in 0..1 {
+                    for (tile_index, tile) in remaining_tiles.iter().enumerate() {
+                        if tile.suit() == honor_suit && tile.rank() == *tile_rank {
+                            removed_tiles.push(tile.clone());
+                            remaining_tiles.swap_remove(tile_index);
+                            break;
+                        }
+                    }
+                }
+                // println!("found single tile {}, remaining tiles: {:?}", considered_tile_str, remaining_tiles);
+
+                // create the new single tile group with the correct tiles
+                let single_tile_group = tiles::TileGroup::SingleTile {
+                    tile: *(removed_tiles
+                        .get(0)
+                        .expect("Should have removed at least one tile")),
+                };
+                assert!(single_tile_group.is_valid());
+
+                let mut new_groups = tile_groups.clone();
+                new_groups.push(single_tile_group);
+
+                // if this doesn't work, there is no other option - so we can return here without trying other alternatives
+                return tenpai_grouping(&remaining_tiles, &new_groups);
+            } else if tile_count == &2 {
+                // remove all copies of this tile, honor tiles can't be used in sequences, so there's
+                // no way for a single honor tile type to be used in more than one meld/group
+
+                // TODO improve the logic here
+                // remove the pair of tiles from the vec
+                let mut remaining_tiles = tiles.clone();
+                let mut removed_tiles = Vec::new();
+                for _copies in 0..2 {
+                    for (tile_index, tile) in remaining_tiles.iter().enumerate() {
+                        if tile.suit() == honor_suit && tile.rank() == *tile_rank {
+                            removed_tiles.push(tile.clone());
+                            remaining_tiles.swap_remove(tile_index);
+                            break;
+                        }
+                    }
+                }
+                // println!("found pair of {}, remaining tiles: {:?}", considered_tile_str, remaining_tiles);
+
+                // create the new pair group with the correct tiles
+                let pair_group = tiles::TileGroup::Pair {
+                    tiles: [
+                        *(removed_tiles
+                            .get(0)
+                            .expect("Should have removed at least one tile")),
+                        *(removed_tiles
+                            .get(1)
+                            .expect("Should have removed at least two tiles")),
+                    ],
+                };
+                assert!(pair_group.is_valid());
+
+                let mut new_groups = tile_groups.clone();
+                new_groups.push(pair_group);
+
+                // if this doesn't work, there is no other option - so we can return here without trying other alternatives
+                return tenpai_grouping(&remaining_tiles, &new_groups);
+            } else if tile_count == &3 || tile_count == &4 {
+                // a triplet or a quad
+
+                // remove all copies of this tile, honor tiles can't be used in sequences, so there's
+                // no way for a single honor tile type to be used in more than one meld/group
+
+                // TODO improve the logic here
+                // remove the tiles from the vec
+                let mut remaining_tiles = tiles.clone();
+                let mut removed_tiles = Vec::new();
+                for _copies in 0..*tile_count {
+                    for (tile_index, tile) in remaining_tiles.iter().enumerate() {
+                        if tile.suit() == honor_suit && tile.rank() == *tile_rank {
+                            removed_tiles.push(tile.clone());
+                            remaining_tiles.swap_remove(tile_index);
+                            break;
+                        }
+                    }
+                }
+                // println!("found set of {}, remaining tiles: {:?}", considered_tile_str, remaining_tiles);
+
+                // create the new group with the correct tiles
+                if removed_tiles.len() == 3 {
+                    let triplet_group = tiles::TileGroup::Triplet {
+                        open: false,
+                        tiles: [
+                            *(removed_tiles
+                                .get(0)
+                                .expect("Should have removed at least one tile")),
+                            *(removed_tiles
+                                .get(1)
+                                .expect("Should have removed at least two tiles")),
+                            *(removed_tiles
+                                .get(2)
+                                .expect("Should have removed at least three tiles")),
+                        ],
+                    };
+                    assert!(triplet_group.is_valid());
+
+                    let mut new_groups = tile_groups.clone();
+                    new_groups.push(triplet_group);
+
+                    // if this doesn't work, there is no other option - so we can return here without trying other alternatives
+                    return tenpai_grouping(&remaining_tiles, &new_groups);
+                } else if removed_tiles.len() == 4 {
+                    let quad_group = tiles::TileGroup::Quad {
+                        open: false,
+                        added: false,
+                        tiles: [
+                            *(removed_tiles
+                                .get(0)
+                                .expect("Should have removed at least one tile")),
+                            *(removed_tiles
+                                .get(1)
+                                .expect("Should have removed at least two tiles")),
+                            *(removed_tiles
+                                .get(2)
+                                .expect("Should have removed at least three tiles")),
+                            *(removed_tiles
+                                .get(3)
+                                .expect("Should have removed at least four tiles")),
+                        ],
+                    };
+                    assert!(quad_group.is_valid());
+
+                    let mut new_groups = tile_groups.clone();
+                    new_groups.push(quad_group);
+
+                    // if this doesn't work, there is no other option - so we can return here without trying other alternatives
+                    return tenpai_grouping(&remaining_tiles, &new_groups);
+                } else {
+                    panic!("Should have only three or four tiles!");
+                }
+            } else {
+                println!("impossible, cannot be more than 4 tiles!");
+                return None;
+            }
+        }
+    }
+
+    // check number suits
+    for tile_suit in [
+        tiles::TileSuit::Man,
+        tiles::TileSuit::Pin,
+        tiles::TileSuit::Sou,
+    ] {
+        if let Some(tile_counts) = tile_counts_by_suit.get(&tile_suit) {
+            // TODO why consider all of the ranks one by one? why not just consider only tile ranks with count > 0, sorted in ascending order
+            for rank in 1..=9 {
+                let tile_rank = tiles::TileRank::Number(
+                    tiles::NumberTileRank::try_from(
+                        char::from_digit(rank, 10).expect("Valid rank integer for char"),
+                    )
+                    .expect("valid tile rank"),
+                );
+                // println!(
+                //     "considering tile {}{}",
+                //     char::from(tile_rank),
+                //     char::from(tile_suit)
+                // );
+
+                let tile_count = tile_counts.get(&tile_rank).unwrap_or(&0);
+                let tile_count = *tile_count;
+
+                if tile_count == 0 {
+                    continue;
+                }
+
+                let mut tenpai_hands: Vec<Vec<tiles::TileGroup>> = Vec::new();
+                if tile_count >= 1 {
+                    // single number tile can be used for single tile, a wait pattern, or for a sequence
+
+                    // always need to check for single tile
+                    let remaining_tiles = tiles.clone();
+                    let (remaining_tiles, removed_first_tile) =
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
+                    let new_single_tile_group = tiles::TileGroup::SingleTile {
+                        tile: removed_first_tile.expect("Should have removed at least one tile"),
+                    };
+                    let mut new_groups = tile_groups.clone();
+                    new_groups.push(new_single_tile_group);
+                    println!(
+                        "recursive call: using single tile {}{}",
+                        char::from(tile_rank),
+                        char::from(tile_suit)
+                    );
+                    if let Some(new_tenpai_hands) = tenpai_grouping(&remaining_tiles, &new_groups) {
+                        tenpai_hands.extend(new_tenpai_hands);
+                    }
+
+                    // check for presence of higher rank tiles
+                    // TODO refactor?
+                    let second_rank = rank + 1;
+                    let third_rank = rank + 2;
+
+                    if second_rank <= 9 {
+                        // need to check for open/edge wait as well
+
+                        // need to ensure that second_rank and third_rank are <= 9
+                        let second_tile_rank = tiles::NumberTileRank::try_from(
+                            char::from_digit(second_rank, 10).expect("Valid rank integer for char"),
+                        );
+
+                        if second_tile_rank.is_ok()
+                            && tile_counts
+                                .get(
+                                    &(tiles::TileRank::Number(
+                                        second_tile_rank.expect("Result should not be Err!"),
+                                    )),
+                                )
+                                .unwrap_or(&0)
+                                > &0
+                        {
+                            // println!("checking for open/edge wait starting at {}{}", char::from(tile_rank), char::from(tile_suit));
+                            let second_tile_rank = tiles::TileRank::Number(
+                                second_tile_rank.expect("Result should not be Err!"),
+                            );
+                            // build remaining tiles
+                            let remaining_tiles = tiles.clone();
+                            let (remaining_tiles, removed_first_tile) =
+                                remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
+                            let (remaining_tiles, removed_second_tile) = remove_first_copy(
+                                remaining_tiles,
+                                second_tile_rank,
+                                tile_suit,
+                                true,
+                            );
+
+                            // new group
+                            let new_group_tiles = [
+                                removed_first_tile.expect("Should have removed at least one tile"),
+                                removed_second_tile
+                                    .expect("Should have removed at least two tiles"),
+                            ];
+                            let new_wait_group = if rank == 1 || second_rank == 9 {
+                                tiles::TileGroup::EdgeWait {
+                                    tiles: new_group_tiles,
+                                }
+                            } else {
+                                tiles::TileGroup::OpenWait {
+                                    tiles: new_group_tiles,
+                                }
+                            };
+
+                            // recursive call
+                            let mut new_groups = tile_groups.clone();
+                            new_groups.push(new_wait_group);
+                            println!(
+                                "recursive call: using open/edge wait starting at {}{}",
+                                char::from(tile_rank),
+                                char::from(tile_suit)
+                            );
+
+                            if let Some(new_tenpai_hands) =
+                                tenpai_grouping(&remaining_tiles, &new_groups)
+                            {
+                                tenpai_hands.extend(new_tenpai_hands);
+                            }
+                        }
+                    }
+
+                    if third_rank <= 9 {
+                        // need to check for sequence and closed wait as well
+
+                        // need to ensure that second_rank and third_rank are <= 9
+                        let second_tile_rank = tiles::NumberTileRank::try_from(
+                            char::from_digit(second_rank, 10).expect("Valid rank integer for char"),
+                        );
+                        let third_tile_rank = tiles::NumberTileRank::try_from(
+                            char::from_digit(third_rank, 10).expect("Valid rank integer for char"),
+                        );
+
+                        // check for sequence
+                        if second_tile_rank.is_ok()
+                            && third_tile_rank.is_ok()
+                            && tile_counts
+                                .get(
+                                    &(tiles::TileRank::Number(
+                                        second_tile_rank.expect("Result should not be Err!"),
+                                    )),
+                                )
+                                .unwrap_or(&0)
+                                > &0
+                            && tile_counts
+                                .get(
+                                    &(tiles::TileRank::Number(
+                                        third_tile_rank.expect("Result should not be Err!"),
+                                    )),
+                                )
+                                .unwrap_or(&0)
+                                > &0
+                        {
+                            // println!("checking for sequence starting at {}{}", char::from(tile_rank), char::from(tile_suit));
+                            let second_tile_rank = tiles::TileRank::Number(
+                                second_tile_rank.expect("Result should not be Err!"),
+                            );
+                            let third_tile_rank = tiles::TileRank::Number(
+                                third_tile_rank.expect("Result should not be Err!"),
+                            );
+
+                            // build remaining tiles by removing one copy of each of the three tiles in the sequence
+                            let remaining_tiles = tiles.clone();
+                            let (remaining_tiles, removed_first_tile) =
+                                remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
+                            let (remaining_tiles, removed_second_tile) = remove_first_copy(
+                                remaining_tiles,
+                                second_tile_rank,
+                                tile_suit,
+                                true,
+                            );
+                            let (remaining_tiles, removed_third_tile) = remove_first_copy(
+                                remaining_tiles,
+                                third_tile_rank,
+                                tile_suit,
+                                true,
+                            );
+
+                            // new group
+                            let new_sequence_group = tiles::TileGroup::Sequence {
+                                open: false,
+                                tiles: [
+                                    removed_first_tile
+                                        .expect("Should have removed at least one tile"),
+                                    removed_second_tile
+                                        .expect("Should have removed at least two tiles"),
+                                    removed_third_tile
+                                        .expect("Should have removed at least three tiles"),
+                                ],
+                            };
+
+                            // if any existing winning hands use this sequence, you may still need to make this recursive call
+                            // e.g. for a hand with two identical sequences (e.g. 334455m, a valid winning hand will include multiple
+                            // identical melds)
+
+                            // recursive call
+                            let mut new_groups = tile_groups.clone();
+                            new_groups.push(new_sequence_group);
+                            println!(
+                                "recursive call: using sequence starting at {}{}",
+                                char::from(tile_rank),
+                                char::from(tile_suit)
+                            );
+
+                            if let Some(new_tenpai_hands) =
+                                tenpai_grouping(&remaining_tiles, &new_groups)
+                            {
+                                tenpai_hands.extend(new_tenpai_hands);
+                            }
+                        }
+
+                        // check for closed wait
+                        if third_tile_rank.is_ok()
+                            && tile_counts
+                                .get(
+                                    &(tiles::TileRank::Number(
+                                        third_tile_rank.expect("Result should not be Err!"),
+                                    )),
+                                )
+                                .unwrap_or(&0)
+                                > &0
+                        {
+                            // println!("checking for closed wait starting at {}{}", char::from(tile_rank), char::from(tile_suit));
+                            let third_tile_rank = tiles::TileRank::Number(
+                                third_tile_rank.expect("Result should not be Err!"),
+                            );
+
+                            // build remaining tiles by removing one copy of each of the three tiles in the sequence
+                            let remaining_tiles = tiles.clone();
+                            let (remaining_tiles, removed_first_tile) =
+                                remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
+                            let (remaining_tiles, removed_third_tile) = remove_first_copy(
+                                remaining_tiles,
+                                third_tile_rank,
+                                tile_suit,
+                                true,
+                            );
+
+                            // new group
+                            let new_wait_group = tiles::TileGroup::ClosedWait {
+                                tiles: [
+                                    removed_first_tile
+                                        .expect("Should have removed at least one tile"),
+                                    removed_third_tile
+                                        .expect("Should have removed at least three tiles"),
+                                ],
+                            };
+
+                            // recursive call
+                            let mut new_groups = tile_groups.clone();
+                            new_groups.push(new_wait_group);
+                            println!(
+                                "recursive call: using closed wait starting at {}{}",
+                                char::from(tile_rank),
+                                char::from(tile_suit)
+                            );
+
+                            if let Some(new_tenpai_hands) =
+                                tenpai_grouping(&remaining_tiles, &new_groups)
+                            {
+                                tenpai_hands.extend(new_tenpai_hands);
+                            }
+                        }
+                    }
+                }
+                if tile_count >= 2 {
+                    // two copies of number tile can be used for pair
+
+                    // build remaining tiles by removing two copies of the tile
+                    let remaining_tiles = tiles.clone();
+                    let (remaining_tiles, removed_first_tile) =
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
+                    let (remaining_tiles, removed_second_tile) =
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
+
+                    // new group
+                    let new_pair_group = tiles::TileGroup::Pair {
+                        tiles: [
+                            removed_first_tile.expect("Should have removed at least one tile"),
+                            removed_second_tile.expect("Should have removed at least two tiles"),
+                        ],
+                    };
+                    // println!("found pair of {}, remaining tiles: {:?}", new_tile_str, remaining_tiles);
+
+                    // recursive call
+                    println!(
+                        "recursive call: using pair of {}{}",
+                        char::from(tile_rank),
+                        char::from(tile_suit)
+                    );
+
+                    let mut new_groups = tile_groups.clone();
+                    new_groups.push(new_pair_group);
+
+                    if let Some(new_tenpai_hands) = tenpai_grouping(&remaining_tiles, &new_groups) {
+                        tenpai_hands.extend(new_tenpai_hands);
+                    }
+                }
+                if tile_count >= 3 {
+                    // three copies of number tile can be used for triplet
+                    // println!("checking for triplet of {new_tile_str}");
+
+                    // build remaining tiles by removing three copies of the tile
+                    let remaining_tiles = tiles.clone();
+                    let (remaining_tiles, removed_first_tile) =
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
+                    let (remaining_tiles, removed_second_tile) =
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
+                    let (remaining_tiles, removed_third_tile) =
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
+
+                    // new group
+                    let new_triplet_group = tiles::TileGroup::Triplet {
+                        open: false,
+                        tiles: [
+                            removed_first_tile.expect("Should have removed at least one tile"),
+                            removed_second_tile.expect("Should have removed at least two tiles"),
+                            removed_third_tile.expect("Should have removed at least three tiles"),
+                        ],
+                    };
+
+                    // recursive call
+                    println!(
+                        "recursive call: using triplet of {}{}",
+                        char::from(tile_rank),
+                        char::from(tile_suit)
+                    );
+
+                    let mut new_groups = tile_groups.clone();
+                    new_groups.push(new_triplet_group);
+
+                    if let Some(new_winning_hands) = tenpai_grouping(&remaining_tiles, &new_groups)
+                    {
+                        tenpai_hands.extend(new_winning_hands);
+                    }
+                }
+                if tile_count >= 4 {
+                    // three copies of number tile can be used for quad
+                    // println!("checking for quad of {new_tile_str}");
+
+                    // build remaining tiles by remtest_count_tiles_by_suit_rank_red_fivesoving four copies of the tile
+                    let remaining_tiles = tiles.clone();
+                    let (remaining_tiles, removed_first_tile) =
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
+                    let (remaining_tiles, removed_second_tile) =
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
+                    let (remaining_tiles, removed_third_tile) =
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
+                    let (remaining_tiles, removed_fourth_tile) =
+                        remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
+
+                    // new group
+                    let new_quad_group = tiles::TileGroup::Quad {
+                        open: false,
+                        added: false,
+                        tiles: [
+                            removed_first_tile.expect("Should have removed at least one tile"),
+                            removed_second_tile.expect("Should have removed at least two tiles"),
+                            removed_third_tile.expect("Should have removed at least three tiles"),
+                            removed_fourth_tile.expect("Should have removed at least four tiles"),
+                        ],
+                    };
+
+                    // recursive call
+                    println!(
+                        "recursive call: using quad of {}{}",
+                        char::from(tile_rank),
+                        char::from(tile_suit)
+                    );
+
+                    let mut new_groups = tile_groups.clone();
+                    new_groups.push(new_quad_group);
+
+                    if let Some(new_winning_hands) = tenpai_grouping(&remaining_tiles, &new_groups)
+                    {
+                        tenpai_hands.extend(new_winning_hands);
+                    }
+                }
+
+                // we have to use this tile in the winning hand somehow - if there's no winning hands at this point,
+                // then there are no winning hands at all
+                return if tenpai_hands.is_empty() {
+                    println!(
+                        "invalid grouping: could not use tile {}{}",
+                        char::from(tile_rank),
+                        char::from(tile_suit)
+                    );
+                    None
+                } else {
+                    Some(tenpai_hands)
+                };
+            }
+        }
+    }
+
+    // TODO can this ever get here?
+    return None;
+}
+
 #[cfg(test)]
 mod tests {
     // importing names from outer (for mod tests) scope.
@@ -1158,5 +1801,291 @@ mod tests {
             grouping_pair_tiles.contains(&String::from("6p"))
                 && grouping_pair_tiles.contains(&String::from("9p"))
         );
+    }
+
+    #[test]
+    fn test_tenpai_grouping_two_pairs() {
+        // from riichi wiki: https://riichi.wiki/Tenpai
+        let tenpai_tiles = Vec::new();
+
+        let tile_groups: Vec<tiles::TileGroup> = Vec::from([
+            tiles::TileGroup::Sequence {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("1p"),
+                    tiles::Tile::from_string("2p"),
+                    tiles::Tile::from_string("3p"),
+                ],
+            },
+            tiles::TileGroup::Sequence {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("4p"),
+                    tiles::Tile::from_string("5p"),
+                    tiles::Tile::from_string("6p"),
+                ],
+            },
+            tiles::TileGroup::Sequence {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("7p"),
+                    tiles::Tile::from_string("8p"),
+                    tiles::Tile::from_string("9p"),
+                ],
+            },
+            tiles::TileGroup::Pair {
+                tiles: [
+                    tiles::Tile::from_string("3m"),
+                    tiles::Tile::from_string("3m"),
+                ],
+            },
+            tiles::TileGroup::Pair {
+                tiles: [
+                    tiles::Tile::from_string("5s"),
+                    tiles::Tile::from_string("5s"),
+                ],
+            },
+        ]);
+        let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
+        assert!(tenpai_tile_groups.is_some());
+        assert!(
+            tenpai_tile_groups
+                .expect("Expect one tenpai grouping")
+                .len()
+                == 1
+        );
+
+        let tenpai_tiles = Vec::from([
+            tiles::Tile::from_string("1p"),
+            tiles::Tile::from_string("2p"),
+            tiles::Tile::from_string("3p"),
+            tiles::Tile::from_string("4p"),
+            tiles::Tile::from_string("5p"),
+            tiles::Tile::from_string("6p"),
+            tiles::Tile::from_string("7p"),
+            tiles::Tile::from_string("8p"),
+            tiles::Tile::from_string("9p"),
+            tiles::Tile::from_string("3m"),
+            tiles::Tile::from_string("3m"),
+            tiles::Tile::from_string("5s"),
+            tiles::Tile::from_string("5s"),
+        ]);
+
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
+        assert!(tenpai_tile_groups.is_some());
+        assert!(
+            tenpai_tile_groups
+                .expect("Expect one tenpai grouping")
+                .len()
+                == 1
+        );
+    }
+
+    #[test]
+    fn test_tenpai_grouping_pair_and_wait() {
+        // from riichi wiki: https://riichi.wiki/Tenpai
+        let tenpai_tiles = Vec::new();
+
+        let tile_groups: Vec<tiles::TileGroup> = Vec::from([
+            tiles::TileGroup::Triplet {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("1m"),
+                    tiles::Tile::from_string("1m"),
+                    tiles::Tile::from_string("1m"),
+                ],
+            },
+            tiles::TileGroup::Sequence {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("2s"),
+                    tiles::Tile::from_string("3s"),
+                    tiles::Tile::from_string("4s"),
+                ],
+            },
+            tiles::TileGroup::OpenWait {
+                tiles: [
+                    tiles::Tile::from_string("5s"),
+                    tiles::Tile::from_string("6s"),
+                ],
+            },
+            tiles::TileGroup::Triplet {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("8p"),
+                    tiles::Tile::from_string("8p"),
+                    tiles::Tile::from_string("8p"),
+                ],
+            },
+            tiles::TileGroup::Pair {
+                tiles: [
+                    tiles::Tile::from_string("3z"),
+                    tiles::Tile::from_string("3z"),
+                ],
+            },
+        ]);
+        let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
+        assert!(tenpai_tile_groups.is_some());
+        assert!(
+            tenpai_tile_groups
+                .expect("Expect one tenpai grouping")
+                .len()
+                == 1
+        );
+
+        let tenpai_tiles = Vec::from([
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("2s"),
+            tiles::Tile::from_string("3s"),
+            tiles::Tile::from_string("4s"),
+            tiles::Tile::from_string("5s"),
+            tiles::Tile::from_string("6s"),
+            tiles::Tile::from_string("8p"),
+            tiles::Tile::from_string("8p"),
+            tiles::Tile::from_string("8p"),
+            tiles::Tile::from_string("3z"),
+            tiles::Tile::from_string("3z"),
+        ]);
+
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
+        assert!(tenpai_tile_groups.is_some());
+        // two valid groupings as the 23456s can be broken into 234+56 or 23+456
+        assert!(
+            tenpai_tile_groups
+                .expect("Expect two tenpai groupings")
+                .len()
+                == 2
+        );
+    }
+
+    #[test]
+    fn test_tenpai_grouping_single_wait() {
+        // from riichi wiki: https://riichi.wiki/Tenpai
+        let tenpai_tiles = Vec::new();
+
+        let tile_groups: Vec<tiles::TileGroup> = Vec::from([
+            tiles::TileGroup::Sequence {
+                open: true,
+                tiles: [
+                    tiles::Tile::from_string("6m"),
+                    tiles::Tile::from_string("7m"),
+                    tiles::Tile::from_string("8m"),
+                ],
+            },
+            tiles::TileGroup::Triplet {
+                open: true,
+                tiles: [
+                    tiles::Tile::from_string("1p"),
+                    tiles::Tile::from_string("1p"),
+                    tiles::Tile::from_string("1p"),
+                ],
+            },
+            tiles::TileGroup::Triplet {
+                open: true,
+                tiles: [
+                    tiles::Tile::from_string("7s"),
+                    tiles::Tile::from_string("7s"),
+                    tiles::Tile::from_string("7s"),
+                ],
+            },
+            tiles::TileGroup::Sequence {
+                open: true,
+                tiles: [
+                    tiles::Tile::from_string("3s"),
+                    tiles::Tile::from_string("4s"),
+                    tiles::Tile::from_string("5s"),
+                ],
+            },
+            tiles::TileGroup::SingleTile {
+                tile: tiles::Tile::from_string("1z"),
+            },
+        ]);
+        let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
+        assert!(tenpai_tile_groups.is_some());
+        assert!(
+            tenpai_tile_groups
+                .expect("Expect one tenpai grouping")
+                .len()
+                == 1
+        );
+
+        let tenpai_tiles = Vec::from([
+            tiles::Tile::from_string("6m"),
+            tiles::Tile::from_string("7m"),
+            tiles::Tile::from_string("8m"),
+            tiles::Tile::from_string("1p"),
+            tiles::Tile::from_string("1p"),
+            tiles::Tile::from_string("1p"),
+            tiles::Tile::from_string("7s"),
+            tiles::Tile::from_string("7s"),
+            tiles::Tile::from_string("7s"),
+            tiles::Tile::from_string("3s"),
+            tiles::Tile::from_string("4s"),
+            tiles::Tile::from_string("5s"),
+            tiles::Tile::from_string("1z"),
+        ]);
+
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
+        assert!(tenpai_tile_groups.is_some());
+        assert!(
+            tenpai_tile_groups
+                .expect("Expect one tenpai grouping")
+                .len()
+                == 1
+        );
+    }
+
+    #[test]
+    fn test_not_tenpai_grouping_1() {
+        // from riichi wiki: https://riichi.wiki/Shanten
+        // not tenpai, too many incomplete groups
+        let tenpai_tiles = Vec::new();
+
+        let tile_groups: Vec<tiles::TileGroup> = Vec::from([
+            tiles::TileGroup::Triplet {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("1m"),
+                    tiles::Tile::from_string("1m"),
+                    tiles::Tile::from_string("1m"),
+                ],
+            },
+            tiles::TileGroup::Sequence {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("4p"),
+                    tiles::Tile::from_string("5p"),
+                    tiles::Tile::from_string("6p"),
+                ],
+            },
+            tiles::TileGroup::ClosedWait {
+                tiles: [
+                    tiles::Tile::from_string("2s"),
+                    tiles::Tile::from_string("4s"),
+                ],
+            },
+            tiles::TileGroup::SingleTile {
+                tile: tiles::Tile::from_string("6s"),
+            },
+            tiles::TileGroup::Pair {
+                tiles: [
+                    tiles::Tile::from_string("1z"),
+                    tiles::Tile::from_string("1z"),
+                ],
+            },
+            tiles::TileGroup::Pair {
+                tiles: [
+                    tiles::Tile::from_string("5z"),
+                    tiles::Tile::from_string("5z"),
+                ],
+            },
+        ]);
+        let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
+        assert!(tenpai_tile_groups.is_none());
     }
 }
