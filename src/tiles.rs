@@ -187,15 +187,18 @@ impl fmt::Display for Tile {
 }
 
 impl fmt::Debug for Tile {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Tile {} ({}{})",
-            self.serial,
-            char::from(self.rank()),
-            char::from(self.suit()),
-        )
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.to_string())
     }
+    // fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    //     write!(
+    //         f,
+    //         "Tile {} ({}{})",
+    //         self.serial,
+    //         char::from(self.rank()),
+    //         char::from(self.suit()),
+    //     )
+    // }
 }
 
 impl Tile {
