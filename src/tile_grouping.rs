@@ -636,6 +636,7 @@ pub fn tile_grouping(
     return None;
 }
 
+/// counts the number of pair incomplete groups
 pub fn number_pair_groups(tile_groups: &Vec<tiles::TileGroup>) -> usize {
     tile_groups
         .iter()
@@ -646,10 +647,43 @@ pub fn number_pair_groups(tile_groups: &Vec<tiles::TileGroup>) -> usize {
         .count()
 }
 
+/// counts the number of complete groups (triplets, quads, and sequences)
+pub fn number_complete_groups(tile_groups: &Vec<tiles::TileGroup>) -> usize {
+    tile_groups
+        .iter()
+        .filter(|group| group.is_complete())
+        .count()
+}
+
+/// counts the number of incomplete groups (including pair, open wait, edge wait, closed wait, single-tile)
 pub fn number_incomplete_groups(tile_groups: &Vec<tiles::TileGroup>) -> usize {
     tile_groups
         .iter()
         .filter(|group| !group.is_complete())
+        .count()
+}
+
+/// counts the number of single-tile incomplete groups
+pub fn number_single_tile_groups(tile_groups: &Vec<tiles::TileGroup>) -> usize {
+    tile_groups
+        .iter()
+        .filter(|group| match group {
+            tiles::TileGroup::SingleTile { .. } => true,
+            _ => false,
+        })
+        .count()
+}
+
+/// counts the number of two-tile wait incomplete groups (open wait, edge wait, or closed wait, but not pairs)
+pub fn number_wait_groups(tile_groups: &Vec<tiles::TileGroup>) -> usize {
+    tile_groups
+        .iter()
+        .filter(|group| match group {
+            tiles::TileGroup::EdgeWait { .. } => true,
+            tiles::TileGroup::OpenWait { .. } => true,
+            tiles::TileGroup::ClosedWait { .. } => true,
+            _ => false,
+        })
         .count()
 }
 
@@ -665,29 +699,133 @@ pub fn tenpai_grouping(
     // 4. twelve different terminals and honors, one of which is paired
     // 5. thirteen different terminals and honors, none of which is paired
 
+    // TODO check for nonstandard tenpai (for seven pairs and for thirteen orphans)
+
     // can return multiple values if there are multiple valid groupings
 
     println!("{} remaining tiles: {:?}", tiles.len(), tiles);
+
+    let num_complete_groups = number_complete_groups(tile_groups);
+    let num_incomplete_groups = number_incomplete_groups(tile_groups);
+    let num_pair_groups = number_pair_groups(tile_groups);
+    let num_single_tile_groups = number_single_tile_groups(tile_groups);
+    let num_wait_groups = number_wait_groups(tile_groups);
+
+    if num_incomplete_groups > 2 {
+        println!("not tenpai hand: more than two incomplete groups");
+        return None;
+    }
+    if num_single_tile_groups > 1 {
+        println!("not tenpai hand: more than one single tile group");
+        return None;
+    }
+    if num_single_tile_groups == 1 && num_incomplete_groups > 1 {
+        println!(
+            "not tenpai hand: if there is a single-tile group, all other groups must be complete"
+        );
+        return None;
+    }
+    if num_wait_groups > 1 {
+        println!("not tenpai hand: more than one two-tile, non-pair wait group");
+        return None;
+    }
+    if num_wait_groups == 1 && (num_pair_groups > 1 || num_single_tile_groups > 0) {
+        println!(
+            "not tenpai hand: if there is a two-tile, non-pair wait group, there can only be one other incomplete group, and it must be a pair"
+        );
+        return None;
+    }
+    if num_incomplete_groups == 2 && num_pair_groups == 0 {
+        println!("not tenpai hand: two incomplete groups, but neither is a pair");
+        return None;
+    }
+    if num_pair_groups == 2 && (num_single_tile_groups > 0 || num_wait_groups > 0) {
+        println!(
+            "not tenpai hand: two pair groups, but there are other incomplete groups is a pair"
+        );
+        return None;
+    }
+    if num_pair_groups == 1 && (num_single_tile_groups > 0 || num_wait_groups > 1) {
+        println!("not tenpai hand: one pair group, there can only be one other two-tile, non-pair wait group");
+        return None;
+    }
 
     if tiles.is_empty() {
         // println!("partial hand so far:");
         // println!("pair tile: {:?}", tiles::get_pair_group(hand_groups));
         // println!("melds: {:?}", hand_groups);
-        if number_incomplete_groups(tile_groups) == 1 {
-            println!("found tenpai hand: {:?}", tile_groups);
-            return Some(vec![tile_groups.to_vec()]);
-        } else if number_incomplete_groups(tile_groups) == 2 && number_pair_groups(tile_groups) >= 1
-        {
-            // if there are two incomplete groups, at least one of them must be a pair
-            println!("found tenpai hand: {:?}", tile_groups);
-            return Some(vec![tile_groups.to_vec()]);
-        } else {
-            println!(
-                "not tenpai hand: with no tiles remaining, num incomplete groups = {}, num pair groups = {}",
-                number_incomplete_groups(tile_groups),
-                number_pair_groups(tile_groups)
-            );
+        if num_incomplete_groups == 0 {
+            println!("not tenpai hand: no incomplete groups");
             return None;
+        } else if num_single_tile_groups >= 1 {
+            if num_single_tile_groups == 1 {
+                if num_complete_groups == 4
+                    && num_pair_groups == 0
+                    && num_wait_groups == 0
+                    && num_incomplete_groups == 1
+                {
+                    println!("found tenpai hand: {:?}", tile_groups);
+                    return Some(vec![tile_groups.to_vec()]);
+                } else {
+                    println!("not tenpai hand: one single-tile group must be with 4 complete groups (no other incomplete groups)");
+                    return None;
+                }
+            } else {
+                println!("not tenpai hand: more than one single-tile group");
+                return None;
+            }
+        } else if num_wait_groups >= 1 {
+            if num_wait_groups == 1 {
+                if num_pair_groups == 1
+                    && num_complete_groups == 3
+                    && num_incomplete_groups == 2
+                    && num_single_tile_groups == 0
+                {
+                    println!("found tenpai hand: {:?}", tile_groups);
+                    return Some(vec![tile_groups.to_vec()]);
+                } else {
+                    println!(
+                        "not tenpai hand: one two-tile wait group must be with 3 complete groups and one pair group"
+                    );
+                    return None;
+                }
+            } else {
+                println!("not tenpai hand: more than one two-tile wait group");
+                return None;
+            }
+        } else if num_pair_groups >= 1 {
+            if num_pair_groups == 1 {
+                if num_wait_groups == 1
+                    && num_complete_groups == 3
+                    && num_incomplete_groups == 2
+                    && num_single_tile_groups == 0
+                {
+                    println!("found tenpai hand: {:?}", tile_groups);
+                    return Some(vec![tile_groups.to_vec()]);
+                } else {
+                    println!(
+                        "not tenpai hand: one pair group must be with 3 complete groups and one two-tile wait group"
+                    );
+                    return None;
+                }
+            } else if num_pair_groups == 2 {
+                if num_wait_groups == 0
+                    && num_complete_groups == 3
+                    && num_incomplete_groups == 2
+                    && num_single_tile_groups == 0
+                {
+                    println!("found tenpai hand: {:?}", tile_groups);
+                    return Some(vec![tile_groups.to_vec()]);
+                } else {
+                    println!("not tenpai hand: two pair groups must be with 3 complete groups (no other incomplete groups)");
+                    return None;
+                }
+            } else {
+                println!("not tenpai hand: more than two pair groups");
+                return None;
+            }
+        } else {
+            panic!("there should be at least one incomplete group of some type");
         }
     }
     if tiles.len() == 1 {
@@ -695,17 +833,6 @@ pub fn tenpai_grouping(
         //     "invalid grouping: only one tile left {}",
         //     tiles.get(0).expect("should be one tile left")
         // );
-        return None;
-    }
-
-    if number_incomplete_groups(tile_groups) > 2
-        || (number_incomplete_groups(tile_groups) == 2 && number_pair_groups(tile_groups) == 0)
-    {
-        println!(
-            "not tenpai hand: num incomplete groups = {}, num pair groups = {}",
-            number_incomplete_groups(tile_groups),
-            number_pair_groups(tile_groups)
-        );
         return None;
     }
 
@@ -717,8 +844,7 @@ pub fn tenpai_grouping(
     let tile_counts_by_suit = count_tiles_by_suit_rank(&remaining_tiles, true);
 
     // check honor tiles:
-    // - any isolated honors? if so, not winning
-    // - if there is a pair, that must be the only pair in the hand
+    // since honor tiles cannot form sequences, all copies of each honor tile must belong to a single tile group
     let honor_suit = tiles::TileSuit::Honor;
     if let Some(honor_counts) = tile_counts_by_suit.get(&honor_suit) {
         for (tile_rank, tile_count) in honor_counts {
@@ -1215,7 +1341,7 @@ pub fn tenpai_grouping(
                     }
                 }
                 if tile_count >= 4 {
-                    // three copies of number tile can be used for quad
+                    // four copies of number tile can be used for quad
                     // println!("checking for quad of {new_tile_str}");
 
                     // build remaining tiles by remtest_count_tiles_by_suit_rank_red_fivesoving four copies of the tile
@@ -1257,8 +1383,8 @@ pub fn tenpai_grouping(
                     }
                 }
 
-                // we have to use this tile in the winning hand somehow - if there's no winning hands at this point,
-                // then there are no winning hands at all
+                // we have to use this tile in the tenpai hand somehow - if there's no tenpai hands at this point,
+                // then there are no tenpai hands at all
                 return if tenpai_hands.is_empty() {
                     println!(
                         "invalid grouping: could not use tile {}{}",
@@ -2041,6 +2167,80 @@ mod tests {
     }
 
     #[test]
+    fn test_tenpai_grouping_four_copies() {
+        let winning_tiles = Vec::from([
+            // four copies of 1m = the correct grouping is 2 sequences and a pair (11+123+123)
+            // other possible groupings:
+            // quad? then you have 223344445 - can't treat 22 as a pair; 234+24+3445
+            // triplet? then you have 1223344445 - last 1 could be a sequence or a wait: (consider the 5)
+            //  123+24+345+44 / 123+
+            //  123
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("2m"),
+            tiles::Tile::from_string("2m"),
+            tiles::Tile::from_string("3m"),
+            tiles::Tile::from_string("3m"),
+            // four copies of 4s = the correct grouping is triplet and open wait (444+45)
+            tiles::Tile::from_string("4s"),
+            tiles::Tile::from_string("4s"),
+            tiles::Tile::from_string("4s"),
+            tiles::Tile::from_string("4s"),
+            tiles::Tile::from_string("5s"),
+        ]);
+
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let winning_tile_groups = tile_grouping(&winning_tiles, &tile_groups);
+        assert!(winning_tile_groups.is_some());
+        assert!(
+            winning_tile_groups
+                .expect("Expect one winning grouping")
+                .len()
+                == 1
+        );
+    }
+
+    #[test]
+    fn test_tenpai_grouping_complex_tenpai_chinitsu() {
+        let winning_tiles = Vec::from([
+            // 8 possible tenpai groupings:
+            // 111-12-234-345-44
+            // 111-13-22-345-444
+            // 111-123-2-345-444
+            // 111-123-24-44-345
+            // 111-123-234-44-45
+            // 111-123-234-444-5
+            // 11-123-12-345-444
+            // 11-123-123-444-45
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("2m"),
+            tiles::Tile::from_string("2m"),
+            tiles::Tile::from_string("3m"),
+            tiles::Tile::from_string("3m"),
+            tiles::Tile::from_string("4m"),
+            tiles::Tile::from_string("4m"),
+            tiles::Tile::from_string("4m"),
+            tiles::Tile::from_string("4m"),
+            tiles::Tile::from_string("5m"),
+        ]);
+
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let winning_tile_groups = tile_grouping(&winning_tiles, &tile_groups);
+        assert!(winning_tile_groups.is_some());
+        assert!(
+            winning_tile_groups
+                .expect("Expect eight winning groupings")
+                .len()
+                == 8
+        );
+    }
+
+    #[test]
     fn test_not_tenpai_grouping_1() {
         // from riichi wiki: https://riichi.wiki/Shanten
         // not tenpai, too many incomplete groups
@@ -2085,6 +2285,92 @@ mod tests {
                 ],
             },
         ]);
+        let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
+        assert!(tenpai_tile_groups.is_none());
+
+        let tenpai_tiles = Vec::from([
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("4p"),
+            tiles::Tile::from_string("5p"),
+            tiles::Tile::from_string("6p"),
+            tiles::Tile::from_string("2s"),
+            tiles::Tile::from_string("4s"),
+            tiles::Tile::from_string("6s"),
+            tiles::Tile::from_string("1z"),
+            tiles::Tile::from_string("1z"),
+            tiles::Tile::from_string("5z"),
+            tiles::Tile::from_string("5z"),
+        ]);
+
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
+        assert!(tenpai_tile_groups.is_none());
+    }
+
+    #[test]
+    fn test_not_tenpai_grouping_2() {
+        // from riichi wiki: https://riichi.wiki/Shanten
+        // not tenpai, 3 complete groups + pair + single tile is not tenpai
+        let tenpai_tiles = Vec::new();
+
+        let tile_groups: Vec<tiles::TileGroup> = Vec::from([
+            tiles::TileGroup::Triplet {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("1m"),
+                    tiles::Tile::from_string("1m"),
+                    tiles::Tile::from_string("1m"),
+                ],
+            },
+            tiles::TileGroup::Triplet {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("1p"),
+                    tiles::Tile::from_string("1p"),
+                    tiles::Tile::from_string("1p"),
+                ],
+            },
+            tiles::TileGroup::Triplet {
+                open: false,
+                tiles: [
+                    tiles::Tile::from_string("1s"),
+                    tiles::Tile::from_string("1s"),
+                    tiles::Tile::from_string("1s"),
+                ],
+            },
+            tiles::TileGroup::SingleTile {
+                tile: tiles::Tile::from_string("5s"),
+            },
+            tiles::TileGroup::Pair {
+                tiles: [
+                    tiles::Tile::from_string("1z"),
+                    tiles::Tile::from_string("1z"),
+                ],
+            },
+        ]);
+        let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
+        assert_eq!(number_pair_groups(&tile_groups), 1);
+        assert_eq!(number_single_tile_groups(&tile_groups), 1);
+        assert!(tenpai_tile_groups.is_none());
+
+        let tenpai_tiles = Vec::from([
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("1m"),
+            tiles::Tile::from_string("1p"),
+            tiles::Tile::from_string("1p"),
+            tiles::Tile::from_string("1p"),
+            tiles::Tile::from_string("1s"),
+            tiles::Tile::from_string("1s"),
+            tiles::Tile::from_string("1s"),
+            tiles::Tile::from_string("1z"),
+            tiles::Tile::from_string("1z"),
+            tiles::Tile::from_string("5s"),
+        ]);
+
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
         let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
         assert!(tenpai_tile_groups.is_none());
     }
