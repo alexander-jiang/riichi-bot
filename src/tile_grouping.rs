@@ -1086,6 +1086,8 @@ pub fn tenpai_grouping(
                                 get_tile_groups_string(&new_tenpai_hand_grouping);
                             if !tenpai_hand_strings.contains(&new_tile_groups_string) {
                                 tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                            } else {
+                                println!("found duplicated tenpai grouping! {}", new_tile_groups_string);
                             }
                         }
                         // tenpai_hands.extend(new_tenpai_hands);
@@ -1131,6 +1133,8 @@ pub fn tenpai_grouping(
                                 get_tile_groups_string(&new_tenpai_hand_grouping);
                             if !tenpai_hand_strings.contains(&new_tile_groups_string) {
                                 tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                            } else {
+                                println!("found duplicated tenpai grouping! {}", new_tile_groups_string);
                             }
                         }
                         // tenpai_hands.extend(new_tenpai_hands);
@@ -1177,6 +1181,8 @@ pub fn tenpai_grouping(
                                 get_tile_groups_string(&new_tenpai_hand_grouping);
                             if !tenpai_hand_strings.contains(&new_tile_groups_string) {
                                 tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                            } else {
+                                println!("found duplicated tenpai grouping! {}", new_tile_groups_string);
                             }
                         }
                         // tenpai_hands.extend(new_tenpai_hands);
@@ -1213,6 +1219,8 @@ pub fn tenpai_grouping(
                                     get_tile_groups_string(&new_tenpai_hand_grouping);
                                 if !tenpai_hand_strings.contains(&new_tile_groups_string) {
                                     tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                                } else {
+                                    println!("found duplicated tenpai grouping! {}", new_tile_groups_string);
                                 }
                             }
                             // tenpai_hands.extend(new_tenpai_hands);
@@ -1300,6 +1308,8 @@ pub fn tenpai_grouping(
                                             get_tile_groups_string(&new_tenpai_hand_grouping);
                                         if !tenpai_hand_strings.contains(&new_tile_groups_string) {
                                             tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                                        } else {
+                                            println!("found duplicated tenpai grouping! {}", new_tile_groups_string);
                                         }
                                     }
                                     // tenpai_hands.extend(new_tenpai_hands);
@@ -1380,6 +1390,8 @@ pub fn tenpai_grouping(
                                             get_tile_groups_string(&new_tenpai_hand_grouping);
                                         if !tenpai_hand_strings.contains(&new_tile_groups_string) {
                                             tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                                        } else {
+                                            println!("found duplicated tenpai grouping! {}", new_tile_groups_string);
                                         }
                                     }
                                     // tenpai_hands.extend(new_tenpai_hands);
@@ -1469,6 +1481,8 @@ pub fn tenpai_grouping(
                                         get_tile_groups_string(&new_tenpai_hand_grouping);
                                     if !tenpai_hand_strings.contains(&new_tile_groups_string) {
                                         tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                                    } else {
+                                        println!("found duplicated tenpai grouping! {}", new_tile_groups_string);
                                     }
                                 }
                                 // tenpai_hands.extend(new_tenpai_hands);
