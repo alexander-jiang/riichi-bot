@@ -755,6 +755,35 @@ impl TileGroup {
             Self::SingleTile { .. } => true,
         }
     }
+
+    /// Get all tiles of the group sorted lexicographically (by their MPSZ notation)
+    pub fn to_tiles_string(&self) -> String {
+        let mut tile_strings = match self {
+            Self::Triplet { tiles, .. } => vec![
+                tiles[0].to_string(),
+                tiles[1].to_string(),
+                tiles[2].to_string(),
+            ],
+            Self::Quad { tiles, .. } => vec![
+                tiles[0].to_string(),
+                tiles[1].to_string(),
+                tiles[2].to_string(),
+                tiles[3].to_string(),
+            ],
+            Self::Sequence { tiles, .. } => vec![
+                tiles[0].to_string(),
+                tiles[1].to_string(),
+                tiles[2].to_string(),
+            ],
+            Self::Pair { tiles, .. } => vec![tiles[0].to_string(), tiles[1].to_string()],
+            Self::OpenWait { tiles, .. } => vec![tiles[0].to_string(), tiles[1].to_string()],
+            Self::ClosedWait { tiles, .. } => vec![tiles[0].to_string(), tiles[1].to_string()],
+            Self::EdgeWait { tiles, .. } => vec![tiles[0].to_string(), tiles[1].to_string()],
+            Self::SingleTile { tile, .. } => vec![tile.to_string()],
+        };
+        tile_strings.sort();
+        tile_strings.join(",")
+    }
 }
 
 pub fn get_pair_group(tile_groups: &Vec<TileGroup>) -> Option<Tile> {

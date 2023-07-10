@@ -667,6 +667,26 @@ pub fn number_wait_groups(tile_groups: &Vec<tiles::TileGroup>) -> usize {
         .count()
 }
 
+pub fn get_tile_groups_string(tile_groups: &Vec<tiles::TileGroup>) -> String {
+    let mut tile_groups_string = Vec::new();
+    for group in tile_groups {
+        tile_groups_string.push(group.to_tiles_string());
+    }
+    tile_groups_string.sort();
+    let tile_groups_string = tile_groups_string;
+    tile_groups_string.join("-")
+}
+
+pub fn get_tile_groups_strings(tile_groups_list: &Vec<Vec<tiles::TileGroup>>) -> Vec<String> {
+    let mut tile_groups_strings = Vec::new();
+    for tile_groups in tile_groups_list {
+        let tile_groups_string: String = get_tile_groups_string(&tile_groups);
+        tile_groups_strings.push(tile_groups_string);
+    }
+    let tile_groups_strings = tile_groups_strings;
+    tile_groups_strings
+}
+
 pub fn tenpai_grouping(
     tiles: &Vec<tiles::Tile>,
     tile_groups: &Vec<tiles::TileGroup>,
@@ -1056,9 +1076,19 @@ pub fn tenpai_grouping(
                     let mut new_groups = tile_groups.clone();
                     new_groups.push(new_quad_group);
 
-                    if let Some(new_winning_hands) = tenpai_grouping(&remaining_tiles, &new_groups)
-                    {
-                        tenpai_hands.extend(new_winning_hands);
+                    if let Some(new_tenpai_hands) = tenpai_grouping(&remaining_tiles, &new_groups) {
+                        // check if the new tenpai hands contain any duplicates
+                        // TODO refactor to remove duplicated code (use fn that takes in mut reference to update tenpai_hands?)
+                        // TODO refactor to improve performance?
+                        let tenpai_hand_strings = get_tile_groups_strings(&tenpai_hands);
+                        for new_tenpai_hand_grouping in new_tenpai_hands.iter() {
+                            let new_tile_groups_string =
+                                get_tile_groups_string(&new_tenpai_hand_grouping);
+                            if !tenpai_hand_strings.contains(&new_tile_groups_string) {
+                                tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                            }
+                        }
+                        // tenpai_hands.extend(new_tenpai_hands);
                     }
                 }
 
@@ -1091,9 +1121,19 @@ pub fn tenpai_grouping(
                     let mut new_groups = tile_groups.clone();
                     new_groups.push(new_triplet_group);
 
-                    if let Some(new_winning_hands) = tenpai_grouping(&remaining_tiles, &new_groups)
-                    {
-                        tenpai_hands.extend(new_winning_hands);
+                    if let Some(new_tenpai_hands) = tenpai_grouping(&remaining_tiles, &new_groups) {
+                        // check if the new tenpai hands contain any duplicates
+                        // TODO refactor to remove duplicated code (use fn that takes in mut reference to update tenpai_hands?)
+                        // TODO refactor to improve performance?
+                        let tenpai_hand_strings = get_tile_groups_strings(&tenpai_hands);
+                        for new_tenpai_hand_grouping in new_tenpai_hands.iter() {
+                            let new_tile_groups_string =
+                                get_tile_groups_string(&new_tenpai_hand_grouping);
+                            if !tenpai_hand_strings.contains(&new_tile_groups_string) {
+                                tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                            }
+                        }
+                        // tenpai_hands.extend(new_tenpai_hands);
                     }
                 }
 
@@ -1128,7 +1168,18 @@ pub fn tenpai_grouping(
                     new_groups.push(new_pair_group);
 
                     if let Some(new_tenpai_hands) = tenpai_grouping(&remaining_tiles, &new_groups) {
-                        tenpai_hands.extend(new_tenpai_hands);
+                        // check if the new tenpai hands contain any duplicates
+                        // TODO refactor to remove duplicated code (use fn that takes in mut reference to update tenpai_hands?)
+                        // TODO refactor to improve performance?
+                        let tenpai_hand_strings = get_tile_groups_strings(&tenpai_hands);
+                        for new_tenpai_hand_grouping in new_tenpai_hands.iter() {
+                            let new_tile_groups_string =
+                                get_tile_groups_string(&new_tenpai_hand_grouping);
+                            if !tenpai_hand_strings.contains(&new_tile_groups_string) {
+                                tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                            }
+                        }
+                        // tenpai_hands.extend(new_tenpai_hands);
                     }
                 }
 
@@ -1153,7 +1204,18 @@ pub fn tenpai_grouping(
                         if let Some(new_tenpai_hands) =
                             tenpai_grouping(&remaining_tiles, &new_groups)
                         {
-                            tenpai_hands.extend(new_tenpai_hands);
+                            // check if the new tenpai hands contain any duplicates
+                            // TODO refactor to remove duplicated code (use fn that takes in mut reference to update tenpai_hands?)
+                            // TODO refactor to improve performance?
+                            let tenpai_hand_strings = get_tile_groups_strings(&tenpai_hands);
+                            for new_tenpai_hand_grouping in new_tenpai_hands.iter() {
+                                let new_tile_groups_string =
+                                    get_tile_groups_string(&new_tenpai_hand_grouping);
+                                if !tenpai_hand_strings.contains(&new_tile_groups_string) {
+                                    tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                                }
+                            }
+                            // tenpai_hands.extend(new_tenpai_hands);
                         }
                     }
 
@@ -1228,7 +1290,19 @@ pub fn tenpai_grouping(
                                 if let Some(new_tenpai_hands) =
                                     tenpai_grouping(&remaining_tiles, &new_groups)
                                 {
-                                    tenpai_hands.extend(new_tenpai_hands);
+                                    // check if the new tenpai hands contain any duplicates
+                                    // TODO refactor to remove duplicated code (use fn that takes in mut reference to update tenpai_hands?)
+                                    // TODO refactor to improve performance?
+                                    let tenpai_hand_strings =
+                                        get_tile_groups_strings(&tenpai_hands);
+                                    for new_tenpai_hand_grouping in new_tenpai_hands.iter() {
+                                        let new_tile_groups_string =
+                                            get_tile_groups_string(&new_tenpai_hand_grouping);
+                                        if !tenpai_hand_strings.contains(&new_tile_groups_string) {
+                                            tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                                        }
+                                    }
+                                    // tenpai_hands.extend(new_tenpai_hands);
                                 }
                             }
                         }
@@ -1296,7 +1370,19 @@ pub fn tenpai_grouping(
                                 if let Some(new_tenpai_hands) =
                                     tenpai_grouping(&remaining_tiles, &new_groups)
                                 {
-                                    tenpai_hands.extend(new_tenpai_hands);
+                                    // check if the new tenpai hands contain any duplicates
+                                    // TODO refactor to remove duplicated code (use fn that takes in mut reference to update tenpai_hands?)
+                                    // TODO refactor to improve performance?
+                                    let tenpai_hand_strings =
+                                        get_tile_groups_strings(&tenpai_hands);
+                                    for new_tenpai_hand_grouping in new_tenpai_hands.iter() {
+                                        let new_tile_groups_string =
+                                            get_tile_groups_string(&new_tenpai_hand_grouping);
+                                        if !tenpai_hand_strings.contains(&new_tile_groups_string) {
+                                            tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                                        }
+                                    }
+                                    // tenpai_hands.extend(new_tenpai_hands);
                                 }
                             }
                         }
@@ -1374,7 +1460,18 @@ pub fn tenpai_grouping(
                             if let Some(new_tenpai_hands) =
                                 tenpai_grouping(&remaining_tiles, &new_groups)
                             {
-                                tenpai_hands.extend(new_tenpai_hands);
+                                // check if the new tenpai hands contain any duplicates
+                                // TODO refactor to remove duplicated code (use fn that takes in mut reference to update tenpai_hands?)
+                                // TODO refactor to improve performance?
+                                let tenpai_hand_strings = get_tile_groups_strings(&tenpai_hands);
+                                for new_tenpai_hand_grouping in new_tenpai_hands.iter() {
+                                    let new_tile_groups_string =
+                                        get_tile_groups_string(&new_tenpai_hand_grouping);
+                                    if !tenpai_hand_strings.contains(&new_tile_groups_string) {
+                                        tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                                    }
+                                }
+                                // tenpai_hands.extend(new_tenpai_hands);
                             }
                         }
                     }
