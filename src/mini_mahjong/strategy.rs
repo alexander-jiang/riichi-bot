@@ -83,3 +83,51 @@ pub fn discard_isolated(game_state: &simulator::MiniGameState) -> usize {
         rng.gen_range(0..game_state.hand_tiles.len())
     }
 }
+
+pub fn discard_hold_initial_wait(game_state: &simulator::MiniGameState) -> usize {
+    // build count by rank of hand tiles
+    let mut hand_tiles_by_rank: HashMap<u32, u32> = HashMap::new();
+    for tile in &game_state.hand_tiles {
+        let count = hand_tiles_by_rank.entry(tile.rank()).or_insert(0);
+        *count += 1;
+    }
+    let hand_tiles_by_rank = hand_tiles_by_rank;
+
+    // determine which tile is "extra" from the best wait
+    for tile_idx in 0..game_state.hand_tiles.len() {
+        let tile = game_state
+            .hand_tiles
+            .get(tile_idx)
+            .expect("should be a valid index");
+
+        match tile.rank() {
+            5 => {
+                // this is a winning tile (shouldn't get to here, but also should not discard)
+                continue;
+            }
+            8 => {
+                // this is a winning tile (shouldn't get to here, but also should not discard)
+                continue;
+            }
+            2 => {
+                if hand_tiles_by_rank.get(&2).unwrap_or(&0) > &2 {
+                    return tile_idx;
+                }
+            }
+            6 => {
+                if hand_tiles_by_rank.get(&6).unwrap_or(&0) > &1 {
+                    return tile_idx;
+                }
+            }
+            7 => {
+                if hand_tiles_by_rank.get(&7).unwrap_or(&0) > &1 {
+                    return tile_idx;
+                }
+            }
+            _ => {
+                return tile_idx;
+            }
+        };
+    }
+    panic!("not expected to reach this part, should have found a tile to discard already!")
+}
