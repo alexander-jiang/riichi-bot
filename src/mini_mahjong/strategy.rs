@@ -1,4 +1,5 @@
 use crate::mini_mahjong::simulator;
+use crate::mini_mahjong::tenpai;
 use std::collections::HashMap;
 
 use rand::prelude::*;
@@ -131,3 +132,16 @@ pub fn discard_hold_initial_wait(game_state: &simulator::MiniGameState) -> usize
     }
     panic!("not expected to reach this part, should have found a tile to discard already!")
 }
+
+// pub fn hold_tenpai(game_state: &simulator::MiniGameState) -> usize {
+//     // first: identify if a hand of 4 tiles is in tenpai (i.e. is able to win off of any of the tiles)
+//     // if discarding a tile achieves tenpai, then do that, and future discards will only discard the tiles that are drawn (i.e. maintain the initial tenpai wait)
+//     // if no tile discard achieves tenpai, discard randomly
+//     let tenpai_tiles = tenpai::tenpai(game_state);
+//     if !tenpai_tiles.is_empty() {
+//         // TODO pick one of the tenpai winning tiles
+
+//     } else {
+//         discard_random(game_state)
+//     }
+// }

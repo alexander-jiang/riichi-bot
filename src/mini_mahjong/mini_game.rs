@@ -93,7 +93,9 @@ pub fn is_winning_mini_hand(tiles: &Vec<MiniTile>) -> bool {
             let count = new_tile_counts.entry(rank).or_insert(0);
             *count -= 2;
             let new_tile_counts = new_tile_counts;
-            return contains_sequence(&new_tile_counts) || contains_triplet(&new_tile_counts);
+            if contains_sequence(&new_tile_counts) || contains_triplet(&new_tile_counts) {
+                return true;
+            }
         }
     }
     false
@@ -224,6 +226,19 @@ mod tests {
             MiniTile { serial: 1 },  // 2p
             MiniTile { serial: 19 }, // 2p
             MiniTile { serial: 28 }, // 2p
+        ];
+
+        assert_eq!(is_winning_mini_hand(&tiles), true);
+    }
+
+    #[test]
+    fn test_winning_mini_hand_with_triplet2() {
+        let tiles: Vec<MiniTile> = vec![
+            MiniTile { serial: 0 },  // 1p
+            MiniTile { serial: 9 },  // 1p
+            MiniTile { serial: 3 },  // 4p
+            MiniTile { serial: 12 }, // 4p
+            MiniTile { serial: 21 }, // 4p
         ];
 
         assert_eq!(is_winning_mini_hand(&tiles), true);
