@@ -85,7 +85,7 @@ pub fn discard_isolated(game_state: &simulator::MiniGameState) -> usize {
     }
 }
 
-pub fn discard_hold_initial_wait(game_state: &simulator::MiniGameState) -> usize {
+pub fn hardcoded_initial_wait(game_state: &simulator::MiniGameState) -> usize {
     // build count by rank of hand tiles
     let mut hand_tiles_by_rank: HashMap<u32, u32> = HashMap::new();
     for tile in &game_state.hand_tiles {
@@ -94,7 +94,7 @@ pub fn discard_hold_initial_wait(game_state: &simulator::MiniGameState) -> usize
     }
     let hand_tiles_by_rank = hand_tiles_by_rank;
 
-    // determine which tile is "extra" from the best wait
+    // determine which tile is "extra" from the best wait (hardcoded)
     for tile_idx in 0..game_state.hand_tiles.len() {
         let tile = game_state
             .hand_tiles
@@ -133,15 +133,55 @@ pub fn discard_hold_initial_wait(game_state: &simulator::MiniGameState) -> usize
     panic!("not expected to reach this part, should have found a tile to discard already!")
 }
 
-// pub fn hold_tenpai(game_state: &simulator::MiniGameState) -> usize {
-//     // first: identify if a hand of 4 tiles is in tenpai (i.e. is able to win off of any of the tiles)
-//     // if discarding a tile achieves tenpai, then do that, and future discards will only discard the tiles that are drawn (i.e. maintain the initial tenpai wait)
-//     // if no tile discard achieves tenpai, discard randomly
-//     let tenpai_tiles = tenpai::tenpai(game_state);
-//     if !tenpai_tiles.is_empty() {
-//         // TODO pick one of the tenpai winning tiles
+pub fn hold_tenpai(game_state: &simulator::MiniGameState) -> usize {
+    // first: identify if a hand of 4 tiles is in tenpai (i.e. is able to win off of any of the tiles)
+    // if discarding a tile achieves tenpai, then do that, and future discards will only discard the tiles that are drawn (i.e. maintain the initial tenpai wait)
+    // if no tile discard achieves tenpai, discard randomly
 
-//     } else {
-//         discard_random(game_state)
-//     }
-// }
+    let mut best_tile_idx: Option<usize> = None;
+    let mut best_winning_tile_count: Option<u32> = None;
+    for tile_idx in 0..game_state.hand_tiles.len() {
+        let mut remaining_tiles_after_discard = game_state.hand_tiles.clone();
+        remaining_tiles_after_discard.swap_remove(tile_idx);
+        let tenpai_tiles = tenpai::get_tenpai_tiles(&remaining_tiles_after_discard);
+
+        if !tenpai_tiles.is_empty() {
+            // discard this tile achieves tenpai, but for how many tiles?
+            let mut winning_tile_count = 0;
+            for winning_tile in tenpai_tiles.iter() {
+                let num_dead = *(game_state
+                    .dead_tiles_by_rank
+                    .get(&winning_tile.rank())
+                    .unwrap_or(&0));
+                winning_tile_count += 4 - num_dead;
+            }
+
+            // let tile = game_state
+            //     .hand_tiles
+            //     .get(tile_idx)
+            //     .expect("Expect this tile index to be in the hand");
+            // println!(
+            //     "can achieve tenpai by discarding {} (waiting on {:?}, {} tiles left)",
+            //     tile.rank(),
+            //     tenpai_tiles,
+            //     winning_tile_count,
+            // );
+
+            // does discarding this tile achieve a better tenpai than discarding any
+            if best_tile_idx.is_none()
+                || best_winning_tile_count.is_none()
+                || winning_tile_count > best_winning_tile_count.unwrap()
+            {
+                best_tile_idx = Some(tile_idx);
+                best_winning_tile_count = Some(winning_tile_count);
+            }
+        }
+    }
+
+    if best_tile_idx.is_some() {
+        best_tile_idx.unwrap()
+    } else {
+        // TODO next step: can we optimize getting to tenpai quickly (1-shanten?)
+        discard_random(game_state)
+    }
+}

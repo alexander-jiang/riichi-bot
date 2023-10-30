@@ -12,23 +12,14 @@ pub struct MiniTile {
 
 impl fmt::Display for MiniTile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "{}", self.rank())
     }
 }
 
 impl fmt::Debug for MiniTile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "MiniTile {} (serial={})", self.rank(), self.serial)
     }
-    // fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    //     write!(
-    //         f,
-    //         "MiniTile {} ({}{})",
-    //         self.serial,
-    //         char::from(self.rank()),
-    //         char::from(self.suit()),
-    //     )
-    // }
 }
 
 impl MiniTile {
@@ -79,6 +70,10 @@ fn contains_triplet(tile_counts: &HashMap<u32, u32>) -> bool {
 }
 
 pub fn is_winning_mini_hand(tiles: &Vec<MiniTile>) -> bool {
+    // println!(
+    //     "check for winning hand {}",
+    //     simulator::display_hand(&new_tiles)
+    // );
     if tiles.len() != 5 {
         // invalid number of tiles for winning mini hand
         return false;

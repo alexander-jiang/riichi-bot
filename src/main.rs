@@ -23,16 +23,16 @@ fn main() {
         hand_tiles: vec![
             mini_mahjong::mini_game::MiniTile { serial: 1 }, // 2p
             mini_mahjong::mini_game::MiniTile { serial: 10 }, // 2p
-            mini_mahjong::mini_game::MiniTile { serial: 5 }, // 6p
+            mini_mahjong::mini_game::MiniTile { serial: 4 }, // 5p
             mini_mahjong::mini_game::MiniTile { serial: 6 }, // 7p
-            mini_mahjong::mini_game::MiniTile { serial: 8 }, // 9p
+            mini_mahjong::mini_game::MiniTile { serial: 0 }, // 1p
         ],
-        dead_tiles_by_rank: HashMap::from([(2, 2), (6, 1), (7, 1), (9, 1)]),
+        dead_tiles_by_rank: HashMap::from([(2, 2), (5, 1), (7, 1), (1, 1)]),
     };
 
     // how many turns does it take to get to a winning hand, on average?
     // to reduce variance, we can start with the same initial hand, but with different shuffle of the wall
-    let num_trials = 1000000;
+    let num_trials = 100000;
     let strategies: Vec<(&str, fn(&mini_mahjong::simulator::MiniGameState) -> usize)> = vec![
         // ("discard_random", mini_mahjong::strategy::discard_random),
         // (
@@ -44,10 +44,11 @@ fn main() {
         //     mini_mahjong::strategy::discard_highest_rank,
         // ),
         // ("discard_isolated", mini_mahjong::strategy::discard_isolated),
-        (
-            "discard_hold_initial_wait",
-            mini_mahjong::strategy::discard_hold_initial_wait,
-        ),
+        // (
+        //     "hardcoded_initial_wait",
+        //     mini_mahjong::strategy::hardcoded_initial_wait,
+        // ),
+        ("hold_tenpai", mini_mahjong::strategy::hold_tenpai),
     ];
     for (strategy_name, discard_strategy) in strategies {
         println!("discard strategy: {:?}", strategy_name);

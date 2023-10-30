@@ -154,6 +154,7 @@ pub fn play_game(
             .entry(drawn_tile.rank())
             .or_insert(0);
         *count += 1;
+
         // println!("updated game state: {:?}", current_game_state);
     }
 

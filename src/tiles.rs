@@ -180,25 +180,27 @@ pub struct Tile {
     pub serial: u32,
 }
 
+// TODO don't use to_string here - I think this can cause a stack overflow - instead,
+// implement the Display trait, see https://doc.rust-lang.org/std/string/trait.ToString.html
 impl fmt::Display for Tile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "{}{}", char::from(self.rank()), char::from(self.suit()))
     }
 }
 
 impl fmt::Debug for Tile {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_string())
-    }
-    // fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    //     write!(
-    //         f,
-    //         "Tile {} ({}{})",
-    //         self.serial,
-    //         char::from(self.rank()),
-    //         char::from(self.suit()),
-    //     )
+    // fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    //     write!(f, "{}", self.to_string())
     // }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Tile {} ({}{})",
+            self.serial,
+            char::from(self.rank()),
+            char::from(self.suit()),
+        )
+    }
 }
 
 impl Tile {
