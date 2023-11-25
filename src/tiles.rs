@@ -343,6 +343,24 @@ impl Tile {
         }
     }
 
+    /// A numeric rank value, only valid (i.e. not None) for numbered suits.
+    /// Returns 5 for red fives.
+    pub fn rank_numeric_value(&self) -> Option<u8> {
+        match self.rank() {
+            TileRank::Number(_) => match self.human_rank() {
+                '0' => Some(5),
+                _ => {
+                    let rank_string = self.human_rank().to_string();
+                    match u8::from_str_radix(rank_string.as_str(), 10) {
+                        Ok(rank_u8) => Some(rank_u8),
+                        Err(_) => None,
+                    }
+                }
+            },
+            _ => None,
+        }
+    }
+
     /// Represents the tile using MSPZ notation as a two character string: the rank followed by the suit
     /// e.g. for 8-man: "8m" , for red-5-sou, "0s", for north wind: "4z", for red dragon: "7z"
     pub fn to_string(&self) -> String {
@@ -1034,6 +1052,7 @@ mod tests {
         assert!(!man_tile.is_dragon());
         assert_eq!(man_tile.human_suit(), 'm');
         assert_eq!(man_tile.human_rank(), '1');
+        assert_eq!(man_tile.rank_numeric_value(), Some(1));
         assert_eq!(man_tile.to_human_string(), "1m".to_string());
 
         let pin_tile = Tile::from_string("4p");
@@ -1041,6 +1060,7 @@ mod tests {
         assert!(!pin_tile.is_dragon());
         assert_eq!(pin_tile.human_suit(), 'p');
         assert_eq!(pin_tile.human_rank(), '4');
+        assert_eq!(pin_tile.rank_numeric_value(), Some(4));
         assert_eq!(pin_tile.to_human_string(), "4p".to_string());
 
         let sou_tile = Tile::from_string("9s");
@@ -1048,7 +1068,16 @@ mod tests {
         assert!(!sou_tile.is_dragon());
         assert_eq!(sou_tile.human_suit(), 's');
         assert_eq!(sou_tile.human_rank(), '9');
+        assert_eq!(sou_tile.rank_numeric_value(), Some(9));
         assert_eq!(sou_tile.to_human_string(), "9s".to_string());
+
+        let red_five_tile = Tile::from_string("0p");
+        assert!(!red_five_tile.is_honor());
+        assert!(!red_five_tile.is_dragon());
+        assert_eq!(red_five_tile.human_suit(), 'p');
+        assert_eq!(red_five_tile.human_rank(), '0');
+        assert_eq!(red_five_tile.rank_numeric_value(), Some(5));
+        assert_eq!(red_five_tile.to_human_string(), "0p".to_string());
 
         let east_wind_tile = Tile::from_string("1z");
         assert!(east_wind_tile.is_honor());

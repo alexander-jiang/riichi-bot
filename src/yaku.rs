@@ -220,7 +220,8 @@ pub fn has_pinfu(
             }
             tiles::TileGroup::Sequence { open, .. } => {
                 assert!(tile_group.is_valid());
-                if !open {
+                if *open {
+                    // println!("sequence cannot be open for pinfu!");
                     return false;
                 }
                 num_closed_sequences += 1;
@@ -228,6 +229,7 @@ pub fn has_pinfu(
             tiles::TileGroup::Pair { tiles, .. } => {
                 assert!(tile_group.is_valid());
                 if is_yakuhai_tile(&tiles[0], round_wind_rank, seat_wind_rank) {
+                    // println!("pair cannot be yakuhai for pinfu!");
                     return false;
                 }
             }
@@ -239,6 +241,7 @@ pub fn has_pinfu(
     }
     // pinfu must not be thirteen orphans or seven pairs
     if num_closed_sequences != 4 {
+        // println!("need sequences only for pinfu!");
         return false;
     }
     // TODO additionally must check the wait pattern (must be a open-wait i.e. two-sided wait, not a closed-wait, edge-wait, or pair-wait)

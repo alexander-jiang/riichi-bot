@@ -7,12 +7,12 @@ Fixed initial hand of 22679, 100k trials per strategy
 100000 trials: win % = 73.41, avg draws = 16.8842
 avg draws (wins only) = 12.196418
 
-### naive strategy #2: discard lowest tile
+### naive strategy #2a: discard lowest tile
 
 100000 trials: win % = 86.62, avg draws = 9.42664
 avg draws (wins only) = 8.001524
 
-### naive strategy #3: discard highest tile
+### naive strategy #2b: discard highest tile
 
 100000 trials: win % = 83.948, avg draws = 7.72024
 avg draws (wins only) = 6.280233
@@ -75,6 +75,11 @@ This strategy will always always prioritize getting to tenpai - but among the di
 avg draws (wins only) = 4.84159
 
 However, if there are multiple such tiles (that result in tenpai with the same number of winning tiles remaining), the current strategy discards the lowest ranked tile. This can result in slightly suboptimal decisions. For example, from 22579, discarding either the 5 or the 9 will result in a tenpai that waits on the maximum number of tiles: 4 tiles (the 6 or the 8). However, discarding the 5 (to become tenpai with 2279) results in a shape that can improve the wait (to 8 tiles) by drawing a 6, whereas discarding the 9 (to become tenpai with 2257) results in a shape that can improve the wait to 7 or 8 tiles by drawing either a 8 or a 4, respectively, as one copy of the 9 is already dead, so going from 2257 -> 22578 -> 2278 waits on 7 remaining tiles).
+
+### TODO: performance optimizations
+
+what is the bottleneck in the performance? can we optimize?
+e.g. when checking for tenpai, can we cache certain computations? (e.g. cache the 4-tile hands and which tiles they wait on)
 
 ## Experiment 2:
 

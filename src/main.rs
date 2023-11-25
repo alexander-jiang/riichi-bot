@@ -32,7 +32,7 @@ fn main() {
 
     // how many turns does it take to get to a winning hand, on average?
     // to reduce variance, we can start with the same initial hand, but with different shuffle of the wall
-    let num_trials = 100000;
+    let num_trials = 1000000;
     let strategies: Vec<(&str, fn(&mini_mahjong::simulator::MiniGameState) -> usize)> = vec![
         // ("discard_random", mini_mahjong::strategy::discard_random),
         // (

@@ -437,6 +437,7 @@ pub fn tile_grouping(
                         if let Some(new_winning_hands) =
                             tile_grouping(&remaining_tiles, &new_groups)
                         {
+                            println!("found a winning hand using tile {}", new_tile_str);
                             winning_hands.extend(new_winning_hands);
                         }
                     }
@@ -486,6 +487,7 @@ pub fn tile_grouping(
                             if let Some(new_winning_hands) =
                                 tile_grouping(&remaining_tiles, &new_groups)
                             {
+                                println!("found a winning hand using tile {}", new_tile_str);
                                 winning_hands.extend(new_winning_hands);
                             }
                         }
@@ -539,6 +541,7 @@ pub fn tile_grouping(
                         if let Some(new_winning_hands) =
                             tile_grouping(&remaining_tiles, &new_groups)
                         {
+                            println!("found a winning hand using tile {}", new_tile_str);
                             winning_hands.extend(new_winning_hands);
                         }
                     }
@@ -595,6 +598,7 @@ pub fn tile_grouping(
                         if let Some(new_winning_hands) =
                             tile_grouping(&remaining_tiles, &new_groups)
                         {
+                            println!("found a winning hand using tile {}", new_tile_str);
                             winning_hands.extend(new_winning_hands);
                         }
                     }
@@ -674,7 +678,7 @@ pub fn get_tile_groups_string(tile_groups: &Vec<tiles::TileGroup>) -> String {
     }
     tile_groups_string.sort();
     let tile_groups_string = tile_groups_string;
-    tile_groups_string.join("-")
+    tile_groups_string.join("|")
 }
 
 pub fn get_tile_groups_strings(tile_groups_list: &Vec<Vec<tiles::TileGroup>>) -> Vec<String> {
@@ -1047,7 +1051,7 @@ pub fn tenpai_grouping(
                     // four copies of number tile can be used for quad
                     println!("checking for quad of {new_tile_str}");
 
-                    // build remaining tiles by remtest_count_tiles_by_suit_rank_red_fivesoving four copies of the tile
+                    // build remaining tiles by removing four copies of the tile
                     let remaining_tiles = tiles.clone();
                     let (remaining_tiles, removed_first_tile) =
                         remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
@@ -1086,11 +1090,18 @@ pub fn tenpai_grouping(
                                 get_tile_groups_string(&new_tenpai_hand_grouping);
                             if !tenpai_hand_strings.contains(&new_tile_groups_string) {
                                 tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                                println!(
+                                    "found new tenpai grouping! {}, now there are {} tenpai_hands",
+                                    new_tile_groups_string,
+                                    tenpai_hands.len()
+                                );
                             } else {
-                                println!("found duplicated tenpai grouping! {}", new_tile_groups_string);
+                                println!(
+                                    "found duplicated tenpai grouping! {}",
+                                    new_tile_groups_string
+                                );
                             }
                         }
-                        // tenpai_hands.extend(new_tenpai_hands);
                     }
                 }
 
@@ -1133,11 +1144,18 @@ pub fn tenpai_grouping(
                                 get_tile_groups_string(&new_tenpai_hand_grouping);
                             if !tenpai_hand_strings.contains(&new_tile_groups_string) {
                                 tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                                println!(
+                                    "found new tenpai grouping! {}, now there are {} tenpai_hands",
+                                    new_tile_groups_string,
+                                    tenpai_hands.len()
+                                );
                             } else {
-                                println!("found duplicated tenpai grouping! {}", new_tile_groups_string);
+                                println!(
+                                    "found duplicated tenpai grouping! {}",
+                                    new_tile_groups_string
+                                );
                             }
                         }
-                        // tenpai_hands.extend(new_tenpai_hands);
                     }
                 }
 
@@ -1146,46 +1164,55 @@ pub fn tenpai_grouping(
 
                     if must_be_complete_group {
                         println!("cannot use pair of {} tiles", new_tile_str);
-                        return None;
-                    }
+                    } else {
+                        // build remaining tiles by removing two copies of the tile
+                        let remaining_tiles = tiles.clone();
+                        let (remaining_tiles, removed_first_tile) =
+                            remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
+                        let (remaining_tiles, removed_second_tile) =
+                            remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
 
-                    // build remaining tiles by removing two copies of the tile
-                    let remaining_tiles = tiles.clone();
-                    let (remaining_tiles, removed_first_tile) =
-                        remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
-                    let (remaining_tiles, removed_second_tile) =
-                        remove_first_copy(remaining_tiles, tile_rank, tile_suit, true);
+                        // new group
+                        let new_pair_group = tiles::TileGroup::Pair {
+                            tiles: [
+                                removed_first_tile.expect("Should have removed at least one tile"),
+                                removed_second_tile
+                                    .expect("Should have removed at least two tiles"),
+                            ],
+                        };
+                        // println!("found pair of {}, remaining tiles: {:?}", new_tile_str, remaining_tiles);
 
-                    // new group
-                    let new_pair_group = tiles::TileGroup::Pair {
-                        tiles: [
-                            removed_first_tile.expect("Should have removed at least one tile"),
-                            removed_second_tile.expect("Should have removed at least two tiles"),
-                        ],
-                    };
-                    // println!("found pair of {}, remaining tiles: {:?}", new_tile_str, remaining_tiles);
+                        // recursive call
+                        println!("recursive call: using pair of {}", new_tile_str);
 
-                    // recursive call
-                    println!("recursive call: using pair of {}", new_tile_str);
+                        let mut new_groups = tile_groups.clone();
+                        new_groups.push(new_pair_group);
 
-                    let mut new_groups = tile_groups.clone();
-                    new_groups.push(new_pair_group);
-
-                    if let Some(new_tenpai_hands) = tenpai_grouping(&remaining_tiles, &new_groups) {
-                        // check if the new tenpai hands contain any duplicates
-                        // TODO refactor to remove duplicated code (use fn that takes in mut reference to update tenpai_hands?)
-                        // TODO refactor to improve performance?
-                        let tenpai_hand_strings = get_tile_groups_strings(&tenpai_hands);
-                        for new_tenpai_hand_grouping in new_tenpai_hands.iter() {
-                            let new_tile_groups_string =
-                                get_tile_groups_string(&new_tenpai_hand_grouping);
-                            if !tenpai_hand_strings.contains(&new_tile_groups_string) {
-                                tenpai_hands.push(new_tenpai_hand_grouping.clone());
-                            } else {
-                                println!("found duplicated tenpai grouping! {}", new_tile_groups_string);
+                        if let Some(new_tenpai_hands) =
+                            tenpai_grouping(&remaining_tiles, &new_groups)
+                        {
+                            // check if the new tenpai hands contain any duplicates
+                            // TODO refactor to remove duplicated code (use fn that takes in mut reference to update tenpai_hands?)
+                            // TODO refactor to improve performance?
+                            let tenpai_hand_strings = get_tile_groups_strings(&tenpai_hands);
+                            for new_tenpai_hand_grouping in new_tenpai_hands.iter() {
+                                let new_tile_groups_string =
+                                    get_tile_groups_string(&new_tenpai_hand_grouping);
+                                if !tenpai_hand_strings.contains(&new_tile_groups_string) {
+                                    tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                                    println!(
+                                        "found new tenpai grouping! {}, now there are {} tenpai_hands",
+                                        new_tile_groups_string,
+                                        tenpai_hands.len()
+                                    );
+                                } else {
+                                    println!(
+                                        "found duplicated tenpai grouping! {}",
+                                        new_tile_groups_string
+                                    );
+                                }
                             }
                         }
-                        // tenpai_hands.extend(new_tenpai_hands);
                     }
                 }
 
@@ -1219,11 +1246,18 @@ pub fn tenpai_grouping(
                                     get_tile_groups_string(&new_tenpai_hand_grouping);
                                 if !tenpai_hand_strings.contains(&new_tile_groups_string) {
                                     tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                                    println!(
+                                        "found new tenpai grouping! {}, now there are {} tenpai_hands",
+                                        new_tile_groups_string,
+                                        tenpai_hands.len()
+                                    );
                                 } else {
-                                    println!("found duplicated tenpai grouping! {}", new_tile_groups_string);
+                                    println!(
+                                        "found duplicated tenpai grouping! {}",
+                                        new_tile_groups_string
+                                    );
                                 }
                             }
-                            // tenpai_hands.extend(new_tenpai_hands);
                         }
                     }
 
@@ -1308,11 +1342,18 @@ pub fn tenpai_grouping(
                                             get_tile_groups_string(&new_tenpai_hand_grouping);
                                         if !tenpai_hand_strings.contains(&new_tile_groups_string) {
                                             tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                                            println!(
+                                                "found new tenpai grouping! {}, now there are {} tenpai_hands",
+                                                new_tile_groups_string,
+                                                tenpai_hands.len()
+                                            );
                                         } else {
-                                            println!("found duplicated tenpai grouping! {}", new_tile_groups_string);
+                                            println!(
+                                                "found duplicated tenpai grouping! {}",
+                                                new_tile_groups_string
+                                            );
                                         }
                                     }
-                                    // tenpai_hands.extend(new_tenpai_hands);
                                 }
                             }
                         }
@@ -1390,11 +1431,18 @@ pub fn tenpai_grouping(
                                             get_tile_groups_string(&new_tenpai_hand_grouping);
                                         if !tenpai_hand_strings.contains(&new_tile_groups_string) {
                                             tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                                            println!(
+                                                "found new tenpai grouping! {}, now there are {} tenpai_hands",
+                                                new_tile_groups_string,
+                                                tenpai_hands.len()
+                                            );
                                         } else {
-                                            println!("found duplicated tenpai grouping! {}", new_tile_groups_string);
+                                            println!(
+                                                "found duplicated tenpai grouping! {}",
+                                                new_tile_groups_string
+                                            );
                                         }
                                     }
-                                    // tenpai_hands.extend(new_tenpai_hands);
                                 }
                             }
                         }
@@ -1481,17 +1529,29 @@ pub fn tenpai_grouping(
                                         get_tile_groups_string(&new_tenpai_hand_grouping);
                                     if !tenpai_hand_strings.contains(&new_tile_groups_string) {
                                         tenpai_hands.push(new_tenpai_hand_grouping.clone());
+                                        println!(
+                                            "found new tenpai grouping! {}, now there are {} tenpai_hands",
+                                            new_tile_groups_string,
+                                            tenpai_hands.len()
+                                        );
                                     } else {
-                                        println!("found duplicated tenpai grouping! {}", new_tile_groups_string);
+                                        println!(
+                                            "found duplicated tenpai grouping! {}",
+                                            new_tile_groups_string
+                                        );
                                     }
                                 }
-                                // tenpai_hands.extend(new_tenpai_hands);
                             }
                         }
                     }
                 }
                 // we have to use this tile in the tenpai hand somehow - if there's no tenpai hands at this point,
                 // then there are no tenpai hands at all
+                println!(
+                    "there are {} tenpai_hands for tile {}",
+                    tenpai_hands.len(),
+                    new_tile_str
+                );
                 return if tenpai_hands.is_empty() {
                     println!("invalid grouping: could not use tile {}", new_tile_str);
                     None
@@ -1504,6 +1564,164 @@ pub fn tenpai_grouping(
 
     // TODO can this ever get here?
     return None;
+}
+
+pub fn tenpai_wait_tiles_from_grouping(tile_groups: &Vec<tiles::TileGroup>) -> Vec<tiles::Tile> {
+    // returns the tiles that this grouping can win on
+    // (if this is a valid grouping for "standard" tenpai i.e. not seven pairs or thirteen orphans)
+    let mut wait_tiles: Vec<tiles::Tile> = Vec::new();
+
+    let num_pair_groups = number_pair_groups(tile_groups);
+
+    for group in tile_groups {
+        if group.is_complete() {
+            continue;
+        }
+        match group {
+            tiles::TileGroup::Pair { tiles } => {
+                // only can wait on this tile if the wait is shanpon (if there is only one pair, we cannot add this tile, the pair must remain)
+                if num_pair_groups == 2 {
+                    wait_tiles.push(tiles[0].clone());
+                }
+            }
+            tiles::TileGroup::SingleTile { tile } => {
+                wait_tiles.push(tile.clone());
+            }
+            tiles::TileGroup::ClosedWait { tiles } => {
+                // get the middle tile
+                let rank0 = tiles[0]
+                    .rank_numeric_value()
+                    .expect("Closed wait tile should be a numbered suit");
+                let rank1 = tiles[1]
+                    .rank_numeric_value()
+                    .expect("Closed wait tile should be a numbered suit");
+                assert!(rank0 + 2 == rank1 || rank1 + 2 == rank0);
+                let new_rank = if rank0 < rank1 { rank0 + 1 } else { rank1 + 1 };
+                let new_rank_char = char::from_digit(new_rank.into(), 10)
+                    .expect("Expect to be able to convert rank to char");
+                let new_number_rank = tiles::NumberTileRank::try_from(new_rank_char)
+                    .expect("Expect to be able to convert tile rank to number");
+                let new_tile = tiles::Tile::from_suit_and_rank(
+                    tiles[0].suit(),
+                    tiles::TileRank::Number(new_number_rank),
+                    0,
+                );
+                wait_tiles.push(new_tile);
+            }
+            tiles::TileGroup::EdgeWait { tiles } => {
+                // get the edge tile
+                let rank0 = tiles[0]
+                    .rank_numeric_value()
+                    .expect("Edge wait tile should be a numbered suit");
+                let rank1 = tiles[1]
+                    .rank_numeric_value()
+                    .expect("Edge wait tile should be a numbered suit");
+                assert!(
+                    (rank0 + 1 == rank1 || rank1 + 1 == rank0)
+                        && (rank0 == 1 || rank0 == 9 || rank1 == 1 || rank1 == 9)
+                );
+                let new_rank: u32 = if rank0 < rank1 {
+                    if rank0 == 1 {
+                        3
+                    } else {
+                        7
+                    }
+                } else {
+                    if rank1 == 1 {
+                        3
+                    } else {
+                        7
+                    }
+                };
+                let new_rank_char = char::from_digit(new_rank.into(), 10)
+                    .expect("Expect to be able to convert rank to char");
+                let new_number_rank = tiles::NumberTileRank::try_from(new_rank_char)
+                    .expect("Expect to be able to convert tile rank to number");
+                let new_tile = tiles::Tile::from_suit_and_rank(
+                    tiles[0].suit(),
+                    tiles::TileRank::Number(new_number_rank),
+                    0,
+                );
+                wait_tiles.push(new_tile);
+            }
+            tiles::TileGroup::OpenWait { tiles } => {
+                // get the tiles around the open wait
+                let rank0 = tiles[0]
+                    .rank_numeric_value()
+                    .expect("Open wait tile should be a numbered suit");
+                let rank1 = tiles[1]
+                    .rank_numeric_value()
+                    .expect("Open wait tile should be a numbered suit");
+                assert!(
+                    (rank0 + 1 == rank1 || rank1 + 1 == rank0)
+                        && (rank0 != 1 && rank0 != 9 && rank1 != 1 && rank1 != 9)
+                );
+                let lower_tile_rank: u32 = if rank0 < rank1 {
+                    rank0.into()
+                } else {
+                    rank1.into()
+                };
+                let new_rank_low = lower_tile_rank - 1;
+                let new_rank_high = lower_tile_rank + 2;
+
+                let new_rank_low_char = char::from_digit(new_rank_low, 10)
+                    .expect("Expect to be able to convert rank to char");
+                let new_number_rank_low = tiles::NumberTileRank::try_from(new_rank_low_char)
+                    .expect("Expect to be able to convert tile rank to number");
+                let new_tile_low = tiles::Tile::from_suit_and_rank(
+                    tiles[0].suit(),
+                    tiles::TileRank::Number(new_number_rank_low),
+                    0,
+                );
+                wait_tiles.push(new_tile_low);
+
+                let new_rank_high_char = char::from_digit(new_rank_high, 10)
+                    .expect("Expect to be able to convert rank to char");
+                let new_number_rank_high = tiles::NumberTileRank::try_from(new_rank_high_char)
+                    .expect("Expect to be able to convert tile rank to number");
+                let new_tile_high = tiles::Tile::from_suit_and_rank(
+                    tiles[0].suit(),
+                    tiles::TileRank::Number(new_number_rank_high),
+                    0,
+                );
+                wait_tiles.push(new_tile_high);
+            }
+            _ => {
+                panic!("invalid, expecting an incomplete group");
+            }
+        };
+    }
+    wait_tiles
+}
+
+pub fn get_all_tenpai_wait_tiles(tiles: &Vec<tiles::Tile>) -> Vec<tiles::Tile> {
+    // returns the tiles that this grouping can win on (if not in tenpai, returns empty Vec)
+    // (if this is a valid grouping for "standard" tenpai i.e. not seven pairs or thirteen orphans)
+
+    let empty_groups: Vec<tiles::TileGroup> = Vec::new();
+    let potential_groupings = tenpai_grouping(tiles, &empty_groups);
+    match potential_groupings {
+        None => {
+            let wait_tiles: Vec<tiles::Tile> = Vec::new();
+            wait_tiles
+        }
+        Some(tile_groupings) => {
+            let mut wait_tiles: Vec<tiles::Tile> = Vec::new();
+            for tile_grouping in tile_groupings {
+                let wait_tiles_from_grouping = tenpai_wait_tiles_from_grouping(&tile_grouping);
+                for potential_tile in wait_tiles_from_grouping {
+                    let count_existing = wait_tiles
+                        .iter()
+                        .filter(|tile| tile.to_human_string() == potential_tile.to_human_string())
+                        .count();
+                    if count_existing == 0 {
+                        wait_tiles.push(potential_tile);
+                    }
+                }
+            }
+            wait_tiles
+        }
+    }
 }
 
 #[cfg(test)]
@@ -2189,6 +2407,16 @@ mod tests {
                 .len()
                 == 2
         );
+
+        let wait_tiles = get_all_tenpai_wait_tiles(&tenpai_tiles);
+        assert_eq!(wait_tiles.len(), 3);
+        let wait_tiles_human_strs: Vec<String> = wait_tiles
+            .iter()
+            .map(|tile| tile.to_string())
+            .collect();
+        assert!(wait_tiles_human_strs.contains(&String::from("1s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("4s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("7s")));
     }
 
     #[test]
@@ -2267,6 +2495,15 @@ mod tests {
                 .len()
                 == 1
         );
+
+        let wait_tiles = get_all_tenpai_wait_tiles(&tenpai_tiles);
+        assert_eq!(wait_tiles.len(), 1);
+        let wait_tiles_human_strs: Vec<String> = wait_tiles
+            .iter()
+            .map(|tile| tile.to_string())
+            .collect();
+        println!("tenpai wait tiles = {:?}", wait_tiles);
+        assert!(wait_tiles_human_strs.contains(&String::from("1z")));
     }
 
     #[test]
@@ -2297,6 +2534,15 @@ mod tests {
         let tenpai_groupings = tenpai_tile_groups.expect("Expect two tenpai groupings");
         println!("{:?}", tenpai_groupings);
         assert!(tenpai_groupings.len() == 2);
+
+        let wait_tiles = get_all_tenpai_wait_tiles(&tenpai_tiles);
+        assert_eq!(wait_tiles.len(), 2);
+        let wait_tiles_human_strs: Vec<String> = wait_tiles
+            .iter()
+            .map(|tile| tile.to_string())
+            .collect();
+        assert!(wait_tiles_human_strs.contains(&String::from("5m")));
+        assert!(wait_tiles_human_strs.contains(&String::from("8m")));
     }
 
     #[test]
@@ -2329,6 +2575,15 @@ mod tests {
                 .len()
                 == 1
         );
+
+        let wait_tiles = get_all_tenpai_wait_tiles(&winning_tiles);
+        assert_eq!(wait_tiles.len(), 2);
+        let wait_tiles_human_strs: Vec<String> = wait_tiles
+            .iter()
+            .map(|tile| tile.to_string())
+            .collect();
+        assert!(wait_tiles_human_strs.contains(&String::from("3s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("6s")));
     }
 
     #[test]
@@ -2436,6 +2691,9 @@ mod tests {
         let tile_groups: Vec<tiles::TileGroup> = Vec::new();
         let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
         assert!(tenpai_tile_groups.is_none());
+
+        let wait_tiles = get_all_tenpai_wait_tiles(&tenpai_tiles);
+        assert_eq!(wait_tiles.len(), 0);
     }
 
     #[test]
@@ -2502,7 +2760,15 @@ mod tests {
         let tile_groups: Vec<tiles::TileGroup> = Vec::new();
         let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
         assert!(tenpai_tile_groups.is_none());
+
+        let wait_tiles = get_all_tenpai_wait_tiles(&tenpai_tiles);
+        assert_eq!(wait_tiles.len(), 0);
     }
 
     // TODO test: cannot have multiple pair groups or single tile groups that use the same tiles and be in tenpai
+
+    #[test]
+    fn test_tenpai_wait_tiles() {
+        // from https://mahjong-ny.com/features/sample-pro-test/
+    }
 }
