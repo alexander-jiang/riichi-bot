@@ -2327,6 +2327,14 @@ mod tests {
                 .len()
                 == 1
         );
+
+        // confirmed with a calculator: https://riichi.harphield.com/tools/hand-analyzer/?hand=123456789p33m55s
+        let wait_tiles = get_all_tenpai_wait_tiles(&tenpai_tiles);
+        assert_eq!(wait_tiles.len(), 2);
+        let wait_tiles_human_strs: Vec<String> =
+            wait_tiles.iter().map(|tile| tile.to_string()).collect();
+        assert!(wait_tiles_human_strs.contains(&String::from("3m")));
+        assert!(wait_tiles_human_strs.contains(&String::from("5s")));
     }
 
     #[test]
@@ -2408,12 +2416,11 @@ mod tests {
                 == 2
         );
 
+        // confirmed with a calculator: https://riichi.harphield.com/tools/hand-analyzer/?hand=111m23456s888p33z
         let wait_tiles = get_all_tenpai_wait_tiles(&tenpai_tiles);
         assert_eq!(wait_tiles.len(), 3);
-        let wait_tiles_human_strs: Vec<String> = wait_tiles
-            .iter()
-            .map(|tile| tile.to_string())
-            .collect();
+        let wait_tiles_human_strs: Vec<String> =
+            wait_tiles.iter().map(|tile| tile.to_string()).collect();
         assert!(wait_tiles_human_strs.contains(&String::from("1s")));
         assert!(wait_tiles_human_strs.contains(&String::from("4s")));
         assert!(wait_tiles_human_strs.contains(&String::from("7s")));
@@ -2496,12 +2503,11 @@ mod tests {
                 == 1
         );
 
+        // confirmed with a calculator: https://riichi.harphield.com/tools/hand-analyzer/?hand=678m111p777s345s1z
         let wait_tiles = get_all_tenpai_wait_tiles(&tenpai_tiles);
         assert_eq!(wait_tiles.len(), 1);
-        let wait_tiles_human_strs: Vec<String> = wait_tiles
-            .iter()
-            .map(|tile| tile.to_string())
-            .collect();
+        let wait_tiles_human_strs: Vec<String> =
+            wait_tiles.iter().map(|tile| tile.to_string()).collect();
         println!("tenpai wait tiles = {:?}", wait_tiles);
         assert!(wait_tiles_human_strs.contains(&String::from("1z")));
     }
@@ -2535,12 +2541,11 @@ mod tests {
         println!("{:?}", tenpai_groupings);
         assert!(tenpai_groupings.len() == 2);
 
+        // confirmed with a calculator: https://riichi.harphield.com/tools/hand-analyzer/?hand=678p123p789s6755m
         let wait_tiles = get_all_tenpai_wait_tiles(&tenpai_tiles);
         assert_eq!(wait_tiles.len(), 2);
-        let wait_tiles_human_strs: Vec<String> = wait_tiles
-            .iter()
-            .map(|tile| tile.to_string())
-            .collect();
+        let wait_tiles_human_strs: Vec<String> =
+            wait_tiles.iter().map(|tile| tile.to_string()).collect();
         assert!(wait_tiles_human_strs.contains(&String::from("5m")));
         assert!(wait_tiles_human_strs.contains(&String::from("8m")));
     }
@@ -2576,12 +2581,11 @@ mod tests {
                 == 1
         );
 
+        // confirmed with a calculator: https://riichi.harphield.com/tools/hand-analyzer/?hand=11112233m44445s
         let wait_tiles = get_all_tenpai_wait_tiles(&winning_tiles);
         assert_eq!(wait_tiles.len(), 2);
-        let wait_tiles_human_strs: Vec<String> = wait_tiles
-            .iter()
-            .map(|tile| tile.to_string())
-            .collect();
+        let wait_tiles_human_strs: Vec<String> =
+            wait_tiles.iter().map(|tile| tile.to_string()).collect();
         assert!(wait_tiles_human_strs.contains(&String::from("3s")));
         assert!(wait_tiles_human_strs.contains(&String::from("6s")));
     }
@@ -2590,14 +2594,14 @@ mod tests {
     fn test_tenpai_grouping_complex_tenpai_chinitsu() {
         let winning_tiles = Vec::from([
             // 8 possible tenpai groupings:
-            // 111-12-234-345-44
-            // 111-13-22-345-444
-            // 111-123-2-345-444
-            // 111-123-24-44-345
-            // 111-123-234-44-45
-            // 111-123-234-444-5
-            // 11-123-12-345-444
-            // 11-123-123-444-45
+            // 111-12-234-345-44 -> wait: 3m
+            // 111-13-22-345-444 -> wait: 2m
+            // 111-123-2-345-444 -> wait: 2m
+            // 111-123-24-44-345 -> wait: 3m
+            // 111-123-234-44-45 -> wait: 36m
+            // 111-123-234-444-5 -> wait: 5m
+            // 11-123-12-345-444 -> wait: 3m
+            // 11-123-123-444-45 -> wait: 36m
             tiles::Tile::from_string("1m"),
             tiles::Tile::from_string("1m"),
             tiles::Tile::from_string("1m"),
@@ -2622,6 +2626,16 @@ mod tests {
                 .len()
                 == 8
         );
+
+        // confirmed with a calculator: https://riichi.harphield.com/tools/hand-analyzer/?hand=1111223344445m
+        let wait_tiles = get_all_tenpai_wait_tiles(&winning_tiles);
+        assert_eq!(wait_tiles.len(), 4);
+        let wait_tiles_human_strs: Vec<String> =
+            wait_tiles.iter().map(|tile| tile.to_string()).collect();
+        assert!(wait_tiles_human_strs.contains(&String::from("2m")));
+        assert!(wait_tiles_human_strs.contains(&String::from("3m")));
+        assert!(wait_tiles_human_strs.contains(&String::from("5m")));
+        assert!(wait_tiles_human_strs.contains(&String::from("6m")));
     }
 
     #[test]
@@ -2692,6 +2706,7 @@ mod tests {
         let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
         assert!(tenpai_tile_groups.is_none());
 
+        // confirmed not tenpai: https://riichi.harphield.com/tools/hand-analyzer/?hand=111m456p246s1155z
         let wait_tiles = get_all_tenpai_wait_tiles(&tenpai_tiles);
         assert_eq!(wait_tiles.len(), 0);
     }
@@ -2699,7 +2714,7 @@ mod tests {
     #[test]
     fn test_not_tenpai_grouping_2() {
         // from riichi wiki: https://riichi.wiki/Shanten
-        // not tenpai, 3 complete groups + pair + single tile is not tenpai
+        // not tenpai, 3 complete groups + pair + single tile is not tenpai (it's not a complete hand)
         let tenpai_tiles = Vec::new();
 
         let tile_groups: Vec<tiles::TileGroup> = Vec::from([
