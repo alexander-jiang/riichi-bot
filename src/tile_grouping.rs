@@ -2573,7 +2573,6 @@ mod tests {
         let tile_groups: Vec<tiles::TileGroup> = Vec::new();
         let tenpai_tile_groups = tenpai_grouping(&winning_tiles, &tile_groups);
         assert!(tenpai_tile_groups.is_some());
-        // TODO the test fails because there are duplicate tenpai groupings returned
         assert!(
             tenpai_tile_groups
                 .expect("Expect one winning grouping")
@@ -2783,7 +2782,123 @@ mod tests {
     // TODO test: cannot have multiple pair groups or single tile groups that use the same tiles and be in tenpai
 
     #[test]
-    fn test_tenpai_wait_tiles() {
+    fn test_tenpai_wait_tiles_sample_pro_test_q1() {
         // from https://mahjong-ny.com/features/sample-pro-test/
+        // question 1:
+        let tenpai_tiles = Vec::from([
+            tiles::Tile::from_string("2s"),
+            tiles::Tile::from_string("3s"),
+            tiles::Tile::from_string("4s"),
+            tiles::Tile::from_string("5s"),
+            tiles::Tile::from_string("6s"),
+            tiles::Tile::from_string("6s"),
+            tiles::Tile::from_string("6s"),
+            tiles::Tile::from_string("1z"),
+            tiles::Tile::from_string("1z"),
+            tiles::Tile::from_string("1z"),
+            tiles::Tile::from_string("7z"),
+            tiles::Tile::from_string("7z"),
+            tiles::Tile::from_string("7z"),
+        ]);
+
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
+        assert!(tenpai_tile_groups.is_some());
+
+        // confirmed with a calculator: https://riichi.harphield.com/tools/hand-analyzer/?hand=2345666s111777z
+        let wait_tiles = get_all_tenpai_wait_tiles(&tenpai_tiles);
+        assert_eq!(wait_tiles.len(), 5);
+        let wait_tiles_human_strs: Vec<String> =
+            wait_tiles.iter().map(|tile| tile.to_string()).collect();
+        println!("tenpai wait tiles = {:?}", wait_tiles);
+        // if 6s are a pair - then we have a 23456s sanmenchan -> wait for 147s
+        // and if 6s are a triplet - then we have a 2345s nobetan -> wait for 25s
+        assert!(wait_tiles_human_strs.contains(&String::from("1s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("4s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("7s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("2s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("5s")));
+    }
+
+    #[test]
+    fn test_tenpai_wait_tiles_sample_pro_test_q2() {
+        // from https://mahjong-ny.com/features/sample-pro-test/
+        // question 2:
+        let tenpai_tiles = Vec::from([
+            tiles::Tile::from_string("6s"),
+            tiles::Tile::from_string("7s"),
+            tiles::Tile::from_string("7s"),
+            tiles::Tile::from_string("7s"),
+            tiles::Tile::from_string("7s"),
+            tiles::Tile::from_string("8s"),
+            tiles::Tile::from_string("8s"),
+            tiles::Tile::from_string("5z"),
+            tiles::Tile::from_string("5z"),
+            tiles::Tile::from_string("5z"),
+            tiles::Tile::from_string("6z"),
+            tiles::Tile::from_string("6z"),
+            tiles::Tile::from_string("6z"),
+        ]);
+
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
+        assert!(tenpai_tile_groups.is_some());
+
+        // confirmed with a calculator: https://riichi.harphield.com/tools/hand-analyzer/?hand=6777788s555666z
+        let wait_tiles = get_all_tenpai_wait_tiles(&tenpai_tiles);
+        assert_eq!(wait_tiles.len(), 4);
+        let wait_tiles_human_strs: Vec<String> =
+            wait_tiles.iter().map(|tile| tile.to_string()).collect();
+        println!("tenpai wait tiles = {:?}", wait_tiles);
+        // if 8s are a pair - then we have a 67777s shape -> wait for 58s
+        // and if 8s are separate, then they must match with the 7s: 678s|78s|77s -> wait for 69s
+        assert!(wait_tiles_human_strs.contains(&String::from("5s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("8s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("6s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("9s")));
+    }
+
+    #[test]
+    fn test_tenpai_wait_tiles_sample_pro_test_q3() {
+        // from https://mahjong-ny.com/features/sample-pro-test/
+        // question 3:
+        let tenpai_tiles = Vec::from([
+            tiles::Tile::from_string("3s"),
+            tiles::Tile::from_string("3s"),
+            tiles::Tile::from_string("3s"),
+            tiles::Tile::from_string("4s"),
+            tiles::Tile::from_string("5s"),
+            tiles::Tile::from_string("5s"),
+            tiles::Tile::from_string("5s"),
+            tiles::Tile::from_string("6s"),
+            tiles::Tile::from_string("7s"),
+            tiles::Tile::from_string("8s"),
+            tiles::Tile::from_string("3z"),
+            tiles::Tile::from_string("3z"),
+            tiles::Tile::from_string("3z"),
+        ]);
+
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
+        assert!(tenpai_tile_groups.is_some());
+
+        // confirmed with a calculator: https://riichi.harphield.com/tools/hand-analyzer/?hand=3334555678s333z
+        let wait_tiles = get_all_tenpai_wait_tiles(&tenpai_tiles);
+        assert_eq!(wait_tiles.len(), 6);
+        let wait_tiles_human_strs: Vec<String> =
+            wait_tiles.iter().map(|tile| tile.to_string()).collect();
+        println!("tenpai wait tiles = {:?}", wait_tiles);
+        // if 3s is triplet:
+        //   then if 5s is triplet, the shape is 333s|4s|555s|678s -> tanki wait on 4s
+        //   or if 5s is pair + single, the shape is 333s|555s|45678s -> sanmenchan wait on 369s
+        // or if 3s is pair + single:
+        //   then if 5s is triplet, the shape is 33s|34s|555s|678s -> ryanmen wait on 25s
+        //   or if 5s is pair + single, the shape is 33s|55s|345s|678s -> shanpon wait on 35s
+        assert!(wait_tiles_human_strs.contains(&String::from("4s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("3s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("6s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("9s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("2s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("5s")));
     }
 }
