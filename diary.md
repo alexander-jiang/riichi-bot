@@ -1,14 +1,21 @@
 # Diary
 
+### Apr 29 2025
+
+- reading through the Rust implementation [here](https://github.com/harphield/riichi-tools-rs/blob/master/src/riichi/hand.rs) for inspiration / tips in Rust
+- learned about the Default trait, and practiced basic Rust coding (iterating using .iter() to avoid a move, handling Result types, defining enums with subtypes)
+- spent about 2 hrs today after starting from scratch on the tile class -- can represent each tile value as one of 34 integers (corresponding to index positions in an array, instead of a more complicated hash map of suit -> array of counts per rank)
+- next up: implement winning-hand-shape checker - can worry about performance/optimization, computing tenpai/shanten/yaku, etc. later
+
 ### Apr 26 2025
 
 - new goal: build a "mahjong solitaire" / singleplayer mahjong website: simulate the training mode of getting to tenpai as quickly as possible from random starting hand
-    - subproblem 1: build riichi mahjong game rules library (can reference existing rust library: https://github.com/harphield/riichi-tools-rs)
-        - 1.a: define hand state, drawing tiles, and valid hand winning shape & valid yaku
-        - 1.b: build in logic for furiten (i.e. the final wait cannot include a tile that you've already discarded)
-    - subproblem 2: build a server to handle web requests, store a new "problem" (i.e. starting hand, and hidden random sequence of tiles to be drawn)
-    - subproblem 3: build the UI for the website
-    - subproblem 4: try to optimize the performance of the riichi library
+  - subproblem 1: build riichi mahjong game rules library (can reference existing rust library: https://github.com/harphield/riichi-tools-rs)
+    - 1.a: define hand state, drawing tiles, and valid hand winning shape & valid yaku
+    - 1.b: build in logic for furiten (i.e. the final wait cannot include a tile that you've already discarded)
+  - subproblem 2: build a server to handle web requests, store a new "problem" (i.e. starting hand, and hidden random sequence of tiles to be drawn)
+  - subproblem 3: build the UI for the website
+  - subproblem 4: try to optimize the performance of the riichi library
 - next goal: AI to analyze the discards for single-player mahjong (similar to WordleBot - it offers explanation of what it would have done, and why)
 - next goal: scrape Tenhou game logs
 

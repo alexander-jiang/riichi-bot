@@ -52,7 +52,10 @@ impl MahjongHand {
     /// Adds a tile to this hand
     pub fn add_tile(&mut self, new_tile: mahjong_tile::MahjongTile) {
         self.tiles.push(new_tile);
+        // TODO update self.tile_count_array if is_some() or compute from scratch if is_none?
     }
+
+    // TODO identify complete hand (start with standard shape: 4 melds + 1 pair), ignoring yaku for now
 }
 
 // impl MahjongHand {
