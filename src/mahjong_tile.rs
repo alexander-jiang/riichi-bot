@@ -104,7 +104,8 @@ impl MahjongTileValue {
             return Err(mahjong_error::MahjongError {
                 message: format!(
                     "Invalid id value {} (should be 0-{})",
-                    id, NUM_DISTINCT_TILE_VALUES
+                    id,
+                    NUM_DISTINCT_TILE_VALUES - 1
                 ),
             });
         }
@@ -133,84 +134,87 @@ impl MahjongTileValue {
     }
 }
 
-// #[derive(Clone, Copy, Debug)]
-// pub struct MahjongTile {
-//     pub tile_value: MahjongTileValue,
-//     pub is_red: bool,
-//     pub modifier: MahjongTileModifier,
-// }
+pub struct MahjongTile {
+    value: MahjongTileValue,
+    is_red: bool,
+}
 
-// impl PartialEq for MahjongTile {
-//     fn eq(&self, other: &Self) -> bool {
-//         // ignore modifiers, just check that the suit and rank are identical
-//         self.suit == other.suit && self.rank == other.rank
-//     }
-// }
+impl Default for MahjongTile {
+    fn default() -> Self {
+        Self {
+            value: MahjongTileValue::Dragon(7),
+            is_red: false,
+        }
+    }
+}
 
-// impl MahjongTile {
-//     pub fn from_mspz(mspz_string: &str) -> Result<Self, &'static str> {
-//         if mspz_string.len() != 2 {
-//             return Err("Expect mspz string to be 2-character string");
-//         }
-//         let mut chars = mspz_string.chars();
-//         let tile_rank_char = match chars.next() {
-//             Some(x) => x,
-//             None => return Err("could not read first char"),
-//         };
-//         let tile_suit_char = match chars.next() {
-//             Some(x) => x,
-//             None => return Err("could not read second char"),
-//         };
-//         let tile_suit = match tile_suit_char {
-//             // first determine the suit
-//             's' => MahjongTileSuit::Sou,
-//             'p' => MahjongTileSuit::Pin,
-//             'm' => MahjongTileSuit::Man,
-//             'z' => MahjongTileSuit::Honor,
-//             _ => return Err("invalid suit"),
-//         };
-//         let tile_rank = match tile_suit {
-//             suit if suit.is_number_suit() => {
-//                 match tile_rank_char {
-//                     '1' => MahjongTileRank::One,
-//                     '2' => MahjongTileRank::Two,
-//                     '3' => MahjongTileRank::Three,
-//                     '4' => MahjongTileRank::Four,
-//                     '5' => MahjongTileRank::Five,
-//                     '6' => MahjongTileRank::Six,
-//                     '7' => MahjongTileRank::Seven,
-//                     '8' => MahjongTileRank::Eight,
-//                     '9' => MahjongTileRank::Nine,
-//                     '0' => MahjongTileRank::Five, // red five
-//                     _ => return Err("invalid rank for number suit"),
-//                 }
-//             }
-//             suit if suit.is_honor_suit() => match tile_rank_char {
-//                 '1' => MahjongTileRank::East,
-//                 '2' => MahjongTileRank::South,
-//                 '3' => MahjongTileRank::West,
-//                 '4' => MahjongTileRank::North,
-//                 '5' => MahjongTileRank::White,
-//                 '6' => MahjongTileRank::Green,
-//                 '7' => MahjongTileRank::Red,
-//                 _ => return Err("invalid rank for honor suit"),
-//             },
-//             _ => return Err("cannot determine tile rank"),
-//         };
+impl MahjongTile {
+    /// Parse a text representation of a tile e.g. "1m" or "7z" or "0p" (0 refers to a red five)
+    pub fn from_text(tile_string: &str) -> Result<Self, mahjong_error::MahjongError> {
+        if tile_string.len() != 2 {
+            return Err(mahjong_error::MahjongError::new(
+                "Tile string representation length must be 2",
+            ));
+        }
+        let mut tile_str_chars = tile_string.chars();
+        let first_char = tile_str_chars.next().unwrap();
+        let second_char = tile_str_chars.next().unwrap();
+        let parse_first_char = first_char.to_string().parse::<u8>();
+        if parse_first_char.is_err() {
+            return Err(mahjong_error::MahjongError::new(
+                "Tile string representation length must be 2",
+            ));
+        }
+        let mut rank_num = parse_first_char.unwrap();
 
-//         let modifier = if tile_suit.is_number_suit() && tile_rank_char == '0' {
-//             MahjongTileModifier::RedTile
-//         } else {
-//             MahjongTileModifier::None
-//         };
-
-//         Ok(MahjongTile {
-//             suit: tile_suit,
-//             rank: tile_rank,
-//             modifier: modifier,
-//         })
-//     }
-// }
+        match second_char {
+            suit if ['m', 'p', 's'].contains(&suit) => {
+                let tile_suit = match suit {
+                    'm' => MahjongTileSuit::Man,
+                    'p' => MahjongTileSuit::Pin,
+                    's' => MahjongTileSuit::Sou,
+                    _ => {
+                        return Err(mahjong_error::MahjongError::new(
+                            "Expected number suit, should be m, p, or s",
+                        ))
+                    }
+                };
+                if rank_num > 9 {
+                    return Err(mahjong_error::MahjongError::new(
+                        "Number suit rank must be 0-9",
+                    ));
+                }
+                let mut is_red = false;
+                if rank_num == 0 {
+                    is_red = true;
+                    rank_num = 5;
+                }
+                let value = MahjongTileValue::Number(rank_num, tile_suit);
+                Ok(Self { value, is_red })
+            }
+            suit if suit == 'z' => {
+                let value = match rank_num {
+                    rank_num if rank_num >= 1 && rank_num <= 4 => MahjongTileValue::Wind(rank_num),
+                    rank_num if rank_num >= 5 && rank_num <= 7 => {
+                        MahjongTileValue::Dragon(rank_num)
+                    }
+                    _ => {
+                        return Err(mahjong_error::MahjongError::new(
+                            "Honor suit rank must be 1-7",
+                        ))
+                    }
+                };
+                Ok(Self {
+                    value,
+                    is_red: false,
+                })
+            }
+            _ => Err(mahjong_error::MahjongError::new(
+                "Second char must be m, p, s, or z",
+            )),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -314,67 +318,64 @@ mod tests {
         assert!(MahjongTileValue::from_id(NUM_DISTINCT_TILE_VALUES).is_err());
     }
 
-    // #[test]
-    // fn tile_number_rank_parse() {
-    //     let rank_num: u8 = 3;
-    //     let rank = MahjongTileRank::Three;
-    //     assert_eq!(MahjongTileRank::try_from(rank_num), Ok(rank));
-    //     assert_eq!(u8::try_from(rank), Ok(rank_num));
+    #[test]
+    fn tile_from_text() {
+        let one_man = MahjongTile::from_text("1m");
+        assert!(one_man.is_ok());
+        let one_man_tile = one_man.unwrap();
+        assert!(
+            one_man_tile.value == MahjongTileValue::Number(1, MahjongTileSuit::Man)
+                && !one_man_tile.is_red
+        );
+        let three_pin = MahjongTile::from_text("3p");
+        assert!(three_pin.is_ok());
+        let three_pin_tile = three_pin.unwrap();
+        assert!(
+            three_pin_tile.value == MahjongTileValue::Number(3, MahjongTileSuit::Pin)
+                && !three_pin_tile.is_red
+        );
+        let five_sou = MahjongTile::from_text("5s");
+        assert!(five_sou.is_ok());
+        let five_sou_tile = five_sou.unwrap();
+        assert!(
+            five_sou_tile.value == MahjongTileValue::Number(5, MahjongTileSuit::Sou)
+                && !five_sou_tile.is_red
+        );
+        let red_five_sou = MahjongTile::from_text("0s");
+        assert!(red_five_sou.is_ok());
+        let red_five_sou_tile = red_five_sou.unwrap();
+        assert!(
+            red_five_sou_tile.value == MahjongTileValue::Number(5, MahjongTileSuit::Sou)
+                && red_five_sou_tile.is_red
+        );
 
-    //     let rank_num_out_of_range: u8 = 10;
-    //     let rank_not_numeric = MahjongTileRank::North;
-    //     assert!(MahjongTileRank::try_from(rank_num_out_of_range).is_err());
-    //     assert!(u8::try_from(rank_not_numeric).is_err());
-    // }
+        let south_wind = MahjongTile::from_text("2z");
+        assert!(south_wind.is_ok());
+        let south_wind_tile = south_wind.unwrap();
+        assert!(south_wind_tile.value == MahjongTileValue::Wind(2) && !south_wind_tile.is_red);
+        let west_wind = MahjongTile::from_text("3z");
+        assert!(west_wind.is_ok());
+        let west_wind_tile = west_wind.unwrap();
+        assert!(west_wind_tile.value == MahjongTileValue::Wind(3) && !west_wind_tile.is_red);
+        let green_dragon = MahjongTile::from_text("6z");
+        assert!(green_dragon.is_ok());
+        let green_dragon_tile = green_dragon.unwrap();
+        assert!(
+            green_dragon_tile.value == MahjongTileValue::Dragon(6) && !green_dragon_tile.is_red
+        );
 
-    // #[test]
-    // fn tile_equality() {
-    //     let tile_five = MahjongTile {
-    //         suit: MahjongTileSuit::Man,
-    //         rank: MahjongTileRank::Five,
-    //         modifier: MahjongTileModifier::None,
-    //     };
-    //     let other_tile_five = MahjongTile {
-    //         suit: MahjongTileSuit::Man,
-    //         rank: MahjongTileRank::Five,
-    //         modifier: MahjongTileModifier::None,
-    //     };
-    //     let other_suit_five = MahjongTile {
-    //         suit: MahjongTileSuit::Sou,
-    //         rank: MahjongTileRank::Five,
-    //         modifier: MahjongTileModifier::None,
-    //     };
-    //     let tile_red_five = MahjongTile {
-    //         suit: MahjongTileSuit::Man,
-    //         rank: MahjongTileRank::Five,
-    //         modifier: MahjongTileModifier::None,
-    //     };
-    //     assert_eq!(tile_five, other_tile_five);
-    //     assert_ne!(tile_five, other_suit_five);
-    //     assert_eq!(tile_five, tile_red_five);
-    // }
-
-    // #[test]
-    // fn tile_from_mspz_string() {
-    //     let tile_nine = MahjongTile {
-    //         suit: MahjongTileSuit::Man,
-    //         rank: MahjongTileRank::Nine,
-    //         modifier: MahjongTileModifier::None,
-    //     };
-    //     assert_eq!(MahjongTile::from_mspz("9m"), Ok(tile_nine));
-
-    //     let tile_red_five: MahjongTile = MahjongTile {
-    //         suit: MahjongTileSuit::Sou,
-    //         rank: MahjongTileRank::Five,
-    //         modifier: MahjongTileModifier::RedTile,
-    //     };
-    //     assert_eq!(MahjongTile::from_mspz("0s"), Ok(tile_red_five));
-
-    //     let tile_white_dragon: MahjongTile = MahjongTile {
-    //         suit: MahjongTileSuit::Honor,
-    //         rank: MahjongTileRank::White,
-    //         modifier: MahjongTileModifier::None,
-    //     };
-    //     assert_eq!(MahjongTile::from_mspz("5z"), Ok(tile_white_dragon));
-    // }
+        // invalid values
+        let invalid_man = MahjongTile::from_text("am");
+        assert!(invalid_man.is_err());
+        let invalid_suit = MahjongTile::from_text("1w");
+        assert!(invalid_suit.is_err());
+        let invalid_format = MahjongTile::from_text("06");
+        assert!(invalid_format.is_err());
+        let too_long = MahjongTile::from_text("14m");
+        assert!(too_long.is_err());
+        let too_short = MahjongTile::from_text("3");
+        assert!(too_short.is_err());
+        let invalid_dragon = MahjongTile::from_text("8z");
+        assert!(invalid_dragon.is_err());
+    }
 }
