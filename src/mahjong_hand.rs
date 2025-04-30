@@ -1,5 +1,4 @@
-// pub use crate::mahjong_tile;
-// use std::collections::HashMap;
+pub use crate::mahjong_tile;
 
 // pub enum TileSource {
 //     Draw,
@@ -23,166 +22,40 @@
 //     tile_source: TileSource,
 // }
 
-// pub struct MahjongHand {
-//     closed_tiles: Vec<mahjong_tile::MahjongTile>, // only tiles in hand (i.e. tiles that can be discarded)
-//     open_melds: Vec<MahjongMeld>,
-//     // TODO how to both cache tile_counts and initialize it / update it correctly?
-//     tile_counts: HashMap<mahjong_tile::MahjongTileSuit, [u8; 9]>, // total count of tiles in hand (ignore red fives), honor tiles are ordered: winds first (E, S, W, N), then dragons (White, Green, Red)
-//     // TODO for variants other than riichi, need an additional field for flower tiles
-//     additional_tile_info: Option<AdditionalTileInfo>, // the tile in closed_tiles that was added (if any)
-// }
+// TODO does it matter if the array size is defined statically or via a constant?
+pub struct MahjongHand {
+    tiles: Vec<mahjong_tile::MahjongTile>, // only tiles in hand (i.e. tiles that can be discarded)
+    tile_count_array: Option<[u8; 34]>,    // none if not computed yet
+    shanten: Option<i8>,                   // none if not computed yet
+}
 
-// fn tile_count_idx(tile: mahjong_tile::MahjongTile) -> Result<usize, &'static str> {
-//     // returns the array index in the tile_counts subarray
-//     match tile.suit {
-//         mahjong_tile::MahjongTileSuit::Man
-//         | mahjong_tile::MahjongTileSuit::Sou
-//         | mahjong_tile::MahjongTileSuit::Pin => match tile.rank {
-//             mahjong_tile::MahjongTileRank::One => Ok(0),
-//             mahjong_tile::MahjongTileRank::Two => Ok(1),
-//             mahjong_tile::MahjongTileRank::Three => Ok(2),
-//             mahjong_tile::MahjongTileRank::Four => Ok(3),
-//             mahjong_tile::MahjongTileRank::Five => Ok(4),
-//             mahjong_tile::MahjongTileRank::Six => Ok(5),
-//             mahjong_tile::MahjongTileRank::Seven => Ok(6),
-//             mahjong_tile::MahjongTileRank::Eight => Ok(7),
-//             mahjong_tile::MahjongTileRank::Nine => Ok(8),
-//             _ => Err("Should be able to convert number tile's rank to a number"),
-//         },
-//         mahjong_tile::MahjongTileSuit::Honor => match tile.rank {
-//             mahjong_tile::MahjongTileRank::East => Ok(0),
-//             mahjong_tile::MahjongTileRank::South => Ok(1),
-//             mahjong_tile::MahjongTileRank::West => Ok(2),
-//             mahjong_tile::MahjongTileRank::North => Ok(3),
-//             mahjong_tile::MahjongTileRank::White => Ok(4),
-//             mahjong_tile::MahjongTileRank::Green => Ok(5),
-//             mahjong_tile::MahjongTileRank::Red => Ok(6),
-//             _ => Err("invalid rank for honor tile suit"),
-//         },
-//     }
-// }
+impl Default for MahjongHand {
+    fn default() -> Self {
+        Self {
+            tiles: vec![],
+            tile_count_array: None,
+            shanten: None,
+        }
+    }
+}
 
-// fn tile_from_suit_and_count_idx(
-//     suit: mahjong_tile::MahjongTileSuit,
-//     count_idx: usize,
-// ) -> Result<mahjong_tile::MahjongTile, &'static str> {
-//     // returns the designated tile (rank) given the suit and the array index in the tile_counts subarray
-//     let tile_rank = match suit {
-//         mahjong_tile::MahjongTileSuit::Man
-//         | mahjong_tile::MahjongTileSuit::Sou
-//         | mahjong_tile::MahjongTileSuit::Pin => match count_idx {
-//             0 => mahjong_tile::MahjongTileRank::One,
-//             1 => mahjong_tile::MahjongTileRank::Two,
-//             2 => mahjong_tile::MahjongTileRank::Three,
-//             3 => mahjong_tile::MahjongTileRank::Four,
-//             4 => mahjong_tile::MahjongTileRank::Five,
-//             5 => mahjong_tile::MahjongTileRank::Six,
-//             6 => mahjong_tile::MahjongTileRank::Seven,
-//             7 => mahjong_tile::MahjongTileRank::Eight,
-//             8 => mahjong_tile::MahjongTileRank::Nine,
-//             _ => return Err("invalid array index for number tile suit"),
-//         },
-//         mahjong_tile::MahjongTileSuit::Honor => match count_idx {
-//             0 => mahjong_tile::MahjongTileRank::East,
-//             1 => mahjong_tile::MahjongTileRank::South,
-//             2 => mahjong_tile::MahjongTileRank::West,
-//             3 => mahjong_tile::MahjongTileRank::North,
-//             4 => mahjong_tile::MahjongTileRank::White,
-//             5 => mahjong_tile::MahjongTileRank::Green,
-//             6 => mahjong_tile::MahjongTileRank::Red,
-//             _ => return Err("invalid array index for honor tile suit"),
-//         },
-//     };
-//     Ok(mahjong_tile::MahjongTile {
-//         suit: suit,
-//         rank: tile_rank,
-//         modifier: mahjong_tile::MahjongTileModifier::None,
-//     })
-// }
+impl MahjongHand {
+    /// Converts our tiles vector to an array of counts per tile type (34 elements, since riichi has 34 different tiles).
+    pub fn get_tile_count_array(&self) -> [u8; 34] {
+        let mut new_tile_count_array = [0; 34];
+        for tile in self.tiles.iter() {
+            new_tile_count_array[usize::from(tile.get_id().unwrap())] += 1;
+        }
+        new_tile_count_array
+    }
+
+    /// Adds a tile to this hand
+    pub fn add_tile(&mut self, new_tile: mahjong_tile::MahjongTile) {
+        self.tiles.push(new_tile);
+    }
+}
 
 // impl MahjongHand {
-//     pub fn add_tile(&mut self, new_tile: mahjong_tile::MahjongTile) -> &mut Self {
-//         self.closed_tiles.push(new_tile);
-//         match tile_count_idx(new_tile) {
-//             Ok(idx) => match self.tile_counts.get(&new_tile.suit) {
-//                 Some(&suit_counts) => {
-//                     let mut new_suit_counts = [0; 9];
-//                     new_suit_counts.copy_from_slice(&suit_counts);
-//                     new_suit_counts[idx] += 1;
-//                     self.tile_counts.insert(new_tile.suit, new_suit_counts);
-//                 }
-//                 None => {
-//                     let mut new_suit_counts = [0; 9];
-//                     new_suit_counts[idx] += 1;
-//                     self.tile_counts.insert(new_tile.suit, new_suit_counts);
-//                 }
-//             },
-//             Err(_msg) => {
-//                 // swallow error?
-//             }
-//         };
-//         self.additional_tile_info = Some(AdditionalTileInfo {
-//             tile: new_tile,
-//             tile_source: TileSource::Draw,
-//         });
-//         self
-//     }
-
-//     // pub fn discard_tile(&mut self, discard_tile: mahjong_tile::MahjongTile) -> &mut Self {
-//     //     // TODO we should update in-place?
-//     // }
-
-//     pub fn has_simples(&self) -> bool {
-//         // if any tile in the hand is a 2 through 8
-//         for num_suit in mahjong_tile::NUMBER_SUITS {
-//             match self.tile_counts.get(&num_suit) {
-//                 Some(&suit_counts) => {
-//                     for idx in 1..8 {
-//                         if suit_counts[idx] > 0 {
-//                             return true;
-//                         }
-//                     }
-//                 }
-//                 None => {}
-//             };
-//         }
-//         return false;
-//     }
-
-//     pub fn has_terminals(&self) -> bool {
-//         // if any tile in the hand is a 1 or a 9
-//         for num_suit in mahjong_tile::NUMBER_SUITS {
-//             match self.tile_counts.get(&num_suit) {
-//                 Some(&suit_counts) => {
-//                     if suit_counts[0] > 0 {
-//                         return true;
-//                     }
-//                     if suit_counts[8] > 0 {
-//                         return true;
-//                     }
-//                 }
-//                 None => {}
-//             };
-//         }
-//         return false;
-//     }
-
-//     pub fn has_honors(&self) -> bool {
-//         // if any tile in the hand is an honor tile (a wind or a dragon)
-//         let honor_suit = mahjong_tile::MahjongTileSuit::Honor;
-//         match self.tile_counts.get(&honor_suit) {
-//             Some(&suit_counts) => {
-//                 for idx in 0..7 {
-//                     if suit_counts[idx] > 0 {
-//                         return true;
-//                     }
-//                 }
-//             }
-//             None => {}
-//         };
-//         return false;
-//     }
-
 //     pub fn is_winning_shape(&self) -> bool {
 //         todo!()
 //     }
@@ -284,153 +157,57 @@
 //     }
 // }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     #[test]
-//     fn hand_add_tile() {
-//         let mut tile_counts = HashMap::new();
-//         tile_counts.insert(
-//             mahjong_tile::MahjongTileSuit::Man,
-//             [1, 1, 0, 0, 0, 0, 0, 0, 0],
-//         );
-//         tile_counts.insert(
-//             mahjong_tile::MahjongTileSuit::Honor,
-//             [0, 0, 1, 0, 0, 0, 0, 0, 0],
-//         );
-//         let mut initial_hand = MahjongHand {
-//             closed_tiles: vec![
-//                 mahjong_tile::MahjongTile::from_mspz("1m").unwrap(),
-//                 mahjong_tile::MahjongTile::from_mspz("2m").unwrap(),
-//                 mahjong_tile::MahjongTile::from_mspz("3z").unwrap(),
-//             ],
-//             open_melds: vec![],
-//             tile_counts,
-//             additional_tile_info: None,
-//         };
+    #[test]
+    fn hand_add_tile_and_get_counts_array() {
+        let mut hand = MahjongHand {
+            tiles: vec![
+                mahjong_tile::MahjongTile::from_text("1m").unwrap(),
+                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
+                mahjong_tile::MahjongTile::from_text("3z").unwrap(),
+            ],
+            ..Default::default()
+        };
 
-//         let new_tile = mahjong_tile::MahjongTile::from_mspz("2m").unwrap();
-//         let new_hand = initial_hand.add_tile(new_tile);
-//         match new_hand
-//             .tile_counts
-//             .get(&mahjong_tile::MahjongTileSuit::Man)
-//         {
-//             Some(&suit_counts) => {
-//                 assert_eq!(suit_counts, [1, 2, 0, 0, 0, 0, 0, 0, 0]);
-//             }
-//             None => assert!(false),
-//         };
-//         assert_eq!(new_hand.closed_tiles.len(), 4);
-//         // match new_hand.additional_tile_info {
-//         //     Some(tile_info) => {
-//         //         assert_eq!(tile_info.tile == new_tile);
-//         //     }
-//         //     None => assert!(false),
-//         // };
+        let new_tile = mahjong_tile::MahjongTile::from_text("2m").unwrap();
+        hand.add_tile(new_tile);
+        assert_eq!(hand.tiles.len(), 4);
+        let tile_counts = hand.get_tile_count_array();
+        assert_eq!(
+            1,
+            tile_counts[usize::from(mahjong_tile::get_id_from_tile_text("1m").unwrap())]
+        );
+        assert_eq!(
+            2,
+            tile_counts[usize::from(mahjong_tile::get_id_from_tile_text("2m").unwrap())]
+        );
+        assert_eq!(
+            1,
+            tile_counts[usize::from(mahjong_tile::get_id_from_tile_text("3z").unwrap())]
+        );
 
-//         let new_suit_tile = mahjong_tile::MahjongTile::from_mspz("3s").unwrap();
-//         let hand_with_new_suit = new_hand.add_tile(new_suit_tile);
-//         match hand_with_new_suit
-//             .tile_counts
-//             .get(&mahjong_tile::MahjongTileSuit::Sou)
-//         {
-//             Some(&suit_counts) => {
-//                 assert_eq!(suit_counts, [0, 0, 1, 0, 0, 0, 0, 0, 0]);
-//             }
-//             None => assert!(false),
-//         };
-//         assert_eq!(hand_with_new_suit.closed_tiles.len(), 5);
-//         // assert!(
-//         //     hand_with_new_suit.additional_tile_info.is_some()
-//         //         && hand_with_new_suit.additional_tile_info.unwrap().tile == new_suit_tile
-//         // );
-//     }
-
-//     #[test]
-//     fn hand_has_simples() {
-//         let mut tile_counts = HashMap::new();
-//         tile_counts.insert(
-//             mahjong_tile::MahjongTileSuit::Man,
-//             [1, 1, 0, 0, 0, 0, 0, 0, 0],
-//         );
-//         tile_counts.insert(
-//             mahjong_tile::MahjongTileSuit::Honor,
-//             [0, 0, 1, 0, 0, 0, 0, 0, 0],
-//         );
-//         let hand_with_simples = MahjongHand {
-//             closed_tiles: vec![
-//                 mahjong_tile::MahjongTile::from_mspz("1m").unwrap(),
-//                 mahjong_tile::MahjongTile::from_mspz("2m").unwrap(),
-//                 mahjong_tile::MahjongTile::from_mspz("3z").unwrap(),
-//             ],
-//             open_melds: vec![],
-//             tile_counts,
-//             additional_tile_info: None,
-//         };
-//         assert!(hand_with_simples.has_simples());
-//     }
-
-//     #[test]
-//     fn hand_has_terminals() {
-//         let mut tile_counts = HashMap::new();
-//         tile_counts.insert(
-//             mahjong_tile::MahjongTileSuit::Man,
-//             [0, 1, 0, 0, 1, 0, 0, 0, 0],
-//         );
-//         tile_counts.insert(
-//             mahjong_tile::MahjongTileSuit::Honor,
-//             [0, 0, 1, 0, 0, 0, 0, 0, 0],
-//         );
-//         let no_terminals_hand = MahjongHand {
-//             closed_tiles: vec![
-//                 mahjong_tile::MahjongTile::from_mspz("5m").unwrap(),
-//                 mahjong_tile::MahjongTile::from_mspz("2m").unwrap(),
-//                 mahjong_tile::MahjongTile::from_mspz("3z").unwrap(),
-//             ],
-//             open_melds: vec![],
-//             tile_counts,
-//             additional_tile_info: None,
-//         };
-//         assert!(!no_terminals_hand.has_terminals());
-//     }
-
-//     #[test]
-//     fn hand_has_honors() {
-//         let mut tile_counts = HashMap::new();
-//         tile_counts.insert(
-//             mahjong_tile::MahjongTileSuit::Man,
-//             [0, 0, 0, 0, 1, 0, 0, 0, 1],
-//         );
-//         tile_counts.insert(
-//             mahjong_tile::MahjongTileSuit::Honor,
-//             [0, 0, 0, 0, 0, 1, 0, 0, 0],
-//         );
-//         let hand_with_honors = MahjongHand {
-//             closed_tiles: vec![
-//                 mahjong_tile::MahjongTile::from_mspz("5m").unwrap(),
-//                 mahjong_tile::MahjongTile::from_mspz("9m").unwrap(),
-//                 mahjong_tile::MahjongTile::from_mspz("6z").unwrap(),
-//             ],
-//             open_melds: vec![],
-//             tile_counts,
-//             additional_tile_info: None,
-//         };
-//         assert!(hand_with_honors.has_honors());
-//     }
-
-//     // #[test]
-//     // fn hand_is_winning_shape() {
-//     //     todo!()
-//     // }
-
-//     // #[test]
-//     // fn hand_is_seven_pairs_shape() {
-//     //     todo!()
-//     // }
-
-//     // #[test]
-//     // fn hand_is_thirteen_orphans_shape() {
-//     //     todo!()
-//     // }
-// }
+        let new_suit_tile = mahjong_tile::MahjongTile::from_text("3s").unwrap();
+        hand.add_tile(new_suit_tile);
+        assert_eq!(hand.tiles.len(), 5);
+        let new_tile_counts = hand.get_tile_count_array();
+        assert_eq!(
+            1,
+            new_tile_counts[usize::from(mahjong_tile::get_id_from_tile_text("1m").unwrap())]
+        );
+        assert_eq!(
+            2,
+            new_tile_counts[usize::from(mahjong_tile::get_id_from_tile_text("2m").unwrap())]
+        );
+        assert_eq!(
+            1,
+            new_tile_counts[usize::from(mahjong_tile::get_id_from_tile_text("3z").unwrap())]
+        );
+        assert_eq!(
+            1,
+            new_tile_counts[usize::from(mahjong_tile::get_id_from_tile_text("3s").unwrap())]
+        );
+    }
+}

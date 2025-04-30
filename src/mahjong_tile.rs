@@ -149,6 +149,12 @@ impl Default for MahjongTile {
 }
 
 impl MahjongTile {
+    // TODO constructor for MahjongTile to validate the MahjongTileValue? how to prevent building the struct with `MahjongTile { (...) }`
+
+    pub fn get_id(&self) -> Result<u8, mahjong_error::MahjongError> {
+        self.value.to_id()
+    }
+
     /// Parse a text representation of a tile e.g. "1m" or "7z" or "0p" (0 refers to a red five)
     pub fn from_text(tile_string: &str) -> Result<Self, mahjong_error::MahjongError> {
         if tile_string.len() != 2 {
@@ -213,6 +219,13 @@ impl MahjongTile {
                 "Second char must be m, p, s, or z",
             )),
         }
+    }
+}
+
+pub fn get_id_from_tile_text(tile_string: &str) -> Result<u8, mahjong_error::MahjongError> {
+    match MahjongTile::from_text(tile_string) {
+        Ok(tile) => tile.get_id(),
+        Err(x) => Err(x),
     }
 }
 
