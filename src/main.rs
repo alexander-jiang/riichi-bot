@@ -5,6 +5,9 @@ pub mod state;
 pub mod tile_grouping;
 pub mod tiles;
 pub mod yaku;
+pub mod mahjong_tile;
+pub mod mahjong_hand;
+pub mod mahjong_game_state;
 
 fn main() {
     // for serial in 0..tiles::NUM_TILES {

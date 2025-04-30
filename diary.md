@@ -1,5 +1,17 @@
 # Diary
 
+### Apr 26 2025
+
+- new goal: build a "mahjong solitaire" / singleplayer mahjong website: simulate the training mode of getting to tenpai as quickly as possible from random starting hand
+    - subproblem 1: build riichi mahjong game rules library (can reference existing rust library: https://github.com/harphield/riichi-tools-rs)
+        - 1.a: define hand state, drawing tiles, and valid hand winning shape & valid yaku
+        - 1.b: build in logic for furiten (i.e. the final wait cannot include a tile that you've already discarded)
+    - subproblem 2: build a server to handle web requests, store a new "problem" (i.e. starting hand, and hidden random sequence of tiles to be drawn)
+    - subproblem 3: build the UI for the website
+    - subproblem 4: try to optimize the performance of the riichi library
+- next goal: AI to analyze the discards for single-player mahjong (similar to WordleBot - it offers explanation of what it would have done, and why)
+- next goal: scrape Tenhou game logs
+
 ### May 16 2023
 
 - Draft list of tasks
