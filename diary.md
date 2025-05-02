@@ -1,5 +1,21 @@
 # Diary
 
+### May 1 2025
+
+- seems the recursive implementation of is_winning_shape is faster than the iterative implementation:
+
+```
+(running each one independently)
+Elapsed time for is_winning_shape_iterative: ~123 - 190 microseconds
+Elapsed time for is_winning_shape_recursive: ~118 - 145 microseconds
+Elapsed time for is_winning_shape_recursive_heuristic: ~85 - 110 microseconds
+```
+
+- ~~on multiple attempts, the elapsed time for `is_winning_shape_iterative` is ~120 microseconds, and the elapsed time for `is_winning_shape_recursive` is ~90 microseconds~~
+- ~~why? maybe because building and updating the `VecDeque` is slower than just making recursive calls?~~
+- We can also do some heuristic checks / optimizations: instead of naively iterating through the indexes in the array, we can try checking for isolated tiles first, then checking honors, before checking the number suits.
+- oh maybe it's due to the compiler optimizations / ordering? if i run the `is_winning_shape_recursive_heuristic` function on its own, i get a higher time than if i run it after the `is_winning_shape_iterative` and `is_winning_shape_recursive` functions. Also, running the `is_winning_shape_recursive_heuristic` function multiple times in a row shows different times: usually, the first attempt is slower, around 150 microseconds, and then the subsequent attempts are faster, around 80 microseconds.
+
 ### Apr 29 2025
 
 - reading through the Rust implementation [here](https://github.com/harphield/riichi-tools-rs/blob/master/src/riichi/hand.rs) for inspiration / tips in Rust

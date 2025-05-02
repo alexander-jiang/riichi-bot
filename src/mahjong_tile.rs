@@ -50,11 +50,12 @@ pub enum MahjongTileValue {
     Dragon(u8),
 }
 
-const NUM_DISTINCT_TILE_VALUES: u8 = 34;
-const FIRST_PINZU_ID: u8 = 9;
-const FIRST_SOUZU_ID: u8 = 18;
-const FIRST_WIND_ID: u8 = 27;
-const FIRST_DRAGON_ID: u8 = 31;
+pub const NUM_DISTINCT_TILE_VALUES: u8 = 34;
+pub const FIRST_PINZU_ID: u8 = 9;
+pub const FIRST_SOUZU_ID: u8 = 18;
+pub const FIRST_WIND_ID: u8 = 27;
+pub const FIRST_HONOR_ID: u8 = FIRST_WIND_ID;
+pub const FIRST_DRAGON_ID: u8 = 31;
 
 impl MahjongTileValue {
     /// returns an integer in range 0-33 (inclusive) that represents the distinct tile values (red tiles have the same value),
