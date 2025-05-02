@@ -16,6 +16,17 @@ Elapsed time for is_winning_shape_recursive_heuristic: ~85 - 110 microseconds
 - We can also do some heuristic checks / optimizations: instead of naively iterating through the indexes in the array, we can try checking for isolated tiles first, then checking honors, before checking the number suits.
 - oh maybe it's due to the compiler optimizations / ordering? if i run the `is_winning_shape_recursive_heuristic` function on its own, i get a higher time than if i run it after the `is_winning_shape_iterative` and `is_winning_shape_recursive` functions. Also, running the `is_winning_shape_recursive_heuristic` function multiple times in a row shows different times: usually, the first attempt is slower, around 150 microseconds, and then the subsequent attempts are faster, around 80 microseconds.
 
+can use this `cargo test mahjong_hand::tests::time_is_winning_shape -- --show-output` command to run multiple tests (based on the prefix test name filter)
+
+when running on hand that is not a winning shape:
+
+```
+(running each one independently)
+Elapsed time for is_winning_shape_iterative: ~46 - 65 microseconds
+Elapsed time for is_winning_shape_recursive: ~38 - 57 microseconds
+Elapsed time for is_winning_shape_recursive_heuristic: ~37 - 54 microseconds
+```
+
 ### Apr 29 2025
 
 - reading through the Rust implementation [here](https://github.com/harphield/riichi-tools-rs/blob/master/src/riichi/hand.rs) for inspiration / tips in Rust

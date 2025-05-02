@@ -684,9 +684,8 @@ mod tests {
         assert!(hand.is_winning_shape_recursive_heuristic());
     }
 
-    #[test]
-    fn hand_is_winning_shape_complex() {
-        let hand = MahjongHand {
+    fn complex_winning_shape_hand() -> MahjongHand {
+        MahjongHand {
             // hand: 2223444567m111z - waits on 1m,2m,3m,4m,5m,8m
             tiles: vec![
                 mahjong_tile::MahjongTile::from_text("1z").unwrap(),
@@ -706,15 +705,19 @@ mod tests {
                 mahjong_tile::MahjongTile::from_text("3m").unwrap(),
             ],
             ..Default::default()
-        };
+        }
+    }
+
+    #[test]
+    fn hand_is_winning_shape_complex() {
+        let hand = complex_winning_shape_hand();
         assert!(hand.is_winning_shape_iterative());
         assert!(hand.is_winning_shape_recursive());
         assert!(hand.is_winning_shape_recursive_heuristic());
     }
 
-    #[test]
-    fn hand_is_not_winning_shape() {
-        let hand = MahjongHand {
+    fn not_winning_shape_hand() -> MahjongHand {
+        MahjongHand {
             // hand: 122234m789s345p33z
             tiles: vec![
                 mahjong_tile::MahjongTile::from_text("3z").unwrap(),
@@ -733,7 +736,12 @@ mod tests {
                 mahjong_tile::MahjongTile::from_text("5p").unwrap(),
             ],
             ..Default::default()
-        };
+        }
+    }
+
+    #[test]
+    fn hand_is_not_winning_shape() {
+        let hand = not_winning_shape_hand();
         assert!(!hand.is_winning_shape_iterative());
         assert!(!hand.is_winning_shape_recursive());
         assert!(!hand.is_winning_shape_recursive_heuristic());
@@ -741,28 +749,7 @@ mod tests {
 
     #[test]
     fn time_is_winning_shape_iterative() {
-        let hand = MahjongHand {
-            // hand: 2223444567m111z - waits on 1m,2m,3m,4m,5m,8m
-            tiles: vec![
-                mahjong_tile::MahjongTile::from_text("1z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("5m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("6m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("7m").unwrap(),
-                // add a 3m tile to make it a winning hand
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-            ],
-            ..Default::default()
-        };
-
+        let hand = complex_winning_shape_hand();
         let before = Instant::now();
         hand.is_winning_shape_iterative();
         println!(
@@ -773,28 +760,7 @@ mod tests {
 
     #[test]
     fn time_is_winning_shape_recursive() {
-        let hand = MahjongHand {
-            // hand: 2223444567m111z - waits on 1m,2m,3m,4m,5m,8m
-            tiles: vec![
-                mahjong_tile::MahjongTile::from_text("1z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("5m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("6m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("7m").unwrap(),
-                // add a 3m tile to make it a winning hand
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-            ],
-            ..Default::default()
-        };
-
+        let hand = complex_winning_shape_hand();
         let before_recursive = Instant::now();
         hand.is_winning_shape_recursive();
         println!(
@@ -803,31 +769,42 @@ mod tests {
         );
     }
 
-
     #[test]
     fn time_is_winning_shape_recursive_heuristic() {
-        let hand = MahjongHand {
-            // hand: 2223444567m111z - waits on 1m,2m,3m,4m,5m,8m
-            tiles: vec![
-                mahjong_tile::MahjongTile::from_text("1z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("5m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("6m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("7m").unwrap(),
-                // add a 3m tile to make it a winning hand
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-            ],
-            ..Default::default()
-        };
+        let hand = complex_winning_shape_hand();
+        let before_recursive_heuristic = Instant::now();
+        hand.is_winning_shape_recursive_heuristic();
+        println!(
+            "Elapsed time for is_winning_shape_recursive_heuristic: {:.2?}",
+            before_recursive_heuristic.elapsed()
+        );
+    }
 
+    #[test]
+    fn time_not_winning_shape_iterative() {
+        let hand = not_winning_shape_hand();
+        let before = Instant::now();
+        hand.is_winning_shape_iterative();
+        println!(
+            "Elapsed time for is_winning_shape_iterative: {:.2?}",
+            before.elapsed()
+        );
+    }
+
+    #[test]
+    fn time_not_winning_shape_recursive() {
+        let hand = not_winning_shape_hand();
+        let before_recursive = Instant::now();
+        hand.is_winning_shape_recursive();
+        println!(
+            "Elapsed time for is_winning_shape_recursive: {:.2?}",
+            before_recursive.elapsed()
+        );
+    }
+
+    #[test]
+    fn time_not_winning_shape_recursive_heuristic() {
+        let hand = not_winning_shape_hand();
         let before_recursive_heuristic = Instant::now();
         hand.is_winning_shape_recursive_heuristic();
         println!(
