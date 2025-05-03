@@ -1,5 +1,15 @@
 # Diary
 
+### May 2 2025
+
+tuning the recursive implementation: added check for quads, added initial check for isolated tiles + honor tiles (before initial recursive call)
+
+```
+after adding check for quads: 51-84 microseconds
+after moving the check for honor tiles to initial check only (not on each recursive call): ~47 microseconds
+after passing in next tile_id with non-zero tile count as an argument for each recursive call: ~47 microseconds
+```
+
 ### May 1 2025
 
 - seems the recursive implementation of is_winning_shape is faster than the iterative implementation:

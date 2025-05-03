@@ -57,16 +57,20 @@ fn tile_id_is_isolated(tile_count_array: [u8; 34], tile_id: u8) -> bool {
         // and zero copies of a tile -> not isolated by definition
         return false;
     }
+    // from this point onward, there's only one copy of this tile
     if tile_id >= mahjong_tile::FIRST_HONOR_ID {
         // a single honor tile is always isolated (honor tiles cannot form sequences)
         return true;
     }
-    let tile_rank = (tile_id % 9) + 1; // from 1-9
-    if tile_rank == 1 {
+    let tile_rank = tile_id % 9; // from 0-8 (corresponding to ranks 1-9)
+    if tile_rank == 0 {
+        // single copy of 1 tile is isolated if there is no 2 tile in that suit
         return tile_count_array[tile_idx + 1] == 0;
-    } else if tile_rank == 9 {
+    } else if tile_rank == 8 {
+        // single copy of 9 tile is isolated if there is no 8 tile in that suit
         return tile_count_array[tile_idx - 1] == 0;
     } else {
+        // single copy of n-tile isolated if there is no (n-1) tile and no (n+1) tile in that suit
         return tile_count_array[tile_idx + 1] == 0 && tile_count_array[tile_idx - 1] == 0;
     }
 }
@@ -342,45 +346,6 @@ impl MahjongHand {
             tile_id += 1;
         }
 
-        // then check honor tiles: we know there are no isolated tiles, so each honor tile must be completely consumed
-        tile_id = mahjong_tile::FIRST_HONOR_ID;
-        let mut honor_tile_melds = 0;
-        let mut honor_tile_pairs = 0;
-        let mut new_tile_count_array = tile_count_array;
-        while usize::from(tile_id) < tile_count_array.len() {
-            let honor_tile_count = tile_count_array[usize::from(tile_id)];
-            if honor_tile_count > 0 {
-                if honor_tile_count == 2 {
-                    if num_pairs_left - honor_tile_pairs == 0 {
-                        return false; // can't have too many pairs from honor tiles
-                    }
-                    honor_tile_pairs += 1;
-                } else if honor_tile_count == 3 || honor_tile_count == 4 {
-                    if num_melds_left - honor_tile_melds == 0 {
-                        return false; // can't have too many melds from honor tiles
-                    }
-                    honor_tile_melds += 1;
-                } else {
-                    // too many tiles??
-                    return false;
-                }
-                // for honor tiles, we have to use all the tiles (as honor tiles can only form sets: triplets or quads)
-                new_tile_count_array[usize::from(tile_id)] = 0;
-            }
-            tile_id += 1;
-        }
-        if honor_tile_melds > 0 || honor_tile_pairs > 0 {
-            println!(
-                "found {} honor tile melds, {} honor tile pairs",
-                honor_tile_melds, honor_tile_pairs
-            );
-            return self.is_winning_shape_recursive_helper_heuristic(
-                new_tile_count_array,
-                num_melds_left - honor_tile_melds,
-                num_pairs_left - honor_tile_pairs,
-            );
-        }
-
         // get to first tile value in the hand
         tile_id = 0;
         while usize::from(tile_id) < tile_count_array.len()
@@ -415,24 +380,22 @@ impl MahjongHand {
 
         let can_make_pair = tile_count_array[tile_idx] >= 2;
         let can_make_triplet = tile_count_array[tile_idx] >= 3;
-        // TODO do we need to check quads?
+        let can_make_quad = tile_count_array[tile_idx] >= 4;
 
         // if we can't make a sequence, pair, or triplet, then this cannot be a possible winning hand
         // (this tile is isolated)
         if !((can_make_sequence && num_melds_left > 0)
             || (can_make_pair && num_pairs_left > 0)
-            || (can_make_triplet && num_melds_left > 0))
+            || (can_make_triplet && num_melds_left > 0)
+            || (can_make_quad && num_melds_left > 0))
         {
             return false;
         }
 
-        if can_make_sequence && num_melds_left > 0 {
-            // copy and update count array
+        if can_make_quad && num_melds_left > 0 {
             let mut new_tile_count_array: [u8; 34] = tile_count_array;
-            new_tile_count_array[tile_idx] -= 1;
-            new_tile_count_array[tile_idx + 1] -= 1;
-            new_tile_count_array[tile_idx + 2] -= 1;
-            println!("can form a sequence starting from id={}", tile_id);
+            new_tile_count_array[tile_idx] -= 4;
+            println!("can form a quad with id={}", tile_id);
             let recursive_result = self.is_winning_shape_recursive_helper_heuristic(
                 new_tile_count_array,
                 num_melds_left - 1,
@@ -442,22 +405,8 @@ impl MahjongHand {
                 return true;
             }
         }
-        if can_make_pair && num_pairs_left > 0 {
-            // copy and update count array
-            let mut new_tile_count_array: [u8; 34] = tile_count_array;
-            new_tile_count_array[tile_idx] -= 2;
-            println!("can form a pair with id={}", tile_id);
-            let recursive_result = self.is_winning_shape_recursive_helper_heuristic(
-                new_tile_count_array,
-                num_melds_left,
-                num_pairs_left - 1,
-            );
-            if recursive_result {
-                return true;
-            }
-        }
+
         if can_make_triplet && num_melds_left > 0 {
-            // copy and update count array
             let mut new_tile_count_array: [u8; 34] = tile_count_array;
             new_tile_count_array[tile_idx] -= 3;
             println!("can form a triplet with id={}", tile_id);
@@ -470,6 +419,59 @@ impl MahjongHand {
                 return true;
             }
         }
+
+        if can_make_pair && num_pairs_left > 0 {
+            let mut new_tile_count_array: [u8; 34] = tile_count_array;
+            new_tile_count_array[tile_idx] -= 2;
+            println!("can form a pair with id={}", tile_id);
+            let recursive_result = self.is_winning_shape_recursive_helper_heuristic(
+                new_tile_count_array,
+                num_melds_left,
+                num_pairs_left - 1,
+            );
+            if recursive_result {
+                return true;
+            }
+        }
+
+        // if we reached this point, we can't form a quad, pair, or triplet, so the only choice is to
+        // use up all copies of this tile to make sequences (because we already ruled out pairs/triplets/quads)
+        if can_make_sequence && num_melds_left > 0 {
+            let num_copies = tile_count_array[tile_idx];
+            // do we have enough tiles to make multiple sequence melds
+            if tile_count_array[tile_idx + 1] < num_copies
+                || tile_count_array[tile_idx + 2] < num_copies
+            {
+                println!(
+                    "cannot form {} sequences starting from id={}",
+                    num_copies, tile_id
+                );
+                return false;
+            }
+
+            if num_copies > num_melds_left {
+                // we know we couldn't form a quad, triplet, or pair, and this means there would be left over
+                // copies of the tile that cannot be used
+                return false;
+            }
+            let mut new_tile_count_array: [u8; 34] = tile_count_array;
+            new_tile_count_array[tile_idx] -= num_copies;
+            new_tile_count_array[tile_idx + 1] -= num_copies;
+            new_tile_count_array[tile_idx + 2] -= num_copies;
+            println!(
+                "can form {} sequence(s) starting from id={}",
+                num_copies, tile_id
+            );
+            let recursive_result = self.is_winning_shape_recursive_helper_heuristic(
+                new_tile_count_array,
+                num_melds_left - num_copies,
+                num_pairs_left,
+            );
+            if recursive_result {
+                return true;
+            }
+        }
+
         return false;
     }
 
@@ -491,11 +493,57 @@ impl MahjongHand {
         // maintain how many melds + pair are accounted for, which is updated as we go through the process
         // start with 0 melds, 0 pair (max of 4 melds and 1 pair)
 
-        let tile_count_array = self.get_tile_count_array();
+        let mut tile_count_array = self.get_tile_count_array();
+        let mut num_melds_left = 4;
+        let mut num_pairs_left = 1;
+
+        // first check for isolated tiles (any isolated tiles = not a winning shape)
+        let mut tile_id: u8 = 0;
+        while usize::from(tile_id) < tile_count_array.len() {
+            if tile_id_is_isolated(tile_count_array, tile_id) {
+                println!("found isolated tile id={}", tile_id);
+                return false;
+            }
+            tile_id += 1;
+        }
+
+        // then check honor tiles: we know there are no isolated tiles, so each honor tile must be completely consumed
+        tile_id = mahjong_tile::FIRST_HONOR_ID;
+        while usize::from(tile_id) < tile_count_array.len() {
+            let tile_idx = usize::from(tile_id);
+            let honor_tile_count = tile_count_array[tile_idx];
+            if honor_tile_count == 0 {
+                tile_id += 1;
+                continue;
+            } else if honor_tile_count == 1 {
+                // single honor tile is isolated -> cannot be winning
+                return false;
+            } else if honor_tile_count == 2 {
+                if num_pairs_left == 0 {
+                    return false; // cannot form another pair from honor tiles
+                }
+                num_pairs_left -= 1;
+            } else if honor_tile_count == 3 || honor_tile_count == 4 {
+                if num_melds_left == 0 {
+                    return false; // cannot form another meld from honor tiles
+                }
+                num_melds_left -= 1;
+            } else {
+                // more than four tiles??
+                return false;
+            }
+            // for honor tiles, we have to use all the tiles (as honor tiles can only form sets: triplets or quads)
+            tile_count_array[tile_idx] = 0;
+
+            tile_id += 1;
+        }
+        println!(
+            "after checking honor tiles: tile counts {:?}, melds left: {}, pairs left: {}",
+            tile_count_array, num_melds_left, num_pairs_left
+        );
 
         // TODO deduct tile counts from any open melds (which cannot be altered or broken apart)
-        let num_melds_left = 4;
-        let num_pairs_left = 1;
+
         self.is_winning_shape_recursive_helper_heuristic(
             tile_count_array,
             num_melds_left,
