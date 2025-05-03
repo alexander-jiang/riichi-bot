@@ -135,6 +135,38 @@ impl MahjongTileValue {
     }
 }
 
+/// Returns Some with the rank of the tile (a number from 1-9) if the tile
+/// is in a numbered suit (man, pin, or sou). Returns None otherise.
+pub fn get_num_tile_rank(tile_id: u8) -> Option<u8> {
+    if tile_id >= FIRST_HONOR_ID {
+        Option::None
+    } else {
+        if tile_id < 9 {
+            Option::Some(tile_id + 1)
+        } else if tile_id < 18 {
+            Option::Some((tile_id - 9) + 1)
+        } else {
+            Option::Some((tile_id - 18) + 1)
+        }
+    }
+}
+
+/// Returns Some with the suit of the tile (man, pin, or sou) if the tile
+/// is in a numbered suit. Returns None otherise.
+pub fn get_num_tile_suit(tile_id: u8) -> Option<MahjongTileSuit> {
+    if tile_id >= FIRST_HONOR_ID {
+        Option::None
+    } else {
+        if tile_id < 9 {
+            Option::Some(MahjongTileSuit::Man)
+        } else if tile_id < 18 {
+            Option::Some(MahjongTileSuit::Pin)
+        } else {
+            Option::Some(MahjongTileSuit::Sou)
+        }
+    }
+}
+
 pub struct MahjongTile {
     value: MahjongTileValue,
     is_red: bool,
@@ -233,6 +265,37 @@ pub fn get_id_from_tile_text(tile_string: &str) -> Result<u8, mahjong_error::Mah
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn number_tile_ids_suit_and_rank() {
+        // tile_id for 1m = 0
+        assert_eq!(get_num_tile_suit(0), Option::Some(MahjongTileSuit::Man));
+        assert_eq!(get_num_tile_rank(0), Option::Some(1));
+
+        // tile_id for 5m = 4
+        assert_eq!(get_num_tile_suit(4), Option::Some(MahjongTileSuit::Man));
+        assert_eq!(get_num_tile_rank(4), Option::Some(5));
+
+        // tile_id for 7p = 15
+        assert_eq!(get_num_tile_suit(15), Option::Some(MahjongTileSuit::Pin));
+        assert_eq!(get_num_tile_rank(15), Option::Some(7));
+
+        // tile_id for 2s = 19
+        assert_eq!(get_num_tile_suit(19), Option::Some(MahjongTileSuit::Sou));
+        assert_eq!(get_num_tile_rank(19), Option::Some(2));
+
+        // tile_id for 1z = 27
+        assert_eq!(get_num_tile_suit(27), Option::None);
+        assert_eq!(get_num_tile_rank(27), Option::None);
+
+        // tile_id for 7z = 34
+        assert_eq!(get_num_tile_suit(34), Option::None);
+        assert_eq!(get_num_tile_rank(34), Option::None);
+
+        // invalid tile id
+        assert_eq!(get_num_tile_suit(100), Option::None);
+        assert_eq!(get_num_tile_rank(100), Option::None);
+    }
 
     #[test]
     fn tile_value_to_id() {

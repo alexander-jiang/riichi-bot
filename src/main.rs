@@ -3,6 +3,7 @@ use std::collections::HashMap;
 pub mod mahjong_error;
 // pub mod mahjong_game_state;
 pub mod mahjong_hand;
+pub mod mahjong_meld;
 pub mod mahjong_tile;
 pub mod mini_mahjong;
 pub mod state;

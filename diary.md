@@ -1,5 +1,13 @@
 # Diary
 
+### May 3 2025
+
+Replacing the `tile_id % 9` with a helper function that uses if conditions to determine how much to subtract from the `tile_id` (e.g. `(tile_id - 9)` for pinzu), seems to be slightly faster:
+
+```
+after replacing the % operator with a call to get_num_tile_rank function: ~12.5-13.5 microseconds
+```
+
 ### May 2 2025
 
 tuning the recursive implementation: added check for quads, added initial check for isolated tiles + honor tiles (before initial recursive call)
@@ -8,6 +16,7 @@ tuning the recursive implementation: added check for quads, added initial check 
 after adding check for quads: 51-84 microseconds
 after moving the check for honor tiles to initial check only (not on each recursive call): ~47 microseconds
 after passing in next tile_id with non-zero tile count as an argument for each recursive call: ~47 microseconds
+after commenting out the println (which were added for debugging): ~15 microseconds
 ```
 
 ### May 1 2025
