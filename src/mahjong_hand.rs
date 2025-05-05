@@ -1,9 +1,5 @@
-use std::collections::VecDeque;
-use std::time::Instant;
-
-use crate::mahjong_error;
 pub use crate::mahjong_tile;
-
+use std::collections::VecDeque;
 
 // TODO does it matter if the array size is defined statically or via a constant?
 pub struct MahjongHand {
@@ -58,6 +54,10 @@ fn tile_id_is_isolated(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
 impl MahjongHand {
     /// Converts our tiles vector to an array of counts per tile type (34 elements, since riichi has 34 different tiles).
     pub fn get_tile_count_array(&self) -> [u8; 34] {
+        if self.tile_count_array.is_some() {
+            return self.tile_count_array.unwrap();
+        }
+
         let mut new_tile_count_array = [0; 34];
         for tile in self.tiles.iter() {
             new_tile_count_array[usize::from(tile.get_id().unwrap())] += 1;
@@ -65,10 +65,29 @@ impl MahjongHand {
         new_tile_count_array
     }
 
+    /// Updates the tile_count_array in-place, and returns the updated array.
+    pub fn update_tile_count_array(&mut self) -> [u8; 34] {
+        let mut new_tile_count_array = [0; 34];
+        for tile in self.tiles.iter() {
+            new_tile_count_array[usize::from(tile.get_id().unwrap())] += 1;
+        }
+
+        // update/overwrite the stored tile_count_array
+        self.tile_count_array = Some(new_tile_count_array);
+
+        new_tile_count_array
+    }
+
     /// Adds a tile to this hand
     pub fn add_tile(&mut self, new_tile: mahjong_tile::MahjongTile) {
+        // update self.tile_count_array (if it was previously computed)
+        if self.tile_count_array.is_some() {
+            let mut new_tile_count_array = self.tile_count_array.unwrap();
+            let new_tile_id = new_tile.get_id().unwrap();
+            new_tile_count_array[usize::from(new_tile_id)] += 1;
+            self.tile_count_array = Some(new_tile_count_array);
+        }
         self.tiles.push(new_tile);
-        // TODO update self.tile_count_array if is_some() or compute from scratch if is_none?
     }
 
     /// identify complete hand (with standard shape: 4 melds + 1 pair), ignoring 7 pairs, 13 orphans, and presence of yaku
@@ -528,6 +547,11 @@ impl MahjongHand {
             num_pairs_left,
         )
     }
+
+    /// Returns true if the hand is in tenpai (i.e. adding a single copy of certain tile(s) to the hand will form a winning shape)
+    pub fn is_tenpai(&self) -> bool {
+        todo!()
+    }
 }
 
 // impl MahjongHand {
@@ -631,9 +655,10 @@ impl MahjongHand {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Instant;
 
     #[test]
-    fn hand_add_tile_and_get_counts_array() {
+    fn hand_add_tile_and_get_tile_count_array() {
         let mut hand = MahjongHand {
             tiles: vec![
                 mahjong_tile::MahjongTile::from_text("1m").unwrap(),
@@ -679,6 +704,33 @@ mod tests {
         assert_eq!(
             1,
             new_tile_counts[usize::from(mahjong_tile::get_id_from_tile_text("3s").unwrap())]
+        );
+    }
+
+    #[test]
+    fn hand_get_and_update_tile_count_array() {
+        let mut hand = MahjongHand {
+            tiles: vec![
+                mahjong_tile::MahjongTile::from_text("1m").unwrap(),
+                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
+                mahjong_tile::MahjongTile::from_text("3z").unwrap(),
+            ],
+            ..Default::default()
+        };
+        assert!(hand.tile_count_array.is_none());
+        let mut expected_tile_count_array = [0; 34];
+        expected_tile_count_array
+            [usize::from(mahjong_tile::get_id_from_tile_text("1m").unwrap())] = 1;
+        expected_tile_count_array
+            [usize::from(mahjong_tile::get_id_from_tile_text("2m").unwrap())] = 1;
+        expected_tile_count_array
+            [usize::from(mahjong_tile::get_id_from_tile_text("3z").unwrap())] = 1;
+        assert_eq!(hand.get_tile_count_array(), expected_tile_count_array);
+
+        hand.update_tile_count_array();
+        assert!(
+            hand.tile_count_array.is_some()
+                && hand.tile_count_array.unwrap() == expected_tile_count_array
         );
     }
 

@@ -137,7 +137,6 @@ pub fn is_valid_meld(tile_ids: &[u8], meld_type: MeldType) -> bool {
 
 impl MahjongMeld {
     pub fn from_tile_ids(
-        &self,
         tile_ids: &[u8],
         meld_type: MeldType,
     ) -> Result<Self, mahjong_error::MahjongError> {
@@ -148,10 +147,10 @@ impl MahjongMeld {
             ));
         }
 
-        let mut meld_tile_ids: [Option<u8>; 4] = [Option::None; 4];
+        let mut meld_tile_ids: [Option<u8>; 4] = [None; 4];
         let mut meld_id = 0;
         while meld_id < num_tile_ids {
-            meld_tile_ids[meld_id] = Option::Some(tile_ids[meld_id]);
+            meld_tile_ids[meld_id] = Some(tile_ids[meld_id]);
             meld_id += 1;
         }
 
@@ -159,8 +158,8 @@ impl MahjongMeld {
         Ok(Self {
             meld_type: meld_type,
             tile_ids: meld_tile_ids,
-            added_tile_id: Option::None,
-            added_tile_player: Option::None,
+            added_tile_id: None,
+            added_tile_player: None,
         })
     }
 
@@ -465,5 +464,55 @@ mod tests {
     }
 
     #[test]
-    fn meld_from_tile_ids() {}
+    fn meld_from_tile_ids() {
+        let sequence_tile_ids = [
+            mahjong_tile::get_id_from_tile_text("1m").unwrap(),
+            mahjong_tile::get_id_from_tile_text("2m").unwrap(),
+            mahjong_tile::get_id_from_tile_text("3m").unwrap(),
+        ];
+        match MahjongMeld::from_tile_ids(&sequence_tile_ids, MeldType::ClosedSequence) {
+            Ok(_meld) => assert!(true),
+            Err(_) => assert!(false),
+        };
+
+        let red_five_sequence_tile_ids = [
+            mahjong_tile::get_id_from_tile_text("3p").unwrap(),
+            mahjong_tile::get_id_from_tile_text("4p").unwrap(),
+            mahjong_tile::get_id_from_tile_text("0p").unwrap(),
+        ];
+        match MahjongMeld::from_tile_ids(&red_five_sequence_tile_ids, MeldType::ClosedSequence) {
+            Ok(_meld) => assert!(true),
+            Err(_) => assert!(false),
+        };
+
+        let triplet_tile_ids = [
+            mahjong_tile::get_id_from_tile_text("6s").unwrap(),
+            mahjong_tile::get_id_from_tile_text("6s").unwrap(),
+            mahjong_tile::get_id_from_tile_text("6s").unwrap(),
+        ];
+        match MahjongMeld::from_tile_ids(&triplet_tile_ids, MeldType::ClosedTriplet) {
+            Ok(_meld) => assert!(true),
+            Err(_) => assert!(false),
+        };
+
+        let quad_tile_ids = [
+            mahjong_tile::get_id_from_tile_text("1z").unwrap(),
+            mahjong_tile::get_id_from_tile_text("1z").unwrap(),
+            mahjong_tile::get_id_from_tile_text("1z").unwrap(),
+            mahjong_tile::get_id_from_tile_text("1z").unwrap(),
+        ];
+        match MahjongMeld::from_tile_ids(&quad_tile_ids, MeldType::ClosedQuad) {
+            Ok(_meld) => assert!(true),
+            Err(_) => assert!(false),
+        };
+
+        let pair_tile_ids = [
+            mahjong_tile::get_id_from_tile_text("5z").unwrap(),
+            mahjong_tile::get_id_from_tile_text("5z").unwrap(),
+        ];
+        match MahjongMeld::from_tile_ids(&pair_tile_ids, MeldType::Pair) {
+            Ok(_meld) => assert!(true),
+            Err(_) => assert!(false),
+        };
+    }
 }

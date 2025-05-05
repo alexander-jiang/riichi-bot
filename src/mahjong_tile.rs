@@ -133,20 +133,41 @@ impl MahjongTileValue {
             return Ok(MahjongTileValue::Dragon((id - FIRST_WIND_ID) + 1));
         }
     }
+
+    /// Returns a text representation of a tile e.g. "1m" or "7z" or "0p" (0 refers to a red five)
+    pub fn to_text(&self) -> String {
+        match self {
+            Self::Number(rank, suit) => {
+                let mut tile_string = String::new();
+                tile_string.push_str(&(rank.to_string()));
+                tile_string.push_str(match suit {
+                    MahjongTileSuit::Man => "m",
+                    MahjongTileSuit::Pin => "p",
+                    MahjongTileSuit::Sou => "s",
+                });
+                tile_string
+            }
+            Self::Wind(rank) | Self::Dragon(rank) => {
+                let mut tile_string = rank.to_string().to_owned();
+                tile_string.push_str("z");
+                tile_string
+            }
+        }
+    }
 }
 
 /// Returns Some with the rank of the tile (a number from 1-9) if the tile
 /// is in a numbered suit (man, pin, or sou). Returns None otherise.
 pub fn get_num_tile_rank(tile_id: u8) -> Option<u8> {
     if tile_id >= FIRST_HONOR_ID {
-        Option::None
+        None
     } else {
         if tile_id < 9 {
-            Option::Some(tile_id + 1)
+            Some(tile_id + 1)
         } else if tile_id < 18 {
-            Option::Some((tile_id - 9) + 1)
+            Some((tile_id - 9) + 1)
         } else {
-            Option::Some((tile_id - 18) + 1)
+            Some((tile_id - 18) + 1)
         }
     }
 }
@@ -155,14 +176,14 @@ pub fn get_num_tile_rank(tile_id: u8) -> Option<u8> {
 /// is in a numbered suit. Returns None otherise.
 pub fn get_num_tile_suit(tile_id: u8) -> Option<MahjongTileSuit> {
     if tile_id >= FIRST_HONOR_ID {
-        Option::None
+        None
     } else {
         if tile_id < 9 {
-            Option::Some(MahjongTileSuit::Man)
+            Some(MahjongTileSuit::Man)
         } else if tile_id < 18 {
-            Option::Some(MahjongTileSuit::Pin)
+            Some(MahjongTileSuit::Pin)
         } else {
-            Option::Some(MahjongTileSuit::Sou)
+            Some(MahjongTileSuit::Sou)
         }
     }
 }
@@ -262,6 +283,10 @@ pub fn get_id_from_tile_text(tile_string: &str) -> Result<u8, mahjong_error::Mah
     }
 }
 
+pub fn get_tile_text_from_id(tile_id: u8) -> Result<String, mahjong_error::MahjongError> {
+    MahjongTileValue::from_id(tile_id).map(|tile| tile.to_text())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -269,32 +294,32 @@ mod tests {
     #[test]
     fn number_tile_ids_suit_and_rank() {
         // tile_id for 1m = 0
-        assert_eq!(get_num_tile_suit(0), Option::Some(MahjongTileSuit::Man));
-        assert_eq!(get_num_tile_rank(0), Option::Some(1));
+        assert_eq!(get_num_tile_suit(0), Some(MahjongTileSuit::Man));
+        assert_eq!(get_num_tile_rank(0), Some(1));
 
         // tile_id for 5m = 4
-        assert_eq!(get_num_tile_suit(4), Option::Some(MahjongTileSuit::Man));
-        assert_eq!(get_num_tile_rank(4), Option::Some(5));
+        assert_eq!(get_num_tile_suit(4), Some(MahjongTileSuit::Man));
+        assert_eq!(get_num_tile_rank(4), Some(5));
 
         // tile_id for 7p = 15
-        assert_eq!(get_num_tile_suit(15), Option::Some(MahjongTileSuit::Pin));
-        assert_eq!(get_num_tile_rank(15), Option::Some(7));
+        assert_eq!(get_num_tile_suit(15), Some(MahjongTileSuit::Pin));
+        assert_eq!(get_num_tile_rank(15), Some(7));
 
         // tile_id for 2s = 19
-        assert_eq!(get_num_tile_suit(19), Option::Some(MahjongTileSuit::Sou));
-        assert_eq!(get_num_tile_rank(19), Option::Some(2));
+        assert_eq!(get_num_tile_suit(19), Some(MahjongTileSuit::Sou));
+        assert_eq!(get_num_tile_rank(19), Some(2));
 
         // tile_id for 1z = 27
-        assert_eq!(get_num_tile_suit(27), Option::None);
-        assert_eq!(get_num_tile_rank(27), Option::None);
+        assert_eq!(get_num_tile_suit(27), None);
+        assert_eq!(get_num_tile_rank(27), None);
 
         // tile_id for 7z = 34
-        assert_eq!(get_num_tile_suit(34), Option::None);
-        assert_eq!(get_num_tile_rank(34), Option::None);
+        assert_eq!(get_num_tile_suit(34), None);
+        assert_eq!(get_num_tile_rank(34), None);
 
         // invalid tile id
-        assert_eq!(get_num_tile_suit(100), Option::None);
-        assert_eq!(get_num_tile_rank(100), Option::None);
+        assert_eq!(get_num_tile_suit(100), None);
+        assert_eq!(get_num_tile_rank(100), None);
     }
 
     #[test]
@@ -454,5 +479,103 @@ mod tests {
         assert!(too_short.is_err());
         let invalid_dragon = MahjongTile::from_text("8z");
         assert!(invalid_dragon.is_err());
+    }
+
+    #[test]
+    fn test_get_id_from_tile_text() {
+        match get_id_from_tile_text("1m") {
+            Ok(tile_id) => assert_eq!(tile_id, 0),
+            Err(_) => assert!(false),
+        };
+
+        match get_id_from_tile_text("3p") {
+            Ok(tile_id) => assert_eq!(tile_id, 11),
+            Err(_) => assert!(false),
+        };
+
+        match get_id_from_tile_text("8s") {
+            Ok(tile_id) => assert_eq!(tile_id, 25),
+            Err(_) => assert!(false),
+        };
+
+        match get_id_from_tile_text("1z") {
+            Ok(tile_id) => assert_eq!(tile_id, 27),
+            Err(_) => assert!(false),
+        };
+
+        match get_id_from_tile_text("4z") {
+            Ok(tile_id) => assert_eq!(tile_id, 30),
+            Err(_) => assert!(false),
+        };
+
+        // invalid tile string should return Err(...)
+        assert!(get_id_from_tile_text("9z").is_err());
+
+        // handle red fives
+        match get_id_from_tile_text("0m") {
+            Ok(tile_id) => assert_eq!(tile_id, 4),
+            Err(_) => assert!(false),
+        };
+        match get_id_from_tile_text("0p") {
+            Ok(tile_id) => assert_eq!(tile_id, 13),
+            Err(_) => assert!(false),
+        };
+        match get_id_from_tile_text("0s") {
+            Ok(tile_id) => assert_eq!(tile_id, 22),
+            Err(_) => assert!(false),
+        };
+
+        // but there is no "0z"
+        assert!(get_id_from_tile_text("0z").is_err());
+    }
+
+    #[test]
+    fn test_get_tile_text_from_id() {
+        match get_tile_text_from_id(0) {
+            Ok(tile_string) => assert_eq!(tile_string, "1m"),
+            Err(_) => assert!(false),
+        };
+
+        match get_tile_text_from_id(2) {
+            Ok(tile_string) => assert_eq!(tile_string, "3m"),
+            Err(_) => assert!(false),
+        };
+
+        match get_tile_text_from_id(11) {
+            Ok(tile_string) => assert_eq!(tile_string, "3p"),
+            Err(_) => assert!(false),
+        };
+
+        match get_tile_text_from_id(15) {
+            Ok(tile_string) => assert_eq!(tile_string, "7p"),
+            Err(_) => assert!(false),
+        };
+
+        match get_tile_text_from_id(22) {
+            Ok(tile_string) => assert_eq!(tile_string, "5s"),
+            Err(_) => assert!(false),
+        };
+
+        match get_tile_text_from_id(25) {
+            Ok(tile_string) => assert_eq!(tile_string, "8s"),
+            Err(_) => assert!(false),
+        };
+
+        match get_tile_text_from_id(27) {
+            Ok(tile_string) => assert_eq!(tile_string, "1z"),
+            Err(_) => assert!(false),
+        };
+
+        match get_tile_text_from_id(32) {
+            Ok(tile_string) => assert_eq!(tile_string, "6z"),
+            Err(_) => assert!(false),
+        };
+
+        match get_tile_text_from_id(33) {
+            Ok(tile_string) => assert_eq!(tile_string, "7z"),
+            Err(_) => assert!(false),
+        };
+
+        assert!(get_tile_text_from_id(34).is_err());
     }
 }
