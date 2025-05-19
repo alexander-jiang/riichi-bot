@@ -188,6 +188,7 @@ pub fn get_num_tile_suit(tile_id: u8) -> Option<MahjongTileSuit> {
     }
 }
 
+#[derive(Clone)]
 pub struct MahjongTile {
     value: MahjongTileValue,
     is_red: bool,
@@ -207,6 +208,13 @@ impl MahjongTile {
 
     pub fn get_id(&self) -> Result<u8, mahjong_error::MahjongError> {
         self.value.to_id()
+    }
+
+    pub fn from_id(id: u8) -> Result<Self, mahjong_error::MahjongError> {
+        MahjongTileValue::from_id(id).map(|tile_value| MahjongTile {
+            value: tile_value,
+            ..Default::default()
+        })
     }
 
     /// Parse a text representation of a tile e.g. "1m" or "7z" or "0p" (0 refers to a red five)

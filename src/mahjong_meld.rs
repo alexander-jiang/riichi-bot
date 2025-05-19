@@ -22,22 +22,28 @@ pub enum MeldType {
     ClosedSequence, // minjun
     OpenSequence, // anjun
     Pair,      // jantou, also called the "eye"
+    Isolated,
 }
 
 impl MeldType {
     pub fn is_open(&self) -> bool {
         match self {
             Self::OpenTriplet | Self::OpenQuad | Self::AddedQuad | Self::OpenSequence => true,
-            Self::ClosedTriplet | Self::ClosedQuad | Self::ClosedSequence | Self::Pair => false,
+            Self::ClosedTriplet
+            | Self::ClosedQuad
+            | Self::ClosedSequence
+            | Self::Pair
+            | Self::Isolated => false,
         }
     }
 }
 
+#[derive(Clone)]
 pub struct MahjongMeld {
-    meld_type: MeldType,
-    tile_ids: [Option<u8>; 4], // None value represents the meld only uses
-    added_tile_id: Option<u8>, // set to None for closed melds
-    added_tile_player: Option<u8>, // set to None for closed melds
+    pub meld_type: MeldType,
+    pub tile_ids: [Option<u8>; 4], // None value represents the tiles that the meld doesn't use
+    pub added_tile_id: Option<u8>, // set to None for closed melds
+    pub added_tile_player: Option<u8>, // set to None for closed melds
 }
 
 pub fn is_valid_meld(tile_ids: &[u8], meld_type: MeldType) -> bool {
@@ -130,6 +136,12 @@ pub fn is_valid_meld(tile_ids: &[u8], meld_type: MeldType) -> bool {
             }
             // if there are 3 tiles, all 3 tile ranks are distinct, and
             // max rank and min rank are exactly 2 apart, that means it must be a sequence
+            true
+        }
+        MeldType::Isolated => {
+            if num_tile_ids != 1 {
+                return false;
+            }
             true
         }
     }

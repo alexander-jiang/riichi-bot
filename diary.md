@@ -1,5 +1,25 @@
 # Diary
 
+### May 17 2025
+
+benchmark for tenpai evaluation: i.e. the problem of identifying if the hand is in tenpai (and if so, which tiles it will win on) -- the problem of hand scoring (which requires determining the maximum-scoring hand shape & wait) is deferred to a later point
+
+the benchmark test: hand 22s111234p34789m (wins on 25m)
+
+the "brute force" approach: try adding each of the possible 34 tiles to the hand, and check whether the resulting hand is a winning shape (using the recursive approach which was found below)
+
+```
+elapsed time ~150-155 microseconds (to find all possible winning tiles)
+```
+
+We should aim to do better than this, if we use a "smarter" approach.
+
+For a chuuren poutou / pure nine gates tenpai hand, the elapsed time is a bit longer:
+
+```
+Elapsed time on chuuren poutou hand: 168-175 microseconds (to find all possible winning tile)
+```
+
 ### May 3 2025
 
 Replacing the `tile_id % 9` with a helper function that uses if conditions to determine how much to subtract from the `tile_id` (e.g. `(tile_id - 9)` for pinzu), seems to be slightly faster:
