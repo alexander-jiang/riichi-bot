@@ -1,5 +1,20 @@
 # Diary
 
+### May 20 2025
+
+comparing the is_winning_shape check using the `build_shapes` function (which is iterative) - compare to the ~12.5-15 microseconds from the optimized recursive heuristic implementation below:
+
+```
+elapsed time ~50-89 microseconds (for winning shape)
+elapsed time ~40-57 microseconds (for not winning shape)
+```
+
+but for the tenpai check (i.e. determining whether the hand is in tenpai and if so, which tiles it will win on), using the `build_shapes` function:
+
+```
+elapsed time 55-70 microseconds (for a tenpai shape)
+```
+
 ### May 17 2025
 
 benchmark for tenpai evaluation: i.e. the problem of identifying if the hand is in tenpai (and if so, which tiles it will win on) -- the problem of hand scoring (which requires determining the maximum-scoring hand shape & wait) is deferred to a later point
@@ -25,7 +40,8 @@ Elapsed time on chuuren poutou hand: 168-175 microseconds (to find all possible 
 Replacing the `tile_id % 9` with a helper function that uses if conditions to determine how much to subtract from the `tile_id` (e.g. `(tile_id - 9)` for pinzu), seems to be slightly faster:
 
 ```
-after replacing the % operator with a call to get_num_tile_rank function: ~12.5-13.5 microseconds
+after replacing the % operator with a call to get_num_tile_rank function: ~12.5-13.5 microseconds (for not winning hand)
+~14-15 microseconds for winning hand
 ```
 
 ### May 2 2025

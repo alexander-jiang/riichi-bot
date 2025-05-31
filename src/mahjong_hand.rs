@@ -66,11 +66,11 @@ fn tile_id_is_isolated(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
         // a single honor tile is always isolated (honor tiles cannot form sequences)
         return true;
     }
-    let tile_rank = tile_id % 9; // from 0-8 (corresponding to ranks 1-9)
-    if tile_rank == 0 {
+    let tile_rank = mahjong_tile::get_num_tile_rank(tile_id).unwrap(); // from 1-9
+    if tile_rank == 1 {
         // single copy of 1 tile is isolated if there is no 2 tile in that suit
         return tile_count_array[tile_idx + 1] == 0;
-    } else if tile_rank == 8 {
+    } else if tile_rank == 9 {
         // single copy of 9 tile is isolated if there is no 8 tile in that suit
         return tile_count_array[tile_idx - 1] == 0;
     } else {
@@ -183,6 +183,73 @@ fn can_make_kanchan(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
             // the tile is an honor tile (cannot form sequence)
             None => false,
         })
+}
+
+// TODO test
+fn is_incomplete_group(tile_count_array: &[u8; 34]) -> bool {
+    for tile_id in 0..34u8 {
+        let tile_idx = usize::from(tile_id);
+        if tile_count_array[tile_idx] == 0 {
+            continue;
+        }
+
+        // pair does not count as complete group
+        let is_complete =
+            can_make_sequence(tile_count_array, tile_id) || tile_count_array[tile_idx] >= 3;
+        return !is_complete;
+    }
+    return false;
+}
+
+// TODO test
+// TODO should we refactor this? the tile_count_array is no longer useful - would be better to know the meld type and tiles
+fn tile_ids_to_complete_group(tile_count_array: &[u8; 34]) -> Option<Vec<u8>> {
+    for tile_id in 0..34u8 {
+        let tile_idx = usize::from(tile_id);
+        if tile_count_array[tile_idx] == 0 {
+            continue;
+        }
+
+        let is_complete =
+            can_make_sequence(tile_count_array, tile_id) || tile_count_array[tile_idx] >= 3;
+        if is_complete {
+            return None;
+        }
+        if can_make_ryanmen(tile_count_array, tile_id) {
+            if tile_idx + 1 < tile_count_array.len() && tile_count_array[tile_idx + 1] > 0 {
+                return Some(vec![tile_id - 1, tile_id + 2]);
+            } else {
+                return Some(vec![tile_id - 2, tile_id + 1]);
+            }
+        } else if can_make_penchan(tile_count_array, tile_id) {
+            let tile_num_rank = mahjong_tile::get_num_tile_rank(tile_id);
+            // TODO refactor to use match
+            if tile_num_rank.is_none() {
+                panic!("invalid penchan");
+            }
+            let tile_num_rank = tile_num_rank.unwrap();
+            if tile_num_rank == 8 {
+                return Some(vec![tile_id - 1]);
+            } else if tile_num_rank == 9 {
+                return Some(vec![tile_id - 2]);
+            } else if tile_num_rank == 1 {
+                return Some(vec![tile_id + 2]);
+            } else if tile_num_rank == 2 {
+                return Some(vec![tile_id + 1]);
+            } else {
+                panic!("invalid penchan");
+            }
+        } else if can_make_kanchan(tile_count_array, tile_id) {
+            if tile_idx + 2 < tile_count_array.len() && tile_count_array[tile_idx + 2] > 0 {
+                return Some(vec![tile_id + 1]);
+            } else {
+                return Some(vec![tile_id - 1]);
+            }
+        } else {
+            return Some(vec![tile_id]);
+        }
+    }
+    return None;
 }
 
 impl MahjongHand {
@@ -682,6 +749,10 @@ impl MahjongHand {
         )
     }
 
+    pub fn is_winning_shape_build_shapes(&self) -> bool {
+        !self.build_shapes(0).is_empty()
+    }
+
     pub fn is_winning_shape(&self) -> bool {
         // uses the best implementation so far
         self.is_winning_shape_recursive_heuristic()
@@ -697,16 +768,22 @@ impl MahjongHand {
             let new_tile = mahjong_tile::MahjongTile::from_id(tile_id).unwrap();
             new_hand.add_tile(new_tile);
             if new_hand.is_winning_shape() {
-                println!(
-                    "hand is tenpai, wins on {}",
-                    mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
-                );
+                // println!(
+                //     "hand is tenpai, wins on {}",
+                //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                // );
                 return true;
             }
         }
         return false;
     }
 
+    /// Returns true if the hand is in tenpai (i.e. adding a single copy of certain tile(s) to the hand will form a winning shape)
+    pub fn is_tenpai_build_shapes(&self) -> bool {
+        !self.build_shapes(1).is_empty()
+    }
+
+    /// Returns true if the hand is in tenpai (i.e. adding a single copy of certain tile(s) to the hand will form a winning shape)
     pub fn is_tenpai(&self) -> bool {
         // uses the best implementation so far
         self.is_tenpai_brute_force()
@@ -733,7 +810,26 @@ impl MahjongHand {
         tenpai_tiles
     }
 
-    pub fn build_shapes(&self) -> Vec<PartialHandGroupingState> {
+    pub fn get_tenpai_tiles_build_shapes(&self) -> Vec<u8> {
+        // if returns empty vec, then the hand is not in tenpai
+        let mut tenpai_tiles = vec![];
+        let tenpai_groupings = self.build_shapes(1);
+        for grouping in tenpai_groupings.iter() {
+            for group in &grouping.groups_tile_counts {
+                if is_incomplete_group(group) {
+                    let tile_ids_to_complete = tile_ids_to_complete_group(group).unwrap();
+                    for tile_id in tile_ids_to_complete {
+                        if !tenpai_tiles.contains(&tile_id) {
+                            tenpai_tiles.push(tile_id);
+                        }
+                    }
+                }
+            }
+        }
+        tenpai_tiles
+    }
+
+    pub fn build_shapes(&self, incomplete_group_budget: u8) -> Vec<PartialHandGroupingState> {
         let tile_count_array = self.get_tile_count_array();
         let mut partial_state = PartialHandGroupingState {
             tile_count_array,
@@ -778,13 +874,17 @@ impl MahjongHand {
         }
 
         let mut queue: VecDeque<PartialHandGroupingState> = VecDeque::new();
-        queue.push_back(partial_state);
+        if partial_state.num_incomplete_groups <= incomplete_group_budget {
+            queue.push_back(partial_state);
+        } else {
+            // println!("too many incomplete groups, already over budget");
+        }
 
         let mut completed_partial_states = Vec::new();
 
         while !queue.is_empty() {
             let current_state = queue.pop_front().unwrap();
-            println!("current state: {}", current_state,);
+            // println!("current state: {}", current_state,);
             let current_count_array = current_state.tile_count_array;
 
             let mut tile_id = 0;
@@ -797,7 +897,7 @@ impl MahjongHand {
             }
 
             if tile_id >= mahjong_tile::FIRST_HONOR_ID {
-                println!("adding current state to completed list: {}", current_state,);
+                // println!("adding current state to completed list: {}", current_state,);
                 completed_partial_states.push(current_state);
                 continue;
             }
@@ -805,10 +905,10 @@ impl MahjongHand {
             let tile_idx = usize::from(tile_id);
             let num_tile_count = current_count_array[tile_idx];
 
-            println!(
-                "considering tile {}",
-                mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
-            );
+            // println!(
+            //     "considering tile {}",
+            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            // );
 
             if num_tile_count >= 3 {
                 // recursively try to add a triplet or a pair
@@ -821,10 +921,10 @@ impl MahjongHand {
                     .push(group_tile_count);
                 new_state_after_triplet.num_complete_groups += 1;
                 queue.push_back(new_state_after_triplet);
-                println!(
-                    "will recursively try forming a triplet {}",
-                    mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
-                );
+                // println!(
+                //     "will recursively try forming a triplet {}",
+                //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                // );
 
                 let mut new_state_after_pair = current_state.clone();
                 let mut group_tile_count = [0; 34];
@@ -834,11 +934,18 @@ impl MahjongHand {
                     .groups_tile_counts
                     .push(group_tile_count);
                 new_state_after_pair.num_pairs += 1;
-                queue.push_back(new_state_after_pair);
-                println!(
-                    "will recursively try forming a pair {}",
-                    mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
-                );
+                if new_state_after_pair.num_pairs > 1 {
+                    new_state_after_pair.num_incomplete_groups += 1;
+                }
+                if new_state_after_pair.num_incomplete_groups <= incomplete_group_budget {
+                    queue.push_back(new_state_after_pair);
+                    // println!(
+                    //     "will recursively try forming a pair {}",
+                    //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                    // );
+                } else {
+                    // println!("exceeded incomplete group budget, cannot form an additional pair")
+                }
 
                 continue;
             }
@@ -852,15 +959,21 @@ impl MahjongHand {
                     .groups_tile_counts
                     .push(group_tile_count);
                 new_state_after_pair.num_pairs += 1;
-                queue.push_back(new_state_after_pair);
-                println!(
-                    "will recursively try forming a pair {}",
-                    mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
-                );
+                if new_state_after_pair.num_pairs > 1 {
+                    new_state_after_pair.num_incomplete_groups += 1;
+                }
+                if new_state_after_pair.num_incomplete_groups <= incomplete_group_budget {
+                    queue.push_back(new_state_after_pair);
+                    // println!(
+                    //     "will recursively try forming a pair {}",
+                    //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                    // );
+                } else {
+                    // println!("exceeded incomplete group budget, cannot form an additional pair")
+                }
             }
 
             // try to add as a sequence, or as a partial wait, or as a isolated tile
-            let tile_num_rank = mahjong_tile::get_num_tile_rank(tile_id);
             let can_make_sequence = can_make_sequence(&current_count_array, tile_id);
             let can_make_ryanmen = can_make_ryanmen(&current_count_array, tile_id);
             let can_make_penchan = can_make_penchan(&current_count_array, tile_id);
@@ -883,13 +996,13 @@ impl MahjongHand {
                     .push(group_tile_count);
                 new_state_after_sequence.num_complete_groups += 1;
                 queue.push_back(new_state_after_sequence);
-                println!(
-                    "will recursively try forming a sequence from {}",
-                    mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
-                );
+                // println!(
+                //     "will recursively try forming a sequence from {}",
+                //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                // );
             }
 
-            if can_make_ryanmen {
+            if can_make_ryanmen && current_state.num_incomplete_groups < incomplete_group_budget {
                 let mut new_state_after_ryanmen = current_state.clone();
                 let mut group_tile_count = [0; 34];
                 group_tile_count[tile_idx] = 1;
@@ -903,13 +1016,13 @@ impl MahjongHand {
                     .push(group_tile_count);
                 new_state_after_ryanmen.num_incomplete_groups += 1;
                 queue.push_back(new_state_after_ryanmen);
-                println!(
-                    "will recursively try forming a ryanmen from {}",
-                    mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
-                );
+                // println!(
+                //     "will recursively try forming a ryanmen from {}",
+                //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                // );
             }
 
-            if can_make_penchan {
+            if can_make_penchan && current_state.num_incomplete_groups < incomplete_group_budget {
                 let mut new_state_after_penchan = current_state.clone();
                 let mut group_tile_count = [0; 34];
                 group_tile_count[tile_idx] = 1;
@@ -923,13 +1036,18 @@ impl MahjongHand {
                     .push(group_tile_count);
                 new_state_after_penchan.num_incomplete_groups += 1;
                 queue.push_back(new_state_after_penchan);
-                println!(
-                    "will recursively try forming a penchan from {}",
-                    mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
-                );
+                // println!(
+                //     "will recursively try forming a penchan from {}",
+                //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                // );
             }
 
-            if can_make_kanchan {
+            // is it true that we should not try to make a kanchan if there is a possible sequence?
+            // e.g. 2344
+            if can_make_kanchan
+                && !can_make_sequence
+                && current_state.num_incomplete_groups < incomplete_group_budget
+            {
                 let mut new_state_after_kanchan = current_state.clone();
                 let mut group_tile_count = [0; 34];
                 group_tile_count[tile_idx] = 1;
@@ -943,27 +1061,30 @@ impl MahjongHand {
                     .push(group_tile_count);
                 new_state_after_kanchan.num_incomplete_groups += 1;
                 queue.push_back(new_state_after_kanchan);
-                println!(
-                    "will recursively try forming a kanchan from {}",
-                    mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
-                );
+                // println!(
+                //     "will recursively try forming a kanchan from {}",
+                //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                // );
             }
 
-            // TODO should we add this as an isolated tile?
-            let mut new_state_after_isolated = current_state.clone();
-            let mut group_tile_count = [0; 34];
-            group_tile_count[tile_idx] = 1;
-            new_state_after_isolated.tile_count_array[tile_idx] = current_count_array[tile_idx] - 1;
-            new_state_after_isolated
-                .groups_tile_counts
-                .push(group_tile_count);
-            // how to indicate this is a floating tile vs. a taatsu / protogroup that is only one away
-            new_state_after_isolated.num_incomplete_groups += 1;
-            queue.push_back(new_state_after_isolated);
-            println!(
-                "will recursively try forming an isolated tile from {}",
-                mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
-            );
+            // only add this as an isolated tile if we can still form an incomplete group
+            if current_state.num_incomplete_groups < incomplete_group_budget {
+                let mut new_state_after_isolated = current_state.clone();
+                let mut group_tile_count = [0; 34];
+                group_tile_count[tile_idx] = 1;
+                new_state_after_isolated.tile_count_array[tile_idx] =
+                    current_count_array[tile_idx] - 1;
+                new_state_after_isolated
+                    .groups_tile_counts
+                    .push(group_tile_count);
+                // how to indicate this is a floating tile vs. a taatsu / protogroup that is only one away
+                new_state_after_isolated.num_incomplete_groups += 1;
+                queue.push_back(new_state_after_isolated);
+                // println!(
+                //     "will recursively try forming an isolated tile from {}",
+                //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                // );
+            }
         }
 
         completed_partial_states
@@ -1176,6 +1297,7 @@ mod tests {
         assert!(hand.is_winning_shape_iterative());
         assert!(hand.is_winning_shape_recursive());
         assert!(hand.is_winning_shape_recursive_heuristic());
+        assert!(hand.is_winning_shape_build_shapes());
         assert!(hand.is_winning_shape());
     }
 
@@ -1209,6 +1331,7 @@ mod tests {
         assert!(hand.is_winning_shape_iterative());
         assert!(hand.is_winning_shape_recursive());
         assert!(hand.is_winning_shape_recursive_heuristic());
+        assert!(hand.is_winning_shape_build_shapes());
         assert!(hand.is_winning_shape());
     }
 
@@ -1241,6 +1364,7 @@ mod tests {
         assert!(!hand.is_winning_shape_iterative());
         assert!(!hand.is_winning_shape_recursive());
         assert!(!hand.is_winning_shape_recursive_heuristic());
+        assert!(!hand.is_winning_shape_build_shapes());
         assert!(!hand.is_winning_shape());
     }
 
@@ -1278,6 +1402,17 @@ mod tests {
     }
 
     #[test]
+    fn time_is_winning_shape_build_shapes() {
+        let hand = complex_winning_shape_hand();
+        let before_build_shapes = Instant::now();
+        hand.is_winning_shape_build_shapes();
+        println!(
+            "Elapsed time for is_winning_shape_build_shapes: {:.2?}",
+            before_build_shapes.elapsed()
+        );
+    }
+
+    #[test]
     fn time_not_winning_shape_iterative() {
         let hand = not_winning_shape_hand();
         let before = Instant::now();
@@ -1310,6 +1445,17 @@ mod tests {
         );
     }
 
+    #[test]
+    fn time_not_winning_shape_build_shapes() {
+        let hand = not_winning_shape_hand();
+        let before_build_shapes = Instant::now();
+        hand.is_winning_shape_build_shapes();
+        println!(
+            "Elapsed time for is_winning_shape_build_shapes: {:.2?}",
+            before_build_shapes.elapsed()
+        );
+    }
+
     fn tenpai_hand() -> MahjongHand {
         MahjongHand {
             // hand: 22s111234p34789m (wins on 25m)
@@ -1336,19 +1482,39 @@ mod tests {
     fn hand_is_tenpai() {
         let hand = tenpai_hand();
         assert!(hand.is_tenpai_brute_force());
+        assert!(hand.is_tenpai_build_shapes());
         assert!(hand.is_tenpai());
         let tenpai_tile_ids = hand.get_tenpai_tiles_brute_force();
+        assert_eq!(tenpai_tile_ids.len(), 2);
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2m").unwrap()));
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("5m").unwrap()));
+
+        let tenpai_tile_ids = hand.get_tenpai_tiles_build_shapes();
         assert_eq!(tenpai_tile_ids.len(), 2);
         assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2m").unwrap()));
         assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("5m").unwrap()));
     }
 
     #[test]
-    fn time_is_tenpai() {
+    fn time_is_tenpai_brute_force() {
         let hand = tenpai_hand();
         let before = Instant::now();
-        hand.is_tenpai();
-        println!("Elapsed time for is_tenpai: {:.2?}", before.elapsed());
+        hand.is_tenpai_brute_force();
+        println!(
+            "Elapsed time for is_tenpai_brute_force: {:.2?}",
+            before.elapsed()
+        );
+    }
+
+    #[test]
+    fn time_is_tenpai_build_shapes() {
+        let hand = tenpai_hand();
+        let before = Instant::now();
+        hand.is_tenpai_build_shapes();
+        println!(
+            "Elapsed time for is_tenpai_build_shapes: {:.2?}",
+            before.elapsed()
+        );
     }
 
     #[test]
@@ -1388,8 +1554,11 @@ mod tests {
     fn hand_is_not_tenpai() {
         let hand = not_tenpai_hand();
         assert!(!hand.is_tenpai_brute_force());
+        assert!(!hand.is_tenpai_build_shapes());
         assert!(!hand.is_tenpai());
         let tenpai_tile_ids = hand.get_tenpai_tiles_brute_force();
+        assert_eq!(tenpai_tile_ids.len(), 0);
+        let tenpai_tile_ids = hand.get_tenpai_tiles_build_shapes();
         assert_eq!(tenpai_tile_ids.len(), 0);
     }
 
@@ -1420,8 +1589,21 @@ mod tests {
     fn chuuren_poutou_hand_is_tenpai() {
         let hand = chuuren_poutou_tenpai_hand();
         assert!(hand.is_tenpai_brute_force());
+        assert!(hand.is_tenpai_build_shapes());
         assert!(hand.is_tenpai());
         let tenpai_tile_ids = hand.get_tenpai_tiles_brute_force();
+        assert_eq!(tenpai_tile_ids.len(), 9);
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("1p").unwrap()));
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2p").unwrap()));
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("3p").unwrap()));
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("4p").unwrap()));
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("5p").unwrap()));
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("6p").unwrap()));
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("7p").unwrap()));
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("8p").unwrap()));
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("9p").unwrap()));
+
+        let tenpai_tile_ids = hand.get_tenpai_tiles_build_shapes();
         assert_eq!(tenpai_tile_ids.len(), 9);
         assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("1p").unwrap()));
         assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2p").unwrap()));
@@ -1739,7 +1921,7 @@ mod tests {
     #[test]
     fn build_shapes_complete_hand() {
         let hand = complex_winning_shape_hand();
-        let groupings = hand.build_shapes();
+        let groupings = hand.build_shapes(0);
         println!("returned groupings:");
         for grouping in groupings.iter() {
             println!("{}", grouping);
@@ -1808,11 +1990,12 @@ mod tests {
         }
     }
 
+    // TODO fix failing test
     #[test]
     fn build_shapes_nobetan_shape() {
         // test with a four-in-a-row shape (yonrenkei, aka nobetan)
         let hand = nobetan_shape();
-        let groupings = hand.build_shapes();
+        let groupings = hand.build_shapes(2);
         println!("returned groupings:");
         for grouping in groupings.iter() {
             println!("{}", grouping);
@@ -1840,11 +2023,12 @@ mod tests {
         }
     }
 
+    // TODO fix failing test
     #[test]
     fn build_shapes_embedded_ryankan_shape() {
         // test with a shape that has an embedded ryankan (3m-5m-7m)
         let hand = embedded_ryankan_shape();
-        let groupings = hand.build_shapes();
+        let groupings = hand.build_shapes(2);
         println!("returned groupings:");
         for grouping in groupings.iter() {
             println!("{}", grouping);
