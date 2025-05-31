@@ -7,7 +7,7 @@ use std::fmt;
 pub struct MahjongHand {
     tiles: Vec<mahjong_tile::MahjongTile>, // only tiles in hand (i.e. tiles that can be discarded)
     tile_count_array: Option<[u8; 34]>,    // none if not computed yet
-    shanten: Option<i8>,                   // none if not computed yet
+    _shanten: Option<i8>,                  // none if not computed yet TODO update this eventually
                                            // TODO track fixed/declared melds (open melds or closed kans)
 }
 
@@ -16,7 +16,7 @@ impl Default for MahjongHand {
         Self {
             tiles: vec![],
             tile_count_array: None,
-            shanten: None,
+            _shanten: None,
         }
     }
 }
@@ -93,7 +93,7 @@ fn tile_count_array_to_string(tile_count_array: &[u8; 34]) -> String {
 }
 
 /// sequence = three consecutive tiles (e.g. 123 or 678)
-fn can_make_sequence(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
+pub fn can_make_sequence(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
     let tile_idx = usize::from(tile_id);
     let tile_num_rank = mahjong_tile::get_num_tile_rank(tile_id);
     tile_count_array[tile_idx] >= 1
@@ -134,7 +134,7 @@ fn can_make_sequence(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
 }
 
 /// ryanmen = two-sided wait (e.g. 23 or 78)
-fn can_make_ryanmen(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
+pub fn can_make_ryanmen(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
     let tile_idx = usize::from(tile_id);
     let tile_num_rank = mahjong_tile::get_num_tile_rank(tile_id);
     tile_count_array[tile_idx] >= 1
@@ -153,7 +153,7 @@ fn can_make_ryanmen(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
 }
 
 /// penchan = one-sided wait (only 12 or 89)
-fn can_make_penchan(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
+pub fn can_make_penchan(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
     let tile_idx = usize::from(tile_id);
     let tile_num_rank = mahjong_tile::get_num_tile_rank(tile_id);
     tile_count_array[tile_idx] >= 1
@@ -168,7 +168,7 @@ fn can_make_penchan(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
 }
 
 // kanchan = inner wait (e.g. 13 or 79)
-fn can_make_kanchan(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
+pub fn can_make_kanchan(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
     let tile_idx = usize::from(tile_id);
     let tile_num_rank = mahjong_tile::get_num_tile_rank(tile_id);
     tile_count_array[tile_idx] >= 1
