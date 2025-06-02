@@ -79,7 +79,7 @@ fn tile_id_is_isolated(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
     }
 }
 
-fn tile_count_array_to_string(tile_count_array: &[u8; 34]) -> String {
+pub fn tile_count_array_to_string(tile_count_array: &[u8; 34]) -> String {
     let mut output = String::new();
     // hardcode array len so that the tile_id var is a u8 type
     for tile_id in 0..34 {
