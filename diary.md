@@ -1,5 +1,18 @@
 # Diary
 
+### Jun 2 2025
+
+Finished the new, simplified implementation of the shanten / ukiere calculation in `shanten.rs` - should probably remove the old code in `mahjong_meld.rs` and whatever we don't need from `mahjong_hand.rs` as well
+
+next steps:
+* benchmarking / optimization - how fast is the shanten/ukiere computation? Can we optimize it? some ideas:
+    * as we build all possible hand interpretations, build in a depth-first & greedy way, and keep track of the minimum-shanten achieved by a complete interpretation thus far. Then you can discard/exit early from other interpretations that won't be better?
+    * ordering heuristics: consider suits with fewer tiles first? try to find "stable" groups i.e. those that have unambiguous interpretation (like how honor tiles must all be used in a meld together, or if there is a single group of 3 tiles that is > 2 tiles away from all other tiles in that suit)
+    * splitting subproblem / caching: split by suit (manzu, pinzu, souzu) or when tiles are > 2 tiles away from all other tiles -> maybe these subproblems can be pre-computed into a file that is loaded into memory for faster lookup? it doesn't matter which suit the tiles are in (for pure shanten/ukiere calculations). Also there is symmetry: if you know the shanten/ukiere for the group 3445567, then you also know the shanten/ukiere for the group 3455667 (there is symmetry around the 5 tile, except for the relationship between dora indicator and dora, but that is only useful for the expected value computation, and only if you will do something advanced like estimating expected value with taking potential uradora into account.)
+* shanten computation after draw - naive approach is to first check if the drawn tile makes a complete hand. and if not, try discarding each distinct tile value from the hand, and see what the resulting hand's shanten is. But is there a better way?
+* expected speed to tenpai / win - to simplify, assume we can only rely on self-draws, no calling chii/pon/kan or ron. Can simplify further if we ignore furiten. What is the probability of getting to tenpai in the next X draws? This seems complicated to find a closed-form solution for, as it can fluctuate as more tiles are discarded and if there are upgrade opportunities.
+* expected value of hand - to compute this, we need additional information: seat wind & round wind, dora indicator(s). We could also incorporate other player's discards to get an even better sense of which tiles remain. We could continue to assume that the hand will remain closed until tenpai. We would need to be able to identify and score han (yaku) and fu.
+
 ### May 20 2025
 
 comparing the is_winning_shape check using the `build_shapes` function (which is iterative) - compare to the ~12.5-15 microseconds from the optimized recursive heuristic implementation below:
