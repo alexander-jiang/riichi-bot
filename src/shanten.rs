@@ -736,9 +736,42 @@ pub fn tiles_to_count_array(tiles_string: &str) -> [u8; 34] {
     tile_count_array
 }
 
+pub fn tiles_to_tile_ids(tiles_string: &str) -> Vec<u8> {
+    let mut tile_ids = Vec::new();
+    let mut rank_chars: Vec<char> = Vec::new();
+    for char in tiles_string.chars() {
+        if char == 'm' || char == 's' || char == 'p' || char == 'z' {
+            if rank_chars.is_empty() {
+                panic!("expected some numbers/ranks to come before the suit character")
+            }
+            for rank_char in rank_chars {
+                let mut tile_string = String::new();
+                // println!("found tile {}{}", rank_char, char);
+                tile_string.push(rank_char);
+                tile_string.push(char);
+                let tile_id = mahjong_tile::get_id_from_tile_text(&tile_string).unwrap();
+                tile_ids.push(tile_id);
+            }
+            rank_chars = Vec::new();
+        } else {
+            rank_chars.push(char);
+        }
+    }
+    tile_ids
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn assert_tile_ids_match(tile_ids: &Vec<u8>, expected_tile_ids: &Vec<u8>) {
+        assert_eq!(tile_ids.len(), expected_tile_ids.len());
+        let mut sorted_tile_ids = tile_ids.clone();
+        sorted_tile_ids.sort();
+        let mut sorted_expected_tile_ids = expected_tile_ids.clone();
+        sorted_expected_tile_ids.sort();
+        assert_eq!(sorted_tile_ids, sorted_expected_tile_ids);
+    }
 
     #[test]
     fn tile_counts_from_string() {
@@ -759,6 +792,16 @@ mod tests {
             tiles[usize::from(mahjong_tile::get_id_from_tile_text("4m").unwrap())],
             1
         );
+    }
+
+    #[test]
+    fn tile_ids_from_string() {
+        let tile_ids = tiles_to_tile_ids("1234m");
+        assert_eq!(tile_ids.len(), 4);
+        assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("1m").unwrap()));
+        assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2m").unwrap()));
+        assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("3m").unwrap()));
+        assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("4m").unwrap()));
     }
 
     #[test]
@@ -811,72 +854,79 @@ mod tests {
     }
 
     #[test]
+    fn hand_tile_ids_from_string() {
+        let tile_ids = tiles_to_tile_ids("46p255567s33478m4s");
+        assert_eq!(tile_ids.len(), 14);
+        assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("4p").unwrap()));
+        assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("6p").unwrap()));
+        assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2s").unwrap()));
+        assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("4s").unwrap()));
+        assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("5s").unwrap()));
+        assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("6s").unwrap()));
+        assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("7s").unwrap()));
+        assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("3m").unwrap()));
+        assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("4m").unwrap()));
+        assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("7m").unwrap()));
+        assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("8m").unwrap()));
+    }
+
+    #[test]
     fn test_tile_ids_to_complete_group() {
         let single_terminal_tile =
             TileMeld::new(vec![mahjong_tile::get_id_from_tile_text("1m").unwrap()]);
         let ukiere_tile_ids = single_terminal_tile.tile_ids_to_complete_group();
-        assert_eq!(ukiere_tile_ids.len(), 3);
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("1m").unwrap())));
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("2m").unwrap())));
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("3m").unwrap())));
+        let expected_ukiere_tile_ids = tiles_to_tile_ids("123m");
+        assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let single_middle_tile =
             TileMeld::new(vec![mahjong_tile::get_id_from_tile_text("8p").unwrap()]);
         let ukiere_tile_ids = single_middle_tile.tile_ids_to_complete_group();
-        assert_eq!(ukiere_tile_ids.len(), 4);
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("6p").unwrap())));
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("7p").unwrap())));
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("8p").unwrap())));
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("9p").unwrap())));
+        let expected_ukiere_tile_ids = tiles_to_tile_ids("6789p");
+        assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let single_middle_tile =
             TileMeld::new(vec![mahjong_tile::get_id_from_tile_text("3s").unwrap()]);
         let ukiere_tile_ids = single_middle_tile.tile_ids_to_complete_group();
-        assert_eq!(ukiere_tile_ids.len(), 5);
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("1s").unwrap())));
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("2s").unwrap())));
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("3s").unwrap())));
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("4s").unwrap())));
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("5s").unwrap())));
+        let expected_ukiere_tile_ids = tiles_to_tile_ids("12345s");
+        assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let single_honor_tile =
             TileMeld::new(vec![mahjong_tile::get_id_from_tile_text("6z").unwrap()]);
         let ukiere_tile_ids = single_honor_tile.tile_ids_to_complete_group();
-        assert_eq!(ukiere_tile_ids.len(), 1);
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("6z").unwrap())));
+        let expected_ukiere_tile_ids = tiles_to_tile_ids("6z");
+        assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let pair = TileMeld::new(vec![
             mahjong_tile::get_id_from_tile_text("2z").unwrap(),
             mahjong_tile::get_id_from_tile_text("2z").unwrap(),
         ]);
         let ukiere_tile_ids = pair.tile_ids_to_complete_group();
-        assert_eq!(ukiere_tile_ids.len(), 1);
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("2z").unwrap())));
+        let expected_ukiere_tile_ids = tiles_to_tile_ids("2z");
+        assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let ryanmen = TileMeld::new(vec![
             mahjong_tile::get_id_from_tile_text("3p").unwrap(),
             mahjong_tile::get_id_from_tile_text("4p").unwrap(),
         ]);
         let ukiere_tile_ids = ryanmen.tile_ids_to_complete_group();
-        assert_eq!(ukiere_tile_ids.len(), 2);
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("2p").unwrap())));
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("5p").unwrap())));
+        let expected_ukiere_tile_ids = tiles_to_tile_ids("25p");
+        assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let kanchan = TileMeld::new(vec![
             mahjong_tile::get_id_from_tile_text("7m").unwrap(),
             mahjong_tile::get_id_from_tile_text("9m").unwrap(),
         ]);
         let ukiere_tile_ids = kanchan.tile_ids_to_complete_group();
-        assert_eq!(ukiere_tile_ids.len(), 1);
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("8m").unwrap())));
+        let expected_ukiere_tile_ids = tiles_to_tile_ids("8m");
+        assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let penchan = TileMeld::new(vec![
             mahjong_tile::get_id_from_tile_text("8p").unwrap(),
             mahjong_tile::get_id_from_tile_text("9p").unwrap(),
         ]);
         let ukiere_tile_ids = penchan.tile_ids_to_complete_group();
-        assert_eq!(ukiere_tile_ids.len(), 1);
-        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("7p").unwrap())));
+        let expected_ukiere_tile_ids = tiles_to_tile_ids("7p");
+        assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
     }
 
     #[test]
@@ -887,17 +937,8 @@ mod tests {
 
         // ukiere tiles: 5p3568s23569m
         let ukiere_tiles = get_ukiere(tiles);
-        assert_eq!(ukiere_tiles.len(), 10);
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("5p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("3s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("5s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("6s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("8s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("2m").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("3m").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("5m").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("6m").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("9m").unwrap()));
+        let expected_ukiere_tiles = tiles_to_tile_ids("5p3568s23569m");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
     }
 
     #[test]
@@ -908,11 +949,8 @@ mod tests {
 
         // ukiere tiles: 47p45s
         let ukiere_tiles = get_ukiere(tiles);
-        assert_eq!(ukiere_tiles.len(), 4);
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("4p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("7p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("4s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("5s").unwrap()));
+        let expected_ukiere_tiles = tiles_to_tile_ids("47p45s");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let tiles = tiles_to_count_array("56m23346778p234s");
         // hand is 1-shanten: 56m - 234p - 678p - 3p - 7p - 234s
@@ -920,11 +958,8 @@ mod tests {
 
         // ukiere tiles: 47m37p
         let ukiere_tiles = get_ukiere(tiles);
-        assert_eq!(ukiere_tiles.len(), 4);
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("4m").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("7m").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("3p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("7p").unwrap()));
+        let expected_ukiere_tiles = tiles_to_tile_ids("47m37p");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
     }
 
     #[test]
@@ -935,15 +970,8 @@ mod tests {
 
         // ukiere tiles: 1234s4567p
         let ukiere_tiles = get_ukiere(tiles);
-        assert_eq!(ukiere_tiles.len(), 8);
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("1s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("2s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("3s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("4s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("4p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("5p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("6p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("7p").unwrap()));
+        let expected_ukiere_tiles = tiles_to_tile_ids("1234s4567p");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
     }
 
     #[test]
@@ -954,18 +982,22 @@ mod tests {
 
         // ukiere tiles: 23456s1z
         let ukiere_tiles = get_ukiere(tiles);
-        assert_eq!(ukiere_tiles.len(), 6);
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("2s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("3s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("4s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("5s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("6s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("1z").unwrap()));
+        let expected_ukiere_tiles = tiles_to_tile_ids("23456s1z");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
     }
 
     #[test]
     fn complete_hand_shanten() {
         let tiles = tiles_to_count_array("55588m234s11p666z1p");
+        assert_eq!(get_shanten(tiles), -1);
+
+        let ukiere_tiles = get_ukiere(tiles);
+        assert_eq!(ukiere_tiles.len(), 0);
+    }
+
+    #[test]
+    fn complete_honitsu_hand_shanten() {
+        let tiles = tiles_to_count_array("3335577899m111z8m");
         assert_eq!(get_shanten(tiles), -1);
 
         let ukiere_tiles = get_ukiere(tiles);
@@ -980,12 +1012,8 @@ mod tests {
 
         // ukiere tiles: 5m58p37s
         let ukiere_tiles = get_ukiere(tiles);
-        assert_eq!(ukiere_tiles.len(), 5);
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("5m").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("5p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("8p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("3s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("7s").unwrap()));
+        let expected_ukiere_tiles = tiles_to_tile_ids("5m58p37s");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
     }
 
     #[test]
@@ -994,30 +1022,160 @@ mod tests {
         let tiles = tiles_to_count_array("12588m27789p889s");
         assert_eq!(get_shanten(tiles), 3);
 
-        // TODO this test shows the fault in the logic for computing ukiere tiles for isolated tiles:
-        // it's not just able to form a pair, but also an incomplete group (ryanmen, kanchan, penchan)
-
         // ukiere tiles: 345678m123456789p6789s
         let ukiere_tiles = get_ukiere(tiles);
-        assert_eq!(ukiere_tiles.len(), 19);
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("3m").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("4m").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("5m").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("6m").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("7m").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("8m").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("1p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("2p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("3p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("4p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("5p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("6p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("7p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("8p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("9p").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("6s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("7s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("8s").unwrap()));
-        assert!(ukiere_tiles.contains(&mahjong_tile::get_id_from_tile_text("9s").unwrap()));
+        let expected_ukiere_tiles = tiles_to_tile_ids("345678m123456789p6789s");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn tenpai_tanki_wait() {
+        let tiles = tiles_to_count_array("123999m5558p666z");
+        assert_eq!(get_shanten(tiles), 0);
+
+        // ukiere tiles: 8p
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("8p");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn tenpai_kanchan_wait() {
+        let tiles = tiles_to_count_array("13p456777999s33z");
+        assert_eq!(get_shanten(tiles), 0);
+
+        // ukiere tiles: 2p
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("2p");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn tenpai_penchan_wait() {
+        let tiles = tiles_to_count_array("12777m345p67899s");
+        assert_eq!(get_shanten(tiles), 0);
+
+        // ukiere tiles: 3m
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("3m");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn tenpai_shanpon_wait() {
+        let tiles = tiles_to_count_array("123999m44p99s777z");
+        assert_eq!(get_shanten(tiles), 0);
+
+        // ukiere tiles: 4p9s
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("4p9s");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn tenpai_ryanmen_wait() {
+        let tiles = tiles_to_count_array("666m78p666789s22z");
+        assert_eq!(get_shanten(tiles), 0);
+
+        // ukiere tiles: 69p
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("69p");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn tenpai_nobetan_wait() {
+        //e.g. 3456p - https://riichi.wiki/Nobetan
+        let tiles = tiles_to_count_array("777m3456p555666s");
+        assert_eq!(get_shanten(tiles), 0);
+
+        // ukiere tiles: 36p
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("36p");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn tenpai_aryanmen_wait() {
+        // e.g. 3455s - https://riichi.wiki/Aryanmen
+        let tiles = tiles_to_count_array("567m123456p3455s");
+        assert_eq!(get_shanten(tiles), 0);
+
+        // ukiere tiles: 25s
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("25s");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn tenpai_kantan_wait() {
+        // 2-sided wait e.g. 6888m - https://riichi.wiki/Ryantan#Kantan
+        let tiles = tiles_to_count_array("2226888m444p111z");
+        assert_eq!(get_shanten(tiles), 0);
+
+        // ukiere tiles: 67m
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("67m");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn tenpai_pentan_wait() {
+        // 2-sided wait e.g. 1222m - https://riichi.wiki/Kantan#Pentan
+        let tiles = tiles_to_count_array("1222m678p345789s");
+        assert_eq!(get_shanten(tiles), 0);
+
+        // ukiere tiles: 13m
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("13m");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn tenpai_standard_sanmenchan_wait() {
+        // 3-sided wait e.g. 34567s - https://riichi.wiki/Sanmenchan
+        let tiles = tiles_to_count_array("666m33678p34567s");
+        assert_eq!(get_shanten(tiles), 0);
+
+        // ukiere tiles: 258s
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("258s");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn tenpai_ryantan_wait() {
+        // 3-sided wait e.g. 5556m - https://riichi.wiki/Kantan#Ryantan
+        let tiles = tiles_to_count_array("5556m234789p666z");
+        assert_eq!(get_shanten(tiles), 0);
+
+        // ukiere tiles: 467m
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("467m");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn tenpai_entotsu_wait() {
+        // 3-sided wait e.g. 11m45666s - https://riichi.wiki/Sanmenchan#Entotsu
+        let tiles = tiles_to_count_array("11m222456p45666s");
+        assert_eq!(get_shanten(tiles), 0);
+
+        // ukiere tiles: 1m36s
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("1m36s");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn tenpai_sanmentan_wait() {
+        // 3-sided wait e.g. 2345678p -  https://riichi.wiki/Sanmenchan#Sanmentan
+        let tiles = tiles_to_count_array("233445m2345678p");
+        assert_eq!(get_shanten(tiles), 0);
+
+        // ukiere tiles: 258p
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("258p");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
     }
 }
