@@ -943,15 +943,6 @@ mod tests {
 
     #[test]
     fn hand_one_shanten_and_ukiere() {
-        let tiles = tiles_to_count_array("233445m56p4455s7z");
-        // hand is 1-shanten: 234m - 345m - 56p - 44s - 55s - 7z
-        assert_eq!(get_shanten(tiles), 1);
-
-        // ukiere tiles: 47p45s
-        let ukiere_tiles = get_ukiere(tiles);
-        let expected_ukiere_tiles = tiles_to_tile_ids("47p45s");
-        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
-
         let tiles = tiles_to_count_array("56m23346778p234s");
         // hand is 1-shanten: 56m - 234p - 678p - 3p - 7p - 234s
         assert_eq!(get_shanten(tiles), 1);
@@ -959,18 +950,6 @@ mod tests {
         // ukiere tiles: 47m37p
         let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("47m37p");
-        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
-    }
-
-    #[test]
-    fn hand_headless_one_shanten_with_ankou() {
-        let tiles = tiles_to_count_array("23s678s56p888p888m");
-        // hand is 1-shanten: 23s - 678s - 56p - 888p - 888m
-        assert_eq!(get_shanten(tiles), 1);
-
-        // ukiere tiles: 1234s4567p
-        let ukiere_tiles = get_ukiere(tiles);
-        let expected_ukiere_tiles = tiles_to_tile_ids("1234s4567p");
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
     }
 
@@ -983,6 +962,66 @@ mod tests {
         // ukiere tiles: 23456s1z
         let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("23456s1z");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn floating_one_shanten() {
+        // floating 1-shanten is characterized by 2 complete groups + 1 pair + 2 incomplete groups
+        // plus 1 unused/floating tile
+        // https://riichi.wiki/Iishanten#Yojouhai
+        let tiles = tiles_to_count_array("233445m56p4455s7z");
+        // hand is 1-shanten: 234m - 345m - 56p - 44s - 55s - 7z
+        assert_eq!(get_shanten(tiles), 1);
+
+        // ukiere tiles: 47p45s
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("47p45s");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn complete_one_shanten() {
+        // complete 1-shanten is characterized by 2 complete groups + 1 pair + 2 incomplete groups,
+        // but the last tile is also part of one of the incomplete groups e.g. 223s
+        // https://riichi.wiki/Iishanten#Kanzenkei
+        let tiles = tiles_to_count_array("234m22378s22567p");
+        // hand is 1-shanten: 234m - 223s - 78s - 22p - 567p
+        assert_eq!(get_shanten(tiles), 1);
+
+        // ukiere tiles: 12469s2p
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("12469s2p");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn hand_headless_one_shanten_with_ankou() {
+        // headless 1-shanten is characterized by 3 complete groups + no pair (must have at least 1 incomplete group)
+        // https://riichi.wiki/Iishanten#Atamanashi
+        let tiles = tiles_to_count_array("23s678s56p888p888m");
+        // hand is 1-shanten: 23s - 678s - 56p - 888p - 888m
+        assert_eq!(get_shanten(tiles), 1);
+
+        // ukiere tiles: completing either ryanmen group or pairing a tile in the ryanmen group
+        // total: 1234s4567p
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("1234s4567p");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn hand_kutsuki_one_shanten() {
+        // kutsuki 1-shanten is characterized by 3 complete groups + 1 pair: https://riichi.wiki/Iishanten#Kuttsuki
+        let tiles = tiles_to_count_array("2344567m556p678s");
+        // hand is 1-shanten: 234m - 456m - 7m - 556p - 678s (but the 4m could be considered floating as well, or as part of 2344m shape)
+        assert_eq!(get_shanten(tiles), 1);
+
+        // ukiere tiles: anything within 2 of a floating tile (4m7m6p), there are also
+        // the manzu complex shape can accept 147m (2344m-567m or 234m-4567m), 2358m (24m-34567m)
+        // total: 123456789m45678p
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("123456789m45678p");
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
     }
 
