@@ -3,6 +3,7 @@ pub use crate::mahjong_tile;
 use std::cmp::min;
 use std::collections::VecDeque;
 use std::fmt;
+use std::ops::Index;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum MeldType {
@@ -172,7 +173,30 @@ impl TileMeld {
     fn tile_ids_to_complete_group(&self) -> Vec<u8> {
         // assumes the tile_ids are sorted
         match self.meld_type {
-            MeldType::Pair | MeldType::SingleTile => {
+            MeldType::SingleTile => {
+                let tile_id = self.tile_ids.get(0).unwrap();
+                let tile_id = *tile_id;
+                let mut tile_ids = vec![tile_id];
+                match mahjong_tile::get_num_tile_rank(tile_id) {
+                    Some(tile_rank) => {
+                        if tile_rank <= 8 {
+                            tile_ids.push(tile_id + 1);
+                        }
+                        if tile_rank <= 7 {
+                            tile_ids.push(tile_id + 2);
+                        }
+                        if tile_rank >= 2 {
+                            tile_ids.push(tile_id - 1);
+                        }
+                        if tile_rank >= 3 {
+                            tile_ids.push(tile_id - 2);
+                        }
+                    }
+                    None => {}
+                };
+                tile_ids
+            }
+            MeldType::Pair => {
                 let tile_id = self.tile_ids.get(0).unwrap();
                 vec![*tile_id]
             }
@@ -251,6 +275,8 @@ impl HandInterpretation {
         let mut num_incomplete_groups = 0; // this is taatsu + pairs
         for group in self.groups.iter() {
             if !group.is_complete() && group.tile_ids.len() == 2 {
+                // exclude single / isolated tiles, as incomplete groups means it only
+                // needs one more tile to become a complete group
                 num_incomplete_groups += 1; // note that this includes taatsu and pairs!
             }
         }
@@ -319,45 +345,49 @@ impl HandInterpretation {
         let pair_tile_ids = self.get_pair_tile_ids();
         let single_tile_ids = self.get_single_tile_ids();
         let has_pair = !pair_tile_ids.is_empty();
+        let total_groups = num_complete_groups + num_incomplete_groups;
 
         let mut ukiere_tile_ids = Vec::new();
         for group in &self.groups {
-            let tile_ids = group.tile_ids_to_complete_group();
-            for &tile_id in tile_ids.iter() {
-                if group.meld_type == MeldType::SingleTile {
-                    // for isolated tile, it only adds to the ukiere if making another
-                    // pair (i.e. forming another incomplete group) would reduce shanten
-                    if !(num_complete_groups + num_incomplete_groups < 4
-                        || (num_complete_groups + num_incomplete_groups == 4 && !has_pair))
-                    {
-                        continue;
-                    }
-                    // there's also an edge case - if the hand already contains a pair of the same value as
-                    // the isolated tile, then drawing another copy of the isolated tile to
-                    let isolated_tile_id = group.tile_ids.get(0).unwrap();
-                    if pair_tile_ids.contains(&isolated_tile_id) {
-                        continue;
-                    }
-                } else if group.meld_type == MeldType::Pair {
-                    let pair_tile_id = group.tile_ids.get(0).unwrap();
-                    // if there are 4 complete groups (and this is a pair), then we have a complete hand
-                    // if there are 5 total groups (complete groups + incomplete groups) with only one pair,
-                    // then completing the pair into a triplet won't decrease shanten
-                    // (as completing the triplet is offset by losing the pair)
-                    if num_complete_groups == 4
-                        || (num_complete_groups + num_incomplete_groups >= 5
-                            && pair_tile_ids.len() == 1)
-                    {
-                        continue;
-                    }
-
-                    // if there's an isolated tile of the same value as the pair, completing the pair into a triplet
-                    // doesn't decrease shanten
-                    if single_tile_ids.contains(&pair_tile_id) {
-                        continue;
-                    }
+            let mut tile_ids = group.tile_ids_to_complete_group();
+            if group.meld_type == MeldType::SingleTile {
+                // for isolated tile, it only adds to the ukiere if making another
+                // incomplete group would reduce shanten
+                if total_groups >= 5 {
+                    continue;
+                }
+                let single_tile_id = *(group.tile_ids.get(0).unwrap());
+                if total_groups == 4 && !has_pair {
+                    // in this case, you can decrease shanten, but only by drawing the same tile
+                    // to form a new group which is the only pair
+                    tile_ids = vec![single_tile_id];
                 }
 
+                // edge case - if the hand already contains a pair of the same value as
+                // the isolated tile, then drawing another copy of the isolated tile doesn't reduce shanten
+                if pair_tile_ids.contains(&single_tile_id) {
+                    let tile_index = tile_ids.iter().find(|&&x| x == single_tile_id);
+                    if tile_index.is_some() {
+                        tile_ids.swap_remove(usize::from(*tile_index.unwrap()));
+                    }
+                }
+            } else if group.meld_type == MeldType::Pair {
+                let pair_tile_id = group.tile_ids.get(0).unwrap();
+                // if there are 4 complete groups (and this is a pair), then we have a complete hand
+                // if there are 5 total groups (complete groups + incomplete groups) with only one pair,
+                // then completing the pair into a triplet won't decrease shanten
+                // (as completing the triplet is offset by losing the pair)
+                if num_complete_groups == 4 || (total_groups >= 5 && pair_tile_ids.len() == 1) {
+                    continue;
+                }
+
+                // if there's an isolated tile of the same value as the pair, completing the pair into a triplet
+                // doesn't decrease shanten
+                if single_tile_ids.contains(&pair_tile_id) {
+                    continue;
+                }
+            }
+            for &tile_id in tile_ids.iter() {
                 if !ukiere_tile_ids.contains(&tile_id) {
                     ukiere_tile_ids.push(tile_id);
                 }
@@ -778,6 +808,75 @@ mod tests {
             tiles[usize::from(mahjong_tile::get_id_from_tile_text("8m").unwrap())],
             1
         );
+    }
+
+    #[test]
+    fn test_tile_ids_to_complete_group() {
+        let single_terminal_tile =
+            TileMeld::new(vec![mahjong_tile::get_id_from_tile_text("1m").unwrap()]);
+        let ukiere_tile_ids = single_terminal_tile.tile_ids_to_complete_group();
+        assert_eq!(ukiere_tile_ids.len(), 3);
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("1m").unwrap())));
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("2m").unwrap())));
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("3m").unwrap())));
+
+        let single_middle_tile =
+            TileMeld::new(vec![mahjong_tile::get_id_from_tile_text("8p").unwrap()]);
+        let ukiere_tile_ids = single_middle_tile.tile_ids_to_complete_group();
+        assert_eq!(ukiere_tile_ids.len(), 4);
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("6p").unwrap())));
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("7p").unwrap())));
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("8p").unwrap())));
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("9p").unwrap())));
+
+        let single_middle_tile =
+            TileMeld::new(vec![mahjong_tile::get_id_from_tile_text("3s").unwrap()]);
+        let ukiere_tile_ids = single_middle_tile.tile_ids_to_complete_group();
+        assert_eq!(ukiere_tile_ids.len(), 5);
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("1s").unwrap())));
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("2s").unwrap())));
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("3s").unwrap())));
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("4s").unwrap())));
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("5s").unwrap())));
+
+        let single_honor_tile =
+            TileMeld::new(vec![mahjong_tile::get_id_from_tile_text("6z").unwrap()]);
+        let ukiere_tile_ids = single_honor_tile.tile_ids_to_complete_group();
+        assert_eq!(ukiere_tile_ids.len(), 1);
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("6z").unwrap())));
+
+        let pair = TileMeld::new(vec![
+            mahjong_tile::get_id_from_tile_text("2z").unwrap(),
+            mahjong_tile::get_id_from_tile_text("2z").unwrap(),
+        ]);
+        let ukiere_tile_ids = pair.tile_ids_to_complete_group();
+        assert_eq!(ukiere_tile_ids.len(), 1);
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("2z").unwrap())));
+
+        let ryanmen = TileMeld::new(vec![
+            mahjong_tile::get_id_from_tile_text("3p").unwrap(),
+            mahjong_tile::get_id_from_tile_text("4p").unwrap(),
+        ]);
+        let ukiere_tile_ids = ryanmen.tile_ids_to_complete_group();
+        assert_eq!(ukiere_tile_ids.len(), 2);
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("2p").unwrap())));
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("5p").unwrap())));
+
+        let kanchan = TileMeld::new(vec![
+            mahjong_tile::get_id_from_tile_text("7m").unwrap(),
+            mahjong_tile::get_id_from_tile_text("9m").unwrap(),
+        ]);
+        let ukiere_tile_ids = kanchan.tile_ids_to_complete_group();
+        assert_eq!(ukiere_tile_ids.len(), 1);
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("8m").unwrap())));
+
+        let penchan = TileMeld::new(vec![
+            mahjong_tile::get_id_from_tile_text("8p").unwrap(),
+            mahjong_tile::get_id_from_tile_text("9p").unwrap(),
+        ]);
+        let ukiere_tile_ids = penchan.tile_ids_to_complete_group();
+        assert_eq!(ukiere_tile_ids.len(), 1);
+        assert!(ukiere_tile_ids.contains(&(mahjong_tile::get_id_from_tile_text("7p").unwrap())));
     }
 
     #[test]
