@@ -40,3 +40,12 @@ pub fn tiles_to_count_array(tiles_string: &str) -> [u8; 34] {
     tile_count_array
 }
 ```
+
+- the hand scoring on this website isn't always accurate e.g. https://riichi.harphield.com/tools/hand-analyzer/?hand=55588m11p234s666z1p - this hand "55588m11p234s666z1p" (when winning by ron) should be scored as 1 han, 50 fu (20 + 10 fu for closed ron + 8 fu for ankou of 6z/green dragon + 4 fu for ankou of 5m + 4 fu for minkou of 1p, since the tile was won by ron), e.g. https://mahjongo.com/tools/riichi-calculator, but was incorrectly scored as 1 han, 60 fu instead.
+
+- other websites: 
+    - https://euophrys.itch.io/mahjong-efficiency-trainer
+        - source code: https://github.com/Euophrys/Riichi-Trainer/blob/develop/src/scripts/ShantenCalculator.js#L157
+    - https://mahjong-trainer.netlify.app/
+        - https://github.com/djuretic/riichi-mahjong-trainer/blob/main/tests/ShantenTest.elm
+    - https://tenhou.net/2/?q=12234558s345p11z4s

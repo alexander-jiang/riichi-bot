@@ -1,12 +1,13 @@
+#![feature(test)] // to enable benchmarking: https://doc.rust-lang.org/1.4.0/book/benchmark-tests.html
+
 use std::collections::HashMap;
 
 pub mod mahjong_error;
 // pub mod mahjong_game_state;
 pub mod mahjong_hand;
-pub mod mahjong_meld;
 pub mod mahjong_tile;
-pub mod shanten;
 pub mod mini_mahjong;
+pub mod shanten;
 pub mod state;
 pub mod tile_grouping;
 pub mod tiles;

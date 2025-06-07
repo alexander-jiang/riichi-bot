@@ -1,17 +1,74 @@
 # Diary
 
+### Jun 5 2025
+
+Improved the optimizations: we order the queue items based on number of tiles remaining (to be melded/grouped)
+and also compute the best possible shanten that you could reach (given the remaining ungrouped tiles) to
+determine if we should even bother recursively breaking down the rest of the tiles into groups.
+
+Also fixed a bug caused by over-optimizing (the bug was that the algorithm would not make isolated tiles,
+even in cases when doing so wouldn't increase the shanten - causing it to miss potential ukiere tiles)
+
+```
+test shanten::tests::bench_standard_shanten           ... bench:   1,971,224.10 ns/iter (+/- 124,494.48)
+test shanten::tests::bench_standard_shanten_optimized ... bench:     284,417.75 ns/iter (+/- 27,971.77)
+
+(on a subsequent run:)
+test shanten::tests::bench_standard_shanten           ... bench:   2,000,364.80 ns/iter (+/- 52,829.04)
+test shanten::tests::bench_standard_shanten_optimized ... bench:     282,541.50 ns/iter (+/- 12,435.83)
+
+(running the optimized version on its own:)
+test shanten::tests::bench_standard_shanten_optimized ... bench:     281,369.45 ns/iter (+/- 17,551.03)
+```
+
+The result: we're now processing the standard shanten + ukiere in ~280-285 microseconds, which is ~7x faster than previously!
+
+### Jun 4 2025
+
+trying the benchmarking again: seems about 1930-1995 microseconds
+
+```
+test shanten::tests::bench_standard_shanten ... bench:   1,995,319.98 ns/iter (+/- 176,700.20)
+(on a subsequent run:)
+test shanten::tests::bench_standard_shanten ... bench:   1,932,268.70 ns/iter (+/- 46,140.96)
+```
+
+benchmarking after some optimizations: the optimized version is around 1240 microseconds
+
+```
+test shanten::tests::bench_standard_shanten           ... bench:   1,938,866.70 ns/iter (+/- 18,189.99)
+test shanten::tests::bench_standard_shanten_optimized ... bench:   1,243,399.85 ns/iter (+/- 10,993.34)
+(subsequent run:)
+test shanten::tests::bench_standard_shanten           ... bench:   1,939,448.70 ns/iter (+/- 46,928.38)
+test shanten::tests::bench_standard_shanten_optimized ... bench:   1,245,522.35 ns/iter (+/- 31,017.02)
+
+(subsequent run with just the optimized function, to see if running it separately has similar performance)
+test shanten::tests::bench_standard_shanten_optimized ... bench:   1,240,828.05 ns/iter (+/- 38,928.19)
+```
+
+### Jun 3 2025
+
+benchmarking the get_shanten and get_ukiere function calls: on the hand 12234455s345p11z (using `cargo bench`)
+
+```
+test shanten::tests::bench_standard_shanten ... bench:   1,934,480.60 ns/iter (+/- 20,149.04)
+```
+
+also started implementing shanten & ukiere for chiitoi & kokushi (got shanten working, but need to add in the logic for ukiere)
+
 ### Jun 2 2025
 
 Finished the new, simplified implementation of the shanten / ukiere calculation in `shanten.rs` - should probably remove the old code in `mahjong_meld.rs` and whatever we don't need from `mahjong_hand.rs` as well
 
 next steps:
-* benchmarking / optimization - how fast is the shanten/ukiere computation? Can we optimize it? some ideas:
-    * as we build all possible hand interpretations, build in a depth-first & greedy way, and keep track of the minimum-shanten achieved by a complete interpretation thus far. Then you can discard/exit early from other interpretations that won't be better?
-    * ordering heuristics: consider suits with fewer tiles first? try to find "stable" groups i.e. those that have unambiguous interpretation (like how honor tiles must all be used in a meld together, or if there is a single group of 3 tiles that is > 2 tiles away from all other tiles in that suit)
-    * splitting subproblem / caching: split by suit (manzu, pinzu, souzu) or when tiles are > 2 tiles away from all other tiles -> maybe these subproblems can be pre-computed into a file that is loaded into memory for faster lookup? it doesn't matter which suit the tiles are in (for pure shanten/ukiere calculations). Also there is symmetry: if you know the shanten/ukiere for the group 3445567, then you also know the shanten/ukiere for the group 3455667 (there is symmetry around the 5 tile, except for the relationship between dora indicator and dora, but that is only useful for the expected value computation, and only if you will do something advanced like estimating expected value with taking potential uradora into account.)
-* shanten computation after draw - naive approach is to first check if the drawn tile makes a complete hand. and if not, try discarding each distinct tile value from the hand, and see what the resulting hand's shanten is. But is there a better way?
-* expected speed to tenpai / win - to simplify, assume we can only rely on self-draws, no calling chii/pon/kan or ron. Can simplify further if we ignore furiten. What is the probability of getting to tenpai in the next X draws? This seems complicated to find a closed-form solution for, as it can fluctuate as more tiles are discarded and if there are upgrade opportunities.
-* expected value of hand - to compute this, we need additional information: seat wind & round wind, dora indicator(s). We could also incorporate other player's discards to get an even better sense of which tiles remain. We could continue to assume that the hand will remain closed until tenpai. We would need to be able to identify and score han (yaku) and fu.
+
+- benchmarking / optimization - how fast is the shanten/ukiere computation? Can we optimize it? some ideas:
+  - as we build all possible hand interpretations, build in a depth-first & greedy way, and keep track of the minimum-shanten achieved by a complete interpretation thus far. Then you can discard/exit early from other interpretations that won't be better?
+  - ordering heuristics: consider suits with fewer tiles first? try to find "stable" groups i.e. those that have unambiguous interpretation (like how honor tiles must all be used in a meld together, or if there is a single group of 3 tiles that is > 2 tiles away from all other tiles in that suit)
+  - splitting subproblem / caching: split by suit (manzu, pinzu, souzu) or when tiles are > 2 tiles away from all other tiles -> maybe these subproblems can be pre-computed into a file that is loaded into memory for faster lookup? it doesn't matter which suit the tiles are in (for pure shanten/ukiere calculations). Also there is symmetry: if you know the shanten/ukiere for the group 3445567, then you also know the shanten/ukiere for the group 3455667 (there is symmetry around the 5 tile, except for the relationship between dora indicator and dora, but that is only useful for the expected value computation, and only if you will do something advanced like estimating expected value with taking potential uradora into account.)
+- shanten computation after draw - naive approach is to first check if the drawn tile makes a complete hand. and if not, try discarding each distinct tile value from the hand, and see what the resulting hand's shanten is. But is there a better way?
+- expected speed to tenpai / win - to simplify, assume we can only rely on self-draws, no calling chii/pon/kan or ron. Can simplify further if we ignore furiten. What is the probability of getting to tenpai in the next X draws? This seems complicated to find a closed-form solution for, as it can fluctuate as more tiles are discarded and if there are upgrade opportunities.
+- expected value of hand - to compute this, we need additional information: seat wind & round wind, dora indicator(s). We could also incorporate other player's discards to get an even better sense of which tiles remain. We could continue to assume that the hand will remain closed until tenpai. We would need to be able to identify and score han (yaku) and fu.
 
 ### May 20 2025
 
