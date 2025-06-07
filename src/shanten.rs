@@ -763,6 +763,13 @@ fn add_to_queue(
     }
 }
 
+fn print_queue(queue: &VecDeque<PartialMeldInterpretation>) {
+    println!("current queue state:");
+    for interpretation in queue.iter() {
+        println!("-> {}", interpretation);
+    }
+}
+
 pub fn get_suit_melds_min_shanten(
     original_tile_count_array: [u8; 34],
     initial_partial_interpretation: PartialMeldInterpretation,
@@ -856,6 +863,7 @@ pub fn get_suit_melds_min_shanten(
             //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
             // );
 
+            // print_queue(&queue);
             continue;
         }
 
@@ -955,6 +963,7 @@ pub fn get_suit_melds_min_shanten(
         //     "will recursively try forming an isolated tile from {}",
         //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
         // );
+        // print_queue(&queue);
     }
 
     // println!(
@@ -1262,6 +1271,15 @@ pub fn tiles_to_tile_ids(tiles_string: &str) -> Vec<u8> {
     tile_ids
 }
 
+pub fn tile_ids_to_string(tile_ids: &Vec<u8>) -> String {
+    let mut tiles_string = String::new();
+    for tile_id in tile_ids.iter() {
+        let tile_string = mahjong_tile::get_tile_text_from_id(*tile_id).unwrap();
+        tiles_string.push_str(&tile_string);
+    }
+    tiles_string
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1273,7 +1291,13 @@ mod tests {
         sorted_tile_ids.sort();
         let mut sorted_expected_tile_ids = expected_tile_ids.clone();
         sorted_expected_tile_ids.sort();
-        assert_eq!(sorted_tile_ids, sorted_expected_tile_ids);
+        assert_eq!(
+            sorted_tile_ids,
+            sorted_expected_tile_ids,
+            "got {} but expected {}",
+            tile_ids_to_string(&sorted_tile_ids),
+            tile_ids_to_string(&sorted_expected_tile_ids)
+        );
     }
 
     #[test]
@@ -1958,35 +1982,43 @@ mod tests {
         assert_eq!(ukiere_tiles.len(), 0);
     }
 
-    // #[bench]
-    // fn bench_standard_shanten(b: &mut Bencher) {
-    //     let tiles = tiles_to_count_array("12234455s345p11z");
-    //     // hand is 1-shanten: 123s - 24s - 455s - 345p - 11z
-    //     // ukiere tiles: 23456s1z
-    //     b.iter(|| {
-    //         get_shanten(tiles);
-    //         get_ukiere(tiles)
-    //     });
-    // }
+    #[bench]
+    fn bench_standard_shanten(b: &mut Bencher) {
+        let tiles = tiles_to_count_array("12234455s345p11z");
+        // hand is 1-shanten: 123s - 24s - 455s - 345p - 11z
+        // ukiere tiles: 23456s1z
+        b.iter(|| {
+            get_shanten(tiles);
+            get_ukiere(tiles)
+        });
+    }
 
     // #[test]
     // fn debug_get_hand_interpretations() {
     //     let tiles = tiles_to_count_array("12234455s345p11z");
     //     let hand_interpretations = get_hand_interpretations(tiles);
     //     for hand_interpretation in hand_interpretations {
-    //         println!("{}", hand_interpretation);
+    //         println!(
+    //             "{} -> ukiere tiles {}",
+    //             hand_interpretation,
+    //             tile_ids_to_string(&hand_interpretation.get_ukiere())
+    //         );
     //     }
     // }
 
-    // #[test]
-    // fn debug_get_hand_interpretations_min_shanten() {
-    //     // let tiles = tiles_to_count_array("23s678s56p888p888m");
-    //     let tiles = tiles_to_count_array("12234455s345p11z");
-    //     let hand_interpretations = get_hand_interpretations_min_shanten(tiles, 3);
-    //     for hand_interpretation in hand_interpretations {
-    //         println!("{}", hand_interpretation);
-    //     }
-    // }
+    #[test]
+    fn debug_get_hand_interpretations_min_shanten() {
+        // let tiles = tiles_to_count_array("23s678s56p888p888m");
+        let tiles = tiles_to_count_array("12234455s345p11z");
+        let hand_interpretations = get_hand_interpretations_min_shanten(tiles, 3);
+        for hand_interpretation in hand_interpretations {
+            println!(
+                "{} -> ukiere tiles {}",
+                hand_interpretation,
+                tile_ids_to_string(&hand_interpretation.get_ukiere())
+            );
+        }
+    }
 
     #[bench]
     fn bench_standard_shanten_optimized(b: &mut Bencher) {
