@@ -1,5 +1,21 @@
 # Diary
 
+### Jun 7 2025
+
+Added chiitoi and kokushi shanten + ukiere calculation. Redoing the benchmarks:
+
+```
+test shanten::tests::bench_standard_shanten           ... bench:   1,943,684.20 ns/iter (+/- 40,921.91)
+test shanten::tests::bench_standard_shanten_optimized ... bench:     188,982.62 ns/iter (+/- 573.10)
+
+(on a subsequent run:)
+test shanten::tests::bench_standard_shanten           ... bench:   1,943,132.95 ns/iter (+/- 103,465.39)
+test shanten::tests::bench_standard_shanten_optimized ... bench:     195,453.67 ns/iter (+/- 2,544.07)
+
+(running the optimized version on its own:)
+test shanten::tests::bench_standard_shanten_optimized ... bench:     189,643.83 ns/iter (+/- 9,849.01)
+```
+
 ### Jun 5 2025
 
 Improved the optimizations: we order the queue items based on number of tiles remaining (to be melded/grouped)

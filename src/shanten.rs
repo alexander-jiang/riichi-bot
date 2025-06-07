@@ -558,7 +558,6 @@ pub fn get_suit_melds(suit_tile_count_array: [u8; 34]) -> Vec<Vec<TileMeld>> {
         let tile_count_array = partial_interpretation.remaining_tile_count_array;
 
         // find the first tile id that is not empty
-        // TODO we could be more clever - considering each suit separately, for example
         let mut tile_id = 0u8;
         while tile_id < mahjong_tile::FIRST_HONOR_ID {
             let tile_idx = usize::from(tile_id);
@@ -962,8 +961,11 @@ pub fn get_suit_melds_min_shanten(
     //     "getting hand interpretations for shanten {}",
     //     best_shanten_so_far
     // );
-    let flattened_hand_interpretations = hand_interpretations.get(&best_shanten_so_far).unwrap();
-    flattened_hand_interpretations.clone()
+    let flattened_hand_interpretations = hand_interpretations.get(&best_shanten_so_far);
+    match flattened_hand_interpretations {
+        Some(interpretations) => interpretations.clone(),
+        None => Vec::new(),
+    }
 }
 
 pub fn get_shanten(tile_count_array: [u8; 34]) -> i8 {
@@ -985,10 +987,10 @@ pub fn get_shanten_optimized(tile_count_array: [u8; 34]) -> i8 {
     let mut shanten = min(chiitoi_shanten, kokushi_shanten);
 
     let interpretations = get_hand_interpretations_min_shanten(tile_count_array, shanten);
-    println!("hand interpretations:");
-    for hand_interpretation in interpretations.iter() {
-        println!("{}", hand_interpretation);
-    }
+    // println!("hand interpretations:");
+    // for hand_interpretation in interpretations.iter() {
+    //     println!("{}", hand_interpretation);
+    // }
     let standard_shanten = get_shanten_helper(&interpretations);
     if standard_shanten < shanten {
         shanten = standard_shanten;
@@ -996,11 +998,47 @@ pub fn get_shanten_optimized(tile_count_array: [u8; 34]) -> i8 {
     shanten
 }
 
-/// Gets the best possible shanten after discarding one tile from the given set of tiles
-pub fn get_shanten_after_discard(tile_count_array: [u8; 34]) -> i8 {
-    // TODO naive implementation: just try every possible discard -> call `get_shanten` -> pick the best overall
+/// Gets the possible shanten for each possible discard from the given set of tiles
+pub fn get_shanten_after_each_discard(tile_count_array: [u8; 34]) -> HashMap<i8, Vec<u8>> {
+    // naive implementation: just try every possible discard -> call `get_shanten` -> pick the best overall
     // but is there a more clever way?
-    todo!()
+    let mut tile_id = 0u8;
+    let mut shanten_by_discard_tile_id = HashMap::new();
+    while usize::from(tile_id) < tile_count_array.len() {
+        let tile_idx = usize::from(tile_id);
+        if tile_count_array[tile_idx] > 0 {
+            let mut tile_count_after_discard = [0; 34];
+            tile_count_after_discard = tile_count_array;
+            tile_count_after_discard[tile_idx] -= 1;
+            let shanten_after_discard = get_shanten(tile_count_after_discard);
+            if !shanten_by_discard_tile_id.contains_key(&shanten_after_discard) {
+                shanten_by_discard_tile_id.insert(shanten_after_discard, vec![tile_id]);
+            } else {
+                let tile_ids_for_shanten = shanten_by_discard_tile_id
+                    .get_mut(&shanten_after_discard)
+                    .unwrap();
+                tile_ids_for_shanten.push(tile_id);
+            }
+        }
+        tile_id += 1;
+    }
+    shanten_by_discard_tile_id
+}
+
+/// Gets the possible shanten after discarding any tile from the given set of tiles
+pub fn get_best_shanten_after_discard(tile_count_array: [u8; 34]) -> i8 {
+    if get_total_tiles_from_count_array(tile_count_array) != 14 {
+        // TODO eventually will need to handle the case when there are more tiles due to quads
+        panic!("invalid number of tiles")
+    }
+    let shanten_by_discard_tile_id = get_shanten_after_each_discard(tile_count_array);
+    let mut best_shanten = 99i8;
+    for shanten in shanten_by_discard_tile_id.keys() {
+        if *shanten < best_shanten {
+            best_shanten = *shanten;
+        }
+    }
+    best_shanten
 }
 
 pub fn get_shanten_helper(hand_interpretations: &Vec<HandInterpretation>) -> i8 {
@@ -1008,25 +1046,76 @@ pub fn get_shanten_helper(hand_interpretations: &Vec<HandInterpretation>) -> i8 
         .iter()
         .map(|i| i.get_standard_shanten())
         .min()
-        .unwrap()
+        .unwrap_or(8) // worst possible shanten by standard shape is 8-shanten
+}
+
+fn generate_ukiere_tiles(
+    tile_count_array: [u8; 34],
+    standard_shanten: i8,
+    chiitoi_shanten: i8,
+    kokushi_shanten: i8,
+    hand_interpretations: &Vec<HandInterpretation>,
+) -> Vec<u8> {
+    let special_shanten = min(chiitoi_shanten, kokushi_shanten);
+    let min_shanten = min(special_shanten, standard_shanten);
+
+    let mut ukiere_tile_ids = Vec::new();
+    if standard_shanten == min_shanten {
+        let standard_ukiere_tiles = get_ukiere_helper(&hand_interpretations, standard_shanten);
+        for tile_id in standard_ukiere_tiles {
+            if !ukiere_tile_ids.contains(&tile_id) {
+                ukiere_tile_ids.push(tile_id);
+            }
+        }
+    }
+    if chiitoi_shanten == min_shanten {
+        let chiitoi_ukiere_tiles = get_chiitoi_ukiere(tile_count_array);
+        for tile_id in chiitoi_ukiere_tiles {
+            if !ukiere_tile_ids.contains(&tile_id) {
+                ukiere_tile_ids.push(tile_id);
+            }
+        }
+    }
+    if kokushi_shanten == min_shanten {
+        let kokushi_ukiere_tiles = get_kokushi_ukiere(tile_count_array);
+        for tile_id in kokushi_ukiere_tiles {
+            if !ukiere_tile_ids.contains(&tile_id) {
+                ukiere_tile_ids.push(tile_id);
+            }
+        }
+    }
+    ukiere_tile_ids
 }
 
 pub fn get_ukiere(tile_count_array: [u8; 34]) -> Vec<u8> {
     let interpretations = get_hand_interpretations(tile_count_array);
-    // TODO get ukiere for chiitoi / kokushi if the shanten matches either of those patterns
-    let shanten = get_shanten_helper(&interpretations);
-    get_ukiere_helper(&interpretations, shanten)
+    let standard_shanten = get_shanten_helper(&interpretations);
+    let chiitoi_shanten = get_chiitoi_shanten(tile_count_array);
+    let kokushi_shanten = get_kokushi_shanten(tile_count_array);
+
+    generate_ukiere_tiles(
+        tile_count_array,
+        standard_shanten,
+        chiitoi_shanten,
+        kokushi_shanten,
+        &interpretations,
+    )
 }
 
 pub fn get_ukiere_optimized(tile_count_array: [u8; 34]) -> Vec<u8> {
     let chiitoi_shanten = get_chiitoi_shanten(tile_count_array);
     let kokushi_shanten = get_kokushi_shanten(tile_count_array);
-    let shanten = min(chiitoi_shanten, kokushi_shanten);
+    let special_shanten = min(chiitoi_shanten, kokushi_shanten);
 
-    let interpretations = get_hand_interpretations_min_shanten(tile_count_array, shanten);
-    // TODO get ukiere for chiitoi / kokushi if the shanten matches either of those patterns
-    let shanten = get_shanten_helper(&interpretations);
-    get_ukiere_helper(&interpretations, shanten)
+    let interpretations = get_hand_interpretations_min_shanten(tile_count_array, special_shanten);
+    let standard_shanten = get_shanten_helper(&interpretations);
+    generate_ukiere_tiles(
+        tile_count_array,
+        standard_shanten,
+        chiitoi_shanten,
+        kokushi_shanten,
+        &interpretations,
+    )
 }
 
 pub fn get_ukiere_helper(hand_interpretations: &Vec<HandInterpretation>, shanten: i8) -> Vec<u8> {
@@ -1104,21 +1193,25 @@ pub fn get_kokushi_shanten(tile_count_array: [u8; 34]) -> i8 {
 }
 
 pub fn get_kokushi_ukiere(tile_count_array: [u8; 34]) -> Vec<u8> {
-    let mut tile_ids = Vec::new();
+    let mut missing_kokushi_tiles = Vec::new();
     let kokushi_tile_ids = tiles_to_tile_ids("19m19p19s1234567z");
-    let mut num_kokushi_tiles = 0;
     let mut has_kokushi_pair = false;
     for kokushi_tile_id in kokushi_tile_ids.iter() {
         let kokushi_tile_idx = usize::from(*kokushi_tile_id);
         let kokushi_tile_count = tile_count_array[kokushi_tile_idx];
-        if kokushi_tile_count >= 1 {
-            num_kokushi_tiles += 1;
-        }
-        if kokushi_tile_count >= 2 {
+        if kokushi_tile_count == 0 {
+            missing_kokushi_tiles.push(*kokushi_tile_id);
+        } else if kokushi_tile_count >= 2 {
             has_kokushi_pair = true;
         }
     }
-    tile_ids
+
+    if !has_kokushi_pair {
+        // can improve on any kokushi tile: it will either form a pair or be a new kokushi that wasn't in the hand already
+        kokushi_tile_ids
+    } else {
+        missing_kokushi_tiles
+    }
 }
 
 pub fn tiles_to_count_array(tiles_string: &str) -> [u8; 34] {
@@ -1510,9 +1603,9 @@ mod tests {
         assert_eq!(get_shanten(tiles), 3);
         assert_eq!(get_shanten_optimized(tiles), 3);
 
-        // ukiere tiles: 345678m123456789p6789s
+        // ukiere tiles: 12345678m123456789p6789s (also 3-shanten from chiitoi)
         let ukiere_tiles = get_ukiere(tiles);
-        let expected_ukiere_tiles = tiles_to_tile_ids("345678m123456789p6789s");
+        let expected_ukiere_tiles = tiles_to_tile_ids("12345678m123456789p6789s");
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1722,159 +1815,159 @@ mod tests {
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
     }
 
-    // #[test]
-    // fn chiitoi_one_shanten() {
-    //     // https://riichi.wiki/Iishanten#Chiitoitsu
-    //     // example with no triplets
-    //     let tiles = tiles_to_count_array("1166m4499s667p25z");
-    //     assert_eq!(get_shanten(tiles), 1);
-    //     assert_eq!(get_shanten_optimized(tiles), 1);
+    #[test]
+    fn chiitoi_one_shanten() {
+        // https://riichi.wiki/Iishanten#Chiitoitsu
+        // example with no triplets
+        let tiles = tiles_to_count_array("1166m4499s667p25z");
+        assert_eq!(get_shanten(tiles), 1);
+        assert_eq!(get_shanten_optimized(tiles), 1);
 
-    //     // ukiere tiles: 7p25z
-    //     let ukiere_tiles = get_ukiere(tiles);
-    //     let expected_ukiere_tiles = tiles_to_tile_ids("7p25z");
-    //     assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+        // ukiere tiles: 7p25z
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("7p25z");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
-    //     let ukiere_tiles = get_ukiere_optimized(tiles);
-    //     assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+        let ukiere_tiles = get_ukiere_optimized(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
-    //     // example with a triplet
-    //     let tiles = tiles_to_count_array("3388m229p111s337z");
-    //     assert_eq!(get_shanten(tiles), 1);
-    //     assert_eq!(get_shanten_optimized(tiles), 1);
+        // example with a triplet
+        let tiles = tiles_to_count_array("3388m229p111s337z");
+        assert_eq!(get_shanten(tiles), 1);
+        assert_eq!(get_shanten_optimized(tiles), 1);
 
-    //     // ukiere tiles: 9p7z
-    //     let ukiere_tiles = get_ukiere(tiles);
-    //     let expected_ukiere_tiles = tiles_to_tile_ids("9p7z");
-    //     assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+        // ukiere tiles: 9p7z
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("9p7z");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
-    //     let ukiere_tiles = get_ukiere_optimized(tiles);
-    //     assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+        let ukiere_tiles = get_ukiere_optimized(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
-    //     // example that is 1-shanten for both chiitoi and standard hand structure
-    //     let tiles = tiles_to_count_array("233m11223399p56s");
-    //     assert_eq!(get_shanten(tiles), 1);
-    //     assert_eq!(get_shanten_optimized(tiles), 1);
+        // example that is 1-shanten for both chiitoi and standard hand structure
+        let tiles = tiles_to_count_array("233m11223399p56s");
+        assert_eq!(get_shanten(tiles), 1);
+        assert_eq!(get_shanten_optimized(tiles), 1);
 
-    //     // ukiere tiles: 2m56s (to form a sixth pair), 134m47s (to complete a group)
-    //     let ukiere_tiles = get_ukiere(tiles);
-    //     let expected_ukiere_tiles = tiles_to_tile_ids("1234m4567s");
-    //     assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+        // ukiere tiles: 2m56s (to form a sixth pair), 134m9p47s (to complete a group)
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("1234m9p4567s");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
-    //     let ukiere_tiles = get_ukiere_optimized(tiles);
-    //     assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
-    // }
-
-    // #[test]
-    // fn chiitoi_tenpai() {
-    //     let tiles = tiles_to_count_array("1166m4499s667p55z");
-    //     assert_eq!(get_shanten(tiles), 0);
-    //     assert_eq!(get_shanten_optimized(tiles), 0);
-
-    //     // ukiere tiles: 7p
-    //     let ukiere_tiles = get_ukiere(tiles);
-    //     let expected_ukiere_tiles = tiles_to_tile_ids("7p");
-    //     assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
-
-    //     let ukiere_tiles = get_ukiere_optimized(tiles);
-    //     assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
-    // }
-
-    // #[test]
-    // fn chiitoi_complete_hand() {
-    //     let tiles = tiles_to_count_array("1166m4499s6677p55z");
-    //     assert_eq!(get_shanten(tiles), -1);
-    //     assert_eq!(get_shanten_optimized(tiles), -1);
-
-    //     let ukiere_tiles = get_ukiere(tiles);
-    //     assert_eq!(ukiere_tiles.len(), 0);
-    //     let ukiere_tiles = get_ukiere_optimized(tiles);
-    //     assert_eq!(ukiere_tiles.len(), 0);
-    // }
-
-    // #[test]
-    // fn kokushi_musou_one_shanten() {
-    //     // https://riichi.wiki/Iishanten#Kokushi_musou
-    //     // example with a pair
-    //     let tiles = tiles_to_count_array("1m139p19s1234566z");
-    //     assert_eq!(get_shanten(tiles), 1);
-    //     assert_eq!(get_shanten_optimized(tiles), 1);
-
-    //     // ukiere tiles: 9m7z
-    //     let ukiere_tiles = get_ukiere(tiles);
-    //     let expected_ukiere_tiles = tiles_to_tile_ids("9m7z");
-    //     assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
-
-    //     let ukiere_tiles = get_ukiere_optimized(tiles);
-    //     assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
-
-    //     // example with no pair
-    //     let tiles = tiles_to_count_array("19m139p19s123456z");
-    //     assert_eq!(get_shanten(tiles), 1);
-    //     assert_eq!(get_shanten_optimized(tiles), 1);
-
-    //     // ukiere tiles: 19m19p19s1234567z (in particular, drawing 7z gives a 13-sided wait)
-    //     let ukiere_tiles = get_ukiere(tiles);
-    //     let expected_ukiere_tiles = tiles_to_tile_ids("19m19p19s1234567z");
-    //     assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
-
-    //     let ukiere_tiles = get_ukiere_optimized(tiles);
-    //     assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
-    // }
-
-    // #[test]
-    // fn kokushi_musou_tenpai() {
-    //     // aka thirteen orphans - https://riichi.wiki/Kokushi_musou
-    //     // 1-sided wait
-    //     let tiles = tiles_to_count_array("1m19p19s12345667z");
-    //     assert_eq!(get_shanten(tiles), 0);
-    //     assert_eq!(get_shanten_optimized(tiles), 0);
-
-    //     // ukiere tiles: 9m
-    //     let ukiere_tiles = get_ukiere(tiles);
-    //     let expected_ukiere_tiles = tiles_to_tile_ids("9m");
-    //     assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
-
-    //     let ukiere_tiles = get_ukiere_optimized(tiles);
-    //     assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
-
-    //     // 13-sided wait
-    //     let tiles = tiles_to_count_array("19m19p19s1234567z");
-    //     assert_eq!(get_shanten(tiles), 0);
-    //     assert_eq!(get_shanten_optimized(tiles), 0);
-
-    //     // ukiere tiles: 19m19p19s1234567z (any terminal or honor tile)
-    //     let ukiere_tiles = get_ukiere(tiles);
-    //     let expected_ukiere_tiles = tiles_to_tile_ids("19m19p19s1234567z");
-    //     assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
-
-    //     let ukiere_tiles = get_ukiere_optimized(tiles);
-    //     assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
-    // }
-
-    // #[test]
-    // fn kokushi_musou_complete() {
-    //     // aka thirteen orphans - https://riichi.wiki/Kokushi_musou
-    //     let tiles = tiles_to_count_array("19m19p199s1234567z");
-    //     assert_eq!(get_shanten(tiles), -1);
-    //     assert_eq!(get_shanten_optimized(tiles), -1);
-
-    //     let ukiere_tiles = get_ukiere(tiles);
-    //     assert_eq!(ukiere_tiles.len(), 0);
-    //     let ukiere_tiles = get_ukiere_optimized(tiles);
-    //     assert_eq!(ukiere_tiles.len(), 0);
-    // }
-
-    #[bench]
-    fn bench_standard_shanten(b: &mut Bencher) {
-        let tiles = tiles_to_count_array("12234455s345p11z");
-        // hand is 1-shanten: 123s - 24s - 455s - 345p - 11z
-        // ukiere tiles: 23456s1z
-        b.iter(|| {
-            get_shanten(tiles);
-            get_ukiere(tiles)
-        });
+        let ukiere_tiles = get_ukiere_optimized(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
     }
+
+    #[test]
+    fn chiitoi_tenpai() {
+        let tiles = tiles_to_count_array("1166m4499s667p55z");
+        assert_eq!(get_shanten(tiles), 0);
+        assert_eq!(get_shanten_optimized(tiles), 0);
+
+        // ukiere tiles: 7p
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("7p");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+        let ukiere_tiles = get_ukiere_optimized(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn chiitoi_complete_hand() {
+        let tiles = tiles_to_count_array("1166m4499s6677p55z");
+        assert_eq!(get_shanten(tiles), -1);
+        assert_eq!(get_shanten_optimized(tiles), -1);
+
+        let ukiere_tiles = get_ukiere(tiles);
+        assert_eq!(ukiere_tiles.len(), 0);
+        let ukiere_tiles = get_ukiere_optimized(tiles);
+        assert_eq!(ukiere_tiles.len(), 0);
+    }
+
+    #[test]
+    fn kokushi_musou_one_shanten() {
+        // https://riichi.wiki/Iishanten#Kokushi_musou
+        // example with a pair
+        let tiles = tiles_to_count_array("1m139p19s1234566z");
+        assert_eq!(get_shanten(tiles), 1);
+        assert_eq!(get_shanten_optimized(tiles), 1);
+
+        // ukiere tiles: 9m7z
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("9m7z");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+        let ukiere_tiles = get_ukiere_optimized(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+        // example with no pair
+        let tiles = tiles_to_count_array("19m139p19s123456z");
+        assert_eq!(get_shanten(tiles), 1);
+        assert_eq!(get_shanten_optimized(tiles), 1);
+
+        // ukiere tiles: 19m19p19s1234567z (in particular, drawing 7z gives a 13-sided wait)
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("19m19p19s1234567z");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+        let ukiere_tiles = get_ukiere_optimized(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn kokushi_musou_tenpai() {
+        // aka thirteen orphans - https://riichi.wiki/Kokushi_musou
+        // 1-sided wait
+        let tiles = tiles_to_count_array("1m19p19s12345667z");
+        assert_eq!(get_shanten(tiles), 0);
+        assert_eq!(get_shanten_optimized(tiles), 0);
+
+        // ukiere tiles: 9m
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("9m");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+        let ukiere_tiles = get_ukiere_optimized(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+        // 13-sided wait
+        let tiles = tiles_to_count_array("19m19p19s1234567z");
+        assert_eq!(get_shanten(tiles), 0);
+        assert_eq!(get_shanten_optimized(tiles), 0);
+
+        // ukiere tiles: 19m19p19s1234567z (any terminal or honor tile)
+        let ukiere_tiles = get_ukiere(tiles);
+        let expected_ukiere_tiles = tiles_to_tile_ids("19m19p19s1234567z");
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+        let ukiere_tiles = get_ukiere_optimized(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn kokushi_musou_complete() {
+        // aka thirteen orphans - https://riichi.wiki/Kokushi_musou
+        let tiles = tiles_to_count_array("19m19p199s1234567z");
+        assert_eq!(get_shanten(tiles), -1);
+        assert_eq!(get_shanten_optimized(tiles), -1);
+
+        let ukiere_tiles = get_ukiere(tiles);
+        assert_eq!(ukiere_tiles.len(), 0);
+        let ukiere_tiles = get_ukiere_optimized(tiles);
+        assert_eq!(ukiere_tiles.len(), 0);
+    }
+
+    // #[bench]
+    // fn bench_standard_shanten(b: &mut Bencher) {
+    //     let tiles = tiles_to_count_array("12234455s345p11z");
+    //     // hand is 1-shanten: 123s - 24s - 455s - 345p - 11z
+    //     // ukiere tiles: 23456s1z
+    //     b.iter(|| {
+    //         get_shanten(tiles);
+    //         get_ukiere(tiles)
+    //     });
+    // }
 
     // #[test]
     // fn debug_get_hand_interpretations() {
