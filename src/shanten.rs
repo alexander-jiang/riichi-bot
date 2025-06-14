@@ -278,16 +278,6 @@ fn get_num_incomplete_groups(groups: &Vec<TileMeld>) -> i8 {
     num_incomplete_groups
 }
 
-fn get_num_single_tile_groups(groups: &Vec<TileMeld>) -> i8 {
-    let mut num_single_tile_groups = 0;
-    for group in groups.iter() {
-        if group.meld_type == MeldType::SingleTile {
-            num_single_tile_groups += 1;
-        }
-    }
-    num_single_tile_groups
-}
-
 fn get_total_num_tiles(groups: &Vec<TileMeld>) -> usize {
     let mut num_tiles = 0;
     for group in groups.iter() {
@@ -1008,7 +998,10 @@ pub fn get_shanten_optimized(tile_count_array: [u8; 34]) -> i8 {
 }
 
 /// Gets the possible shanten for each possible discard from the given set of tiles
-pub fn get_shanten_after_each_discard(tile_count_array: [u8; 34]) -> HashMap<i8, Vec<u8>> {
+pub fn get_shanten_after_each_discard(
+    tile_count_array: [u8; 34],
+    shanten_function: &dyn Fn([u8; 34]) -> i8,
+) -> HashMap<i8, Vec<u8>> {
     // naive implementation: just try every possible discard -> call `get_shanten` -> pick the best overall
     // but is there a more clever way?
     let mut tile_id = 0u8;
@@ -1016,10 +1009,9 @@ pub fn get_shanten_after_each_discard(tile_count_array: [u8; 34]) -> HashMap<i8,
     while usize::from(tile_id) < tile_count_array.len() {
         let tile_idx = usize::from(tile_id);
         if tile_count_array[tile_idx] > 0 {
-            let mut tile_count_after_discard = [0; 34];
-            tile_count_after_discard = tile_count_array;
+            let mut tile_count_after_discard = tile_count_array;
             tile_count_after_discard[tile_idx] -= 1;
-            let shanten_after_discard = get_shanten(tile_count_after_discard);
+            let shanten_after_discard = shanten_function(tile_count_after_discard);
             if !shanten_by_discard_tile_id.contains_key(&shanten_after_discard) {
                 shanten_by_discard_tile_id.insert(shanten_after_discard, vec![tile_id]);
             } else {
@@ -1035,12 +1027,16 @@ pub fn get_shanten_after_each_discard(tile_count_array: [u8; 34]) -> HashMap<i8,
 }
 
 /// Gets the possible shanten after discarding any tile from the given set of tiles
-pub fn get_best_shanten_after_discard(tile_count_array: [u8; 34]) -> i8 {
+pub fn get_best_shanten_after_discard(
+    tile_count_array: [u8; 34],
+    shanten_function: &dyn Fn([u8; 34]) -> i8,
+) -> i8 {
     if get_total_tiles_from_count_array(tile_count_array) != 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
     }
-    let shanten_by_discard_tile_id = get_shanten_after_each_discard(tile_count_array);
+    let shanten_by_discard_tile_id =
+        get_shanten_after_each_discard(tile_count_array, shanten_function);
     let mut best_shanten = 99i8;
     for shanten in shanten_by_discard_tile_id.keys() {
         if *shanten < best_shanten {
@@ -1048,6 +1044,114 @@ pub fn get_best_shanten_after_discard(tile_count_array: [u8; 34]) -> i8 {
         }
     }
     best_shanten
+}
+
+/// returns all discard options (discard tile id, ukiere tile ids, number of ukiere tiles) with the best shanten
+/// and that maximizes the count of ukiere
+pub fn get_most_ukiere_after_discard(
+    tile_count_array: [u8; 34],
+    best_shanten: i8,
+    shanten_function: &dyn Fn([u8; 34]) -> i8,
+    ukiere_function: &dyn Fn([u8; 34]) -> Vec<u8>,
+    other_visible_tiles: Vec<u8>,
+) -> Vec<(u8, Vec<u8>, u16)> {
+    if get_total_tiles_from_count_array(tile_count_array) != 14 {
+        // TODO eventually will need to handle the case when there are more tiles due to quads
+        panic!("invalid number of tiles")
+    }
+    let shanten_by_discard_tile_id =
+        get_shanten_after_each_discard(tile_count_array, shanten_function);
+    let best_shanten_discard_tile_ids = shanten_by_discard_tile_id.get(&best_shanten).unwrap();
+
+    let mut ukiere_discard_options = Vec::new();
+    let mut highest_ukiere_count_so_far = 0;
+    for discard_tile_id in best_shanten_discard_tile_ids {
+        let ukiere_tiles_after_discard =
+            get_ukiere_after_discard(tile_count_array, *discard_tile_id, ukiere_function);
+
+        let new_count_array = remove_tile_id_from_count_array(tile_count_array, *discard_tile_id);
+        let mut new_tile_ids = tile_count_array_to_tile_ids(new_count_array);
+        let mut visible_tiles_after_discard = other_visible_tiles.clone();
+        visible_tiles_after_discard.append(&mut new_tile_ids);
+        visible_tiles_after_discard.push(*discard_tile_id);
+
+        let ukiere_count =
+            get_num_tiles_remaining(&ukiere_tiles_after_discard, &visible_tiles_after_discard);
+        let new_entry = (*discard_tile_id, ukiere_tiles_after_discard, ukiere_count);
+        if ukiere_count > highest_ukiere_count_so_far {
+            highest_ukiere_count_so_far = ukiere_count;
+            ukiere_discard_options = vec![new_entry];
+        } else if ukiere_count == highest_ukiere_count_so_far {
+            ukiere_discard_options.push(new_entry);
+        }
+    }
+
+    ukiere_discard_options
+}
+
+fn add_tile_id_to_count_array(tile_count_array: [u8; 34], new_tile_id: u8) -> [u8; 34] {
+    assert!(
+        usize::from(new_tile_id) < tile_count_array.len(),
+        "invalid tile id"
+    );
+    let mut new_count_array = [0; 34];
+    for tile_id in 0..tile_count_array.len() {
+        new_count_array[tile_id] = tile_count_array[tile_id];
+    }
+    let new_tile_idx = usize::from(new_tile_id);
+    new_count_array[new_tile_idx] += 1;
+    new_count_array
+}
+
+fn remove_tile_id_from_count_array(tile_count_array: [u8; 34], discard_tile_id: u8) -> [u8; 34] {
+    assert!(
+        usize::from(discard_tile_id) < tile_count_array.len(),
+        "invalid tile id"
+    );
+    let mut new_count_array = [0; 34];
+    for tile_id in 0..tile_count_array.len() {
+        new_count_array[tile_id] = tile_count_array[tile_id];
+    }
+    let discard_tile_idx = usize::from(discard_tile_id);
+    if new_count_array[discard_tile_idx] > 0 {
+        new_count_array[discard_tile_idx] -= 1;
+    }
+    new_count_array
+}
+
+pub fn get_ukiere_after_discard(
+    tile_count_array: [u8; 34],
+    discard_tile_id: u8,
+    ukiere_function: &dyn Fn([u8; 34]) -> Vec<u8>,
+) -> Vec<u8> {
+    if get_total_tiles_from_count_array(tile_count_array) != 14 {
+        // TODO eventually will need to handle the case when there are more tiles due to quads
+        panic!("invalid number of tiles")
+    }
+    let new_count_array = remove_tile_id_from_count_array(tile_count_array, discard_tile_id);
+    ukiere_function(new_count_array)
+}
+
+pub fn get_num_tiles_remaining(target_tile_ids: &Vec<u8>, visible_tile_ids: &Vec<u8>) -> u16 {
+    let mut base_tile_count = [4u16; 34];
+    let mut remaining_tile_count: u16 = (4 * target_tile_ids.len()).try_into().unwrap();
+    for tile_id in visible_tile_ids {
+        if !target_tile_ids.contains(tile_id) {
+            continue;
+        }
+        let tile_idx = usize::from(*tile_id);
+        if base_tile_count[tile_idx] > 0 && remaining_tile_count > 0 {
+            base_tile_count[tile_idx] -= 1;
+            remaining_tile_count -= 1;
+        } else {
+            panic!(
+                "tried to remove too many copies of tile {} (tile_id {})",
+                mahjong_tile::get_tile_text_from_id(*tile_id).unwrap(),
+                *tile_id
+            );
+        }
+    }
+    remaining_tile_count
 }
 
 pub fn get_shanten_helper(hand_interpretations: &Vec<HandInterpretation>) -> i8 {
@@ -1271,6 +1375,20 @@ pub fn tiles_to_tile_ids(tiles_string: &str) -> Vec<u8> {
     tile_ids
 }
 
+fn tile_count_array_to_tile_ids(tile_count_array: [u8; 34]) -> Vec<u8> {
+    let mut tile_ids = Vec::new();
+    for tile_id in 0..34u8 {
+        let tile_idx = usize::from(tile_id);
+        if tile_count_array[tile_idx] == 0 {
+            continue;
+        }
+        for _i in 0..tile_count_array[tile_idx] {
+            tile_ids.push(tile_id);
+        }
+    }
+    tile_ids
+}
+
 pub fn tile_ids_to_string(tile_ids: &Vec<u8>) -> String {
     let mut tiles_string = String::new();
     for tile_id in tile_ids.iter() {
@@ -1298,6 +1416,85 @@ mod tests {
             tile_ids_to_string(&sorted_tile_ids),
             tile_ids_to_string(&sorted_expected_tile_ids)
         );
+    }
+
+    fn assert_ukiere_tiles_after_discard_match(
+        tile_count_array: [u8; 34],
+        expected_ukiere_after_discard: &HashMap<&'static str, Vec<u8>>,
+    ) {
+        for (discard_tile_str, expected_ukiere_tiles) in expected_ukiere_after_discard {
+            let ukiere_tiles = get_ukiere_after_discard(
+                tile_count_array,
+                mahjong_tile::get_id_from_tile_text(discard_tile_str).unwrap(),
+                &get_ukiere,
+            );
+            assert_tile_ids_match(&ukiere_tiles, expected_ukiere_tiles);
+
+            let ukiere_tiles = get_ukiere_after_discard(
+                tile_count_array,
+                mahjong_tile::get_id_from_tile_text(discard_tile_str).unwrap(),
+                &get_ukiere_optimized,
+            );
+            assert_tile_ids_match(&ukiere_tiles, expected_ukiere_tiles);
+        }
+        // TODO check that other possible discard options are not better
+    }
+
+    fn assert_upgrade_tiles_match(
+        tile_count_array: [u8; 34],
+        expected_upgrades: &HashMap<&'static str, (Vec<&'static str>, Vec<u8>)>,
+    ) {
+        for (draw_tile_str, (discard_tile_ids, new_ukiere_tiles)) in expected_upgrades {
+            let new_count_array = add_tile_id_to_count_array(
+                tile_count_array,
+                mahjong_tile::get_id_from_tile_text(&draw_tile_str).unwrap(),
+            );
+
+            for discard_tile_str in discard_tile_ids {
+                let ukiere_tiles = get_ukiere_after_discard(
+                    new_count_array,
+                    mahjong_tile::get_id_from_tile_text(*discard_tile_str).unwrap(),
+                    &get_ukiere,
+                );
+                assert_tile_ids_match(&ukiere_tiles, new_ukiere_tiles);
+
+                let ukiere_tiles = get_ukiere_after_discard(
+                    new_count_array,
+                    mahjong_tile::get_id_from_tile_text(*discard_tile_str).unwrap(),
+                    &get_ukiere_optimized,
+                );
+                assert_tile_ids_match(&ukiere_tiles, new_ukiere_tiles);
+            }
+        }
+
+        for potential_tile_id in 0..34 {
+            let potential_tile_string =
+                mahjong_tile::get_tile_text_from_id(potential_tile_id).unwrap();
+            let potential_tile_str = potential_tile_string.as_str();
+            if expected_upgrades.contains_key(&potential_tile_str) {
+                continue;
+            }
+            let new_count_array = add_tile_id_to_count_array(tile_count_array, potential_tile_id);
+            // TODO check that the best discard from this new hand is the same tile that was just added
+        }
+    }
+
+    fn assert_discards_ukiere_match(
+        discards_ukiere: &Vec<(u8, Vec<u8>, u16)>,
+        expected_discards_ukiere: &Vec<(u8, Vec<u8>, u16)>,
+    ) {
+        let mut sorted_discards_ukiere = discards_ukiere.clone();
+        for (_, ukiere_tile_ids_after_discard, _) in sorted_discards_ukiere.iter_mut() {
+            ukiere_tile_ids_after_discard.sort();
+        }
+        sorted_discards_ukiere.sort();
+
+        let mut sorted_expected_discards_ukiere = expected_discards_ukiere.clone();
+        for (_, ukiere_tile_ids_after_discard, _) in sorted_expected_discards_ukiere.iter_mut() {
+            ukiere_tile_ids_after_discard.sort();
+        }
+        sorted_expected_discards_ukiere.sort();
+        assert_eq!(sorted_discards_ukiere, sorted_expected_discards_ukiere);
     }
 
     #[test]
@@ -1464,8 +1661,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 2);
 
         // ukiere tiles: 5p3568s23569m
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("5p3568s23569m");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1480,8 +1677,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 47m37p
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("47m37p");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1496,8 +1693,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 23456s1z
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("23456s1z");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1515,8 +1712,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 47p45s
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("47p45s");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1534,8 +1731,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 12469s2p
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("12469s2p");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1553,8 +1750,8 @@ mod tests {
 
         // ukiere tiles: completing either ryanmen group or pairing a tile in the ryanmen group
         // total: 1234s4567p
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("1234s4567p");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1564,16 +1761,32 @@ mod tests {
     #[test]
     fn hand_kutsuki_one_shanten() {
         // kutsuki 1-shanten is characterized by 3 complete groups + 1 pair: https://riichi.wiki/Iishanten#Kuttsuki
+        // example from wiki:
+        let tiles = tiles_to_count_array("234678m37s22567p");
+        // hand is 1-shanten: 234m - 678m - 3s - 7s - 22p - 567p
+        assert_eq!(get_shanten(tiles), 1);
+        assert_eq!(get_shanten_optimized(tiles), 1);
+
+        // ukiere tiles: anything within 2 of a floating tile (3s7s), and 2p
+        // total: 123456789s2p
+        let expected_ukiere_tiles = tiles_to_tile_ids("123456789s2p");
+        let ukiere_tiles = get_ukiere(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+        let ukiere_tiles = get_ukiere_optimized(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+        // example from youtube video: https://youtu.be/TulF31VKJ94?si=DlCBB2flwB-Y7P18 (timestamp 1:33:59)
         let tiles = tiles_to_count_array("2344567m556p678s");
         // hand is 1-shanten: 234m - 456m - 7m - 556p - 678s (but the 4m could be considered floating as well, or as part of 2344m shape)
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
 
-        // ukiere tiles: anything within 2 of a floating tile (4m7m6p), there are also
+        // ukiere tiles: anything within 2 of a floating tile (4m7m6p), and
         // the manzu complex shape can accept 147m (2344m-567m or 234m-4567m), 2358m (24m-34567m)
         // total: 123456789m45678p
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("123456789m45678p");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1612,8 +1825,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 2);
 
         // ukiere tiles: 5m58p37s
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("5m58p37s");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1628,8 +1841,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 3);
 
         // ukiere tiles: 12345678m123456789p6789s (also 3-shanten from chiitoi)
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("12345678m123456789p6789s");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1643,8 +1856,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 8p
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("8p");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1658,8 +1871,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 2p
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("2p");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1673,8 +1886,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 3m
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("3m");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1688,8 +1901,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 4p9s
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("4p9s");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1703,8 +1916,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 69p
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("69p");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1719,8 +1932,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 36p
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("36p");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1735,8 +1948,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 25s
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("25s");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1751,8 +1964,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 67m
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("67m");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1767,8 +1980,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 13m
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("13m");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1783,8 +1996,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 258s
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("258s");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1799,8 +2012,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 467m
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("467m");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1815,8 +2028,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 1m36s
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("1m36s");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1831,8 +2044,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 258p
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("258p");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1848,8 +2061,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 7p25z
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("7p25z");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1861,8 +2074,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 9p7z
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("9p7z");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1874,8 +2087,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 2m56s (to form a sixth pair), 134m9p47s (to complete a group)
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("1234m9p4567s");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1889,8 +2102,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 7p
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("7p");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1918,8 +2131,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 9m7z
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("9m7z");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1931,8 +2144,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 19m19p19s1234567z (in particular, drawing 7z gives a 13-sided wait)
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("19m19p19s1234567z");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1948,8 +2161,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 9m
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("9m");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -1961,8 +2174,8 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 19m19p19s1234567z (any terminal or honor tile)
-        let ukiere_tiles = get_ukiere(tiles);
         let expected_ukiere_tiles = tiles_to_tile_ids("19m19p19s1234567z");
+        let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         let ukiere_tiles = get_ukiere_optimized(tiles);
@@ -2006,19 +2219,19 @@ mod tests {
     //     }
     // }
 
-    #[test]
-    fn debug_get_hand_interpretations_min_shanten() {
-        // let tiles = tiles_to_count_array("23s678s56p888p888m");
-        let tiles = tiles_to_count_array("12234455s345p11z");
-        let hand_interpretations = get_hand_interpretations_min_shanten(tiles, 3);
-        for hand_interpretation in hand_interpretations {
-            println!(
-                "{} -> ukiere tiles {}",
-                hand_interpretation,
-                tile_ids_to_string(&hand_interpretation.get_ukiere())
-            );
-        }
-    }
+    // #[test]
+    // fn debug_get_hand_interpretations_min_shanten() {
+    //     // let tiles = tiles_to_count_array("23s678s56p888p888m");
+    //     let tiles = tiles_to_count_array("12234455s345p11z");
+    //     let hand_interpretations = get_hand_interpretations_min_shanten(tiles, 3);
+    //     for hand_interpretation in hand_interpretations {
+    //         println!(
+    //             "{} -> ukiere tiles {}",
+    //             hand_interpretation,
+    //             tile_ids_to_string(&hand_interpretation.get_ukiere())
+    //         );
+    //     }
+    // }
 
     #[bench]
     fn bench_standard_shanten_optimized(b: &mut Bencher) {
@@ -2030,7 +2243,342 @@ mod tests {
             get_ukiere_optimized(tiles)
         });
     }
+
+    #[test]
+    fn wwyd_efficiency_problem_example1() {
+        // examples from https://justanotherjapanesemahjongblog.blogspot.com/2012/01/choosing-multi-wait-tenpai-problem.html
+        let tiles = tiles_to_count_array("123667m6889p1278s");
+        assert_eq!(get_best_shanten_after_discard(tiles, &get_shanten), 2);
+        assert_eq!(
+            get_best_shanten_after_discard(tiles, &get_shanten_optimized),
+            2
+        );
+        // best discard 9p (or 6p) -> 2-shanten
+
+        // ukiere tiles after discard 9p (or 6p): 568m78p369s
+        let mut expected_ukiere_tiles_after_discard = HashMap::new();
+        expected_ukiere_tiles_after_discard.insert("6p", tiles_to_tile_ids("568m78p369s"));
+        expected_ukiere_tiles_after_discard.insert("9p", tiles_to_tile_ids("568m78p369s"));
+        expected_ukiere_tiles_after_discard.insert("6m", tiles_to_tile_ids("58m369s"));
+        expected_ukiere_tiles_after_discard.insert("7m", tiles_to_tile_ids("6m78p369s"));
+        expected_ukiere_tiles_after_discard.insert("8p", tiles_to_tile_ids("7p369s"));
+        expected_ukiere_tiles_after_discard.insert("1s", tiles_to_tile_ids("7p69s"));
+        expected_ukiere_tiles_after_discard.insert("2s", tiles_to_tile_ids("7p69s"));
+        expected_ukiere_tiles_after_discard.insert("7s", tiles_to_tile_ids("7p3s"));
+        expected_ukiere_tiles_after_discard.insert("8s", tiles_to_tile_ids("7p3s"));
+
+        for (discard_tile_str, expected_ukiere_tiles) in expected_ukiere_tiles_after_discard {
+            let ukiere_tiles = get_ukiere_after_discard(
+                tiles,
+                mahjong_tile::get_id_from_tile_text(discard_tile_str).unwrap(),
+                &get_ukiere,
+            );
+            assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+            let ukiere_tiles = get_ukiere_after_discard(
+                tiles,
+                mahjong_tile::get_id_from_tile_text(discard_tile_str).unwrap(),
+                &get_ukiere_optimized,
+            );
+            assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+        }
+    }
+
+    #[test]
+    fn wwyd_efficiency_problem_example2() {
+        // examples from https://justanotherjapanesemahjongblog.blogspot.com/2012/01/choosing-multi-wait-tenpai-problem.html
+        let tiles = tiles_to_count_array("2334578m34p66999s");
+        assert_eq!(get_best_shanten_after_discard(tiles, &get_shanten), 1);
+        assert_eq!(
+            get_best_shanten_after_discard(tiles, &get_shanten_optimized),
+            1
+        );
+        // best discard 8m -> 1-shanten
+
+        // ukiere tiles after discard 8m: 146m25p
+        let mut expected_ukiere_tiles_after_discard = HashMap::new();
+        expected_ukiere_tiles_after_discard.insert("8m", tiles_to_tile_ids("146m25p"));
+        expected_ukiere_tiles_after_discard.insert("2m", tiles_to_tile_ids("69m25p"));
+        expected_ukiere_tiles_after_discard.insert("3m", tiles_to_tile_ids("69m25p"));
+        expected_ukiere_tiles_after_discard.insert("5m", tiles_to_tile_ids("69m25p"));
+        expected_ukiere_tiles_after_discard.insert("7m", tiles_to_tile_ids("14m25p"));
+        expected_ukiere_tiles_after_discard.insert("3p", tiles_to_tile_ids("1469m"));
+        expected_ukiere_tiles_after_discard.insert("4p", tiles_to_tile_ids("1469m"));
+
+        for (discard_tile_str, expected_ukiere_tiles) in expected_ukiere_tiles_after_discard {
+            let ukiere_tiles = get_ukiere_after_discard(
+                tiles,
+                mahjong_tile::get_id_from_tile_text(discard_tile_str).unwrap(),
+                &get_ukiere,
+            );
+            assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+            let ukiere_tiles = get_ukiere_after_discard(
+                tiles,
+                mahjong_tile::get_id_from_tile_text(discard_tile_str).unwrap(),
+                &get_ukiere_optimized,
+            );
+            assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+        }
+    }
+
+    #[test]
+    fn wwyd_efficiency_problem_example3() {
+        // examples from https://justanotherjapanesemahjongblog.blogspot.com/2012/01/choosing-multi-wait-tenpai-problem.html
+        let tiles = tiles_to_count_array("2368m24888p33567s");
+        assert_eq!(get_best_shanten_after_discard(tiles, &get_shanten), 1);
+        assert_eq!(
+            get_best_shanten_after_discard(tiles, &get_shanten_optimized),
+            1
+        );
+        // best discard -> 1-shanten
+
+        // ukiere tiles after discard 6m or 8m: 14m3p - but the argument is that, if you keep 68m (and cut 24p),
+        // then if you were to draw 5m (upgrade to ryanmen wait), you have overlapping wait on 4m (between 23m and now 56m)
+        let mut expected_ukiere_tiles_after_discard = HashMap::new();
+        expected_ukiere_tiles_after_discard.insert("8m", tiles_to_tile_ids("14m3p"));
+        expected_ukiere_tiles_after_discard.insert("6m", tiles_to_tile_ids("14m3p"));
+        expected_ukiere_tiles_after_discard.insert("2p", tiles_to_tile_ids("147m"));
+        expected_ukiere_tiles_after_discard.insert("4p", tiles_to_tile_ids("147m"));
+        expected_ukiere_tiles_after_discard.insert("2m", tiles_to_tile_ids("7m3p"));
+        expected_ukiere_tiles_after_discard.insert("3m", tiles_to_tile_ids("7m3p"));
+        assert_ukiere_tiles_after_discard_match(tiles, &expected_ukiere_tiles_after_discard);
+    }
+
+    #[test]
+    fn tenpai_and_n_shanten_examples_riichi_book_1() {
+        // examples from riichi book 1: section 3.2.3 (ready and n-away)
+        // tenpai hand
+        let tiles = tiles_to_count_array("34588p23678s777z");
+        assert_eq!(get_shanten(tiles), 0);
+        assert_eq!(get_shanten_optimized(tiles), 0);
+
+        // ukiere tiles: 14s
+        let expected_ukiere_tiles = tiles_to_tile_ids("14s");
+        let ukiere_tiles = get_ukiere(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+        let ukiere_tiles = get_ukiere_optimized(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+        // 1-shanten hand:
+        let tiles = tiles_to_count_array("35588p23678s777z");
+        assert_eq!(get_shanten(tiles), 1);
+        assert_eq!(get_shanten_optimized(tiles), 1);
+
+        // ukiere tiles: 458p14s
+        let expected_ukiere_tiles = tiles_to_tile_ids("458p14s");
+        let ukiere_tiles = get_ukiere(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+        let ukiere_tiles = get_ukiere_optimized(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+        // 2-shanten hand
+        let tiles = tiles_to_count_array("35588p23677s777z");
+        assert_eq!(get_shanten(tiles), 2);
+        assert_eq!(get_shanten_optimized(tiles), 2);
+
+        // ukiere tiles: 3458p12345678s (3p236s will make the hand 1-shanten for chiitoi)
+        let expected_ukiere_tiles = tiles_to_tile_ids("3458p12345678s");
+        let ukiere_tiles = get_ukiere(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+        let ukiere_tiles = get_ukiere_optimized(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn wwyd_basic_efficiency_riichi_book_1() {
+        // examples from riichi book 1: section 3.2.3 (ready and n-away > advancing your hand)
+        let tiles = tiles_to_count_array("5677m34p45579s666z");
+        assert_eq!(get_shanten(tiles), 1);
+        assert_eq!(get_shanten_optimized(tiles), 1);
+        // 567m - 7m - 34p - 455s - 79s - 666z
+        // (can't interpret as 45s-579s because you need the pair of 5s)
+
+        let mut expected_ukiere_tiles_after_discard = HashMap::new();
+        expected_ukiere_tiles_after_discard.insert("7m", tiles_to_tile_ids("25p8s"));
+        expected_ukiere_tiles_after_discard.insert("4s", tiles_to_tile_ids("25p8s"));
+        assert_ukiere_tiles_after_discard_match(tiles, &expected_ukiere_tiles_after_discard);
+    }
+
+    #[test]
+    fn wwyd_kutsuki_iishanten() {
+        // examples from youtube video (recording of a presentation/lesson): https://youtu.be/TulF31VKJ94?si=baGLLhyg-Mr2cbqd
+        // 1st example (timestamp 1:33:59)
+        let tiles = tiles_to_count_array("2344567m556p6678s");
+        assert_eq!(get_shanten(tiles), 1);
+        assert_eq!(get_shanten_optimized(tiles), 1);
+
+        // discarding 6p, 6s, 4m, or 7m leaves with kutsuki iishanten:
+        // discard 6p: 55p - 678s - 6s - 234m - 4567m -> floating 6s, 4m, and 7m; 1m will form an indirect incomplete group (123m-44m-567m) and 9s forms 66s-789s
+        // discard 6s: 556p - 678s - 234m - 4567m -> floating 6p, 4m, and 7m; 1m will form incomplete group as well
+        // discard 4m/7m: 556p - 678s - 6s (+ two sequences in manzu) -> floating 6p, 6s; 9s will form incomplete group as well
+        // discard 5p (headless 1-shanten if 6678s is one group): 147m will form a pair in manzu, 47p leaves you with 6678s aryanmen, 69s forms pair in souzu
+        let mut expected_ukiere_tiles_after_discard = HashMap::new();
+        expected_ukiere_tiles_after_discard.insert("6p", tiles_to_tile_ids("123456789m5p456789s"));
+        expected_ukiere_tiles_after_discard.insert("6s", tiles_to_tile_ids("123456789m45678p"));
+        expected_ukiere_tiles_after_discard.insert("4m", tiles_to_tile_ids("45678p456789s"));
+        expected_ukiere_tiles_after_discard.insert("7m", tiles_to_tile_ids("45678p456789s"));
+        expected_ukiere_tiles_after_discard.insert("5p", tiles_to_tile_ids("147m47p69s"));
+        assert_ukiere_tiles_after_discard_match(tiles, &expected_ukiere_tiles_after_discard);
+
+        // 2nd example (timestamp 1:40:29)
+        let tiles = tiles_to_count_array("2446888m4678999p");
+        assert_eq!(get_shanten(tiles), 1);
+        assert_eq!(get_shanten_optimized(tiles), 1);
+
+        // discarding 2m, 6m, or 4p leaves with kutsuki iishanten:
+        // discard 2m: 44m - 6m - 888m - 4p - 678p - 999p -> note: can accept 9p as well, which forms an incomplete group 46p-789p-999p
+        // discard 6m: 44m - 2m - 888m - 4p - 678p - 999p -> note: can accept 9p as well, which forms an incomplete group 46p-789p-999p
+        // discard 4p: 2m - 44m - 6m - 888m - 678p - 999p
+        // discard 4m (headless + ankou): 246m - 888m - 4p - 678p - 999p -> can accept 7m (24m-678m-88m) and 5p (456p-789p-99p) as well
+        let mut expected_ukiere_tiles_after_discard = HashMap::new();
+        expected_ukiere_tiles_after_discard.insert("2m", tiles_to_tile_ids("45678m234569p"));
+        expected_ukiere_tiles_after_discard.insert("6m", tiles_to_tile_ids("1234m234569p"));
+        expected_ukiere_tiles_after_discard.insert("4m", tiles_to_tile_ids("23567m45p"));
+        expected_ukiere_tiles_after_discard.insert("4p", tiles_to_tile_ids("12345678m"));
+        // remaining options lock in a pair of 8m or 9p, which means the 4p doesn't count towards shanten and the 2446m needs to form 2 groups
+        expected_ukiere_tiles_after_discard.insert("8m", tiles_to_tile_ids("35m"));
+        expected_ukiere_tiles_after_discard.insert("6p", tiles_to_tile_ids("35m"));
+        expected_ukiere_tiles_after_discard.insert("9p", tiles_to_tile_ids("35m"));
+        assert_ukiere_tiles_after_discard_match(tiles, &expected_ukiere_tiles_after_discard);
+    }
+
+    #[test]
+    fn tanki_tenpai_upgrade() {
+        // example from riichi book 1, section 3.2.5 (Pairs (toitsu) > Building the head)
+        let tiles = tiles_to_count_array("789m234567p3457s");
+        assert_eq!(get_shanten(tiles), 0);
+        assert_eq!(get_shanten_optimized(tiles), 0);
+
+        let expected_ukiere_tiles = tiles_to_tile_ids("7s");
+        let ukiere_tiles = get_ukiere(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+        let ukiere_tiles = get_ukiere_optimized(tiles);
+        assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
+
+        // but if you were to draw 69m124578p2356s, the wait improves significantly
+        // (you would discard 7s and have at least 6 ukiere, either nobetan or aryanmen)
+        // even drawing 4s would slightly improve the wait: could discard 3s for a 4457s with a kanchan wait on 6s (4 ukiere)
+        let mut expected_upgrade_tiles: HashMap<&'static str, (Vec<&'static str>, Vec<u8>)> =
+            HashMap::new();
+        expected_upgrade_tiles.insert("1p", (vec!["7s"], tiles_to_tile_ids("147p")));
+        expected_upgrade_tiles.insert("2p", (vec!["7s"], tiles_to_tile_ids("258p")));
+        expected_upgrade_tiles.insert("4p", (vec!["7s"], tiles_to_tile_ids("147p")));
+        expected_upgrade_tiles.insert("5p", (vec!["7s"], tiles_to_tile_ids("258p")));
+        expected_upgrade_tiles.insert("7p", (vec!["7s"], tiles_to_tile_ids("147p")));
+        expected_upgrade_tiles.insert("8p", (vec!["7s"], tiles_to_tile_ids("258p")));
+        expected_upgrade_tiles.insert("6m", (vec!["7s"], tiles_to_tile_ids("69m")));
+        expected_upgrade_tiles.insert("9m", (vec!["7s"], tiles_to_tile_ids("69m")));
+        expected_upgrade_tiles.insert("2s", (vec!["7s"], tiles_to_tile_ids("25s")));
+        expected_upgrade_tiles.insert("3s", (vec!["7s"], tiles_to_tile_ids("36s")));
+        expected_upgrade_tiles.insert("5s", (vec!["7s"], tiles_to_tile_ids("25s")));
+        expected_upgrade_tiles.insert("6s", (vec!["7s"], tiles_to_tile_ids("36s")));
+        expected_upgrade_tiles.insert("4s", (vec!["3s"], tiles_to_tile_ids("6s")));
+
+        // test that the ukiere tiles count is correct after drawing 1p
+        let ukiere_tiles = tiles_to_tile_ids("147p");
+        // remove the original tiles in hand, plus the next tile that is drawn
+        let mut visible_tile_ids = Vec::new();
+        let tiles_as_ids = tile_count_array_to_tile_ids(tiles);
+        visible_tile_ids.extend_from_slice(&tiles_as_ids.as_slice());
+        visible_tile_ids.push(mahjong_tile::get_id_from_tile_text("1p").unwrap());
+        println!(
+            "visible tile ids = {}",
+            tile_ids_to_string(&visible_tile_ids)
+        );
+        assert_eq!(9, get_num_tiles_remaining(&ukiere_tiles, &visible_tile_ids));
+
+        // calculate the tiles that, if drawn, upgrade the ukiere of the hand at the current shanten
+        assert_upgrade_tiles_match(tiles, &expected_upgrade_tiles);
+
+        let tiles = tiles_to_count_array("789m234567p3457s");
+        let tiles_after_draw =
+            add_tile_id_to_count_array(tiles, mahjong_tile::get_id_from_tile_text("1p").unwrap());
+        let shanten_after_discard =
+            get_best_shanten_after_discard(tiles_after_draw, &get_shanten_optimized);
+        let other_visible_tiles = Vec::new();
+        let best_ukiere_after_discard = get_most_ukiere_after_discard(
+            tiles_after_draw,
+            shanten_after_discard,
+            &get_shanten_optimized,
+            &get_ukiere_optimized,
+            other_visible_tiles,
+        );
+
+        let mut expected_discard_ukiere: Vec<(u8, Vec<u8>, u16)> = Vec::new();
+        expected_discard_ukiere.push((
+            mahjong_tile::get_id_from_tile_text("7s").unwrap(),
+            tiles_to_tile_ids("147p"),
+            9,
+        ));
+        assert_discards_ukiere_match(&best_ukiere_after_discard, &expected_discard_ukiere);
+
+        for (discard_tile_id, ukiere_tile_ids_after_discard, num_ukiere_after_discard) in
+            best_ukiere_after_discard
+        {
+            println!(
+                "discard {} -> {} ukiere tiles: {} ",
+                mahjong_tile::get_tile_text_from_id(discard_tile_id).unwrap(),
+                num_ukiere_after_discard,
+                tile_ids_to_string(&ukiere_tile_ids_after_discard)
+            );
+        }
+    }
+
+    #[test]
+    fn wwyd_hand_game_example() {
+        let tiles_after_draw = tiles_to_count_array("5789s357p34667m11z");
+        let shanten_after_discard =
+            get_best_shanten_after_discard(tiles_after_draw, &get_shanten_optimized);
+        let other_visible_tiles = Vec::new();
+        let best_ukiere_after_discard = get_most_ukiere_after_discard(
+            tiles_after_draw,
+            shanten_after_discard,
+            &get_shanten_optimized,
+            &get_ukiere_optimized,
+            other_visible_tiles,
+        );
+
+        let mut expected_discard_ukiere: Vec<(u8, Vec<u8>, u16)> = Vec::new();
+        expected_discard_ukiere.push((
+            mahjong_tile::get_id_from_tile_text("5s").unwrap(),
+            tiles_to_tile_ids("2568m46p1z"),
+            24,
+        ));
+        assert_discards_ukiere_match(&best_ukiere_after_discard, &expected_discard_ukiere);
+
+        // best discard = 5s -> 2 shanten, 24 ukiere: 2568m46p1z
+        for (discard_tile_id, ukiere_tile_ids_after_discard, num_ukiere_after_discard) in
+            best_ukiere_after_discard
+        {
+            println!(
+                "discard {} -> {} ukiere tiles: {} ",
+                mahjong_tile::get_tile_text_from_id(discard_tile_id).unwrap(),
+                num_ukiere_after_discard,
+                tile_ids_to_string(&ukiere_tile_ids_after_discard)
+            );
+        }
+    }
 }
 
 // 3445799m13p3456s4m - 1-shanten, cut 3s/6s results in 15 ukiere (4689m2p)
 // 345m11256p466778s - 1-shanten, should cut 4s (holding 2p gives more upgrade opportunities with 13p draw)
+
+// from riichi book 1, section 6.3.3 (advanced scoring > examples)
+// 22345m45567p777z -> tenpai on 36p
+// win by ron on 3p or 6p (as non-dealer): 1 han 40 fu -> 1300
+// win by tsumo on 3p (as non-dealer): 2 han 30 fu (+8 from ankou of 777z, +2 tsumo) -> 500/1000
+// win by tsumo on 6p (as non-dealer): 2 han 40 fu (additional +2 from kanchan wait 456p-57p) -> 700/1300
+
+// example in riichi book 1, section 3.3.1 (three-tile complex shapes > double closed (ryankan) shape)
+// 455789m45667p77s2p
+// discard 2p -> 1-shanten, accepts 356m58p7s (19 tiles)
+// discard 5m -> 1-shanten, accepts 36m358p (19 tiles)
+// discarding 5m means we have more options to reach pinfu (if discard 2p and then draw 5m or 7s, it would form an ankou -> not eligible for pinfu)
+
+// 11345m678p246s77z2m
+// should cut 2s (or 6s) - but why?
