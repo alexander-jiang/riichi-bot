@@ -43,9 +43,13 @@ pub fn tiles_to_count_array(tiles_string: &str) -> [u8; 34] {
 
 - the hand scoring on this website isn't always accurate e.g. https://riichi.harphield.com/tools/hand-analyzer/?hand=55588m11p234s666z1p - this hand "55588m11p234s666z1p" (when winning by ron) should be scored as 1 han, 50 fu (20 + 10 fu for closed ron + 8 fu for ankou of 6z/green dragon + 4 fu for ankou of 5m + 4 fu for minkou of 1p, since the tile was won by ron), e.g. https://mahjongo.com/tools/riichi-calculator, but was incorrectly scored as 1 han, 60 fu instead.
 
-- other websites: 
-    - https://euophrys.itch.io/mahjong-efficiency-trainer
-        - source code: https://github.com/Euophrys/Riichi-Trainer/blob/develop/src/scripts/ShantenCalculator.js#L157
-    - https://mahjong-trainer.netlify.app/
-        - https://github.com/djuretic/riichi-mahjong-trainer/blob/main/tests/ShantenTest.elm
-    - https://tenhou.net/2/?q=12234558s345p11z4s
+- the upgrade tiles isn't always complete on the [efficiency trainer](https://euophrys.itch.io/mahjong-efficiency-trainer) "Explorer" page, for example: hand 5789s57p34667m111z (after calling pon on 1z) - if discard 5s -> 1 shanten with 12 ukiere (25m6p). The efficiency trainer is correct so far. However, the tiles listed as upgrades are 6m (draw 6m, discard 7m: 24 ukiere) and 8m (draw 8m, discard 6m: 24 ukiere) -- these are correct, but are not the only upgrade tiles. For example, after drawing 3m (334667m57p789s111z), you can discard 4m or 7m for 1 shanten with 16 ukiere (3568m6p or 2356m6p, respectively). In total, the upgrade options are (in addition to 68m): 34m345789p
+
+- learned about creating a `hashmap!` macro to instantiate `HashMap` objects in-line: https://stackoverflow.com/a/41143449
+
+- other websites:
+  - https://euophrys.itch.io/mahjong-efficiency-trainer
+    - source code: https://github.com/Euophrys/Riichi-Trainer/blob/develop/src/scripts/ShantenCalculator.js#L157
+  - https://mahjong-trainer.netlify.app/
+    - https://github.com/djuretic/riichi-mahjong-trainer/blob/main/tests/ShantenTest.elm
+  - https://tenhou.net/2/?q=12234558s345p11z4s
