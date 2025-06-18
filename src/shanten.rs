@@ -492,7 +492,7 @@ pub fn get_hand_interpretations(tile_count_array: [u8; 34]) -> Vec<HandInterpret
 
     let mut hand_interpretations = Vec::new();
     let meld_interpretations = get_suit_melds(updated_tile_count_array);
-    println!("hand_interpretations:");
+    // println!("hand_interpretations:");
     for melds in meld_interpretations {
         // iterate on the Vec directly to consume the vector
         let mut all_melds = honor_tile_melds.clone();
@@ -501,7 +501,7 @@ pub fn get_hand_interpretations(tile_count_array: [u8; 34]) -> Vec<HandInterpret
             total_tile_count_array: original_tile_count_array,
             groups: all_melds,
         };
-        println!("{}", hand_interpretation);
+        // println!("{}", hand_interpretation);
         hand_interpretations.push(hand_interpretation);
     }
 
@@ -609,10 +609,8 @@ pub fn get_suit_melds(suit_tile_count_array: [u8; 34]) -> Vec<Vec<TileMeld>> {
             //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
             // );
 
-            continue;
-        }
-
-        if tile_count_array[tile_idx] == 2 {
+            // however, it's possible that these three tiles are used as multiple sequences / incomplete groups e.g. 666778s can be 678s-67s-6s
+        } else if tile_count_array[tile_idx] == 2 {
             // break out a pair and then let it continue trying to add as a single
             let mut new_state_after_pair = partial_interpretation.clone();
             let tile_meld = TileMeld::new(vec![tile_id, tile_id]);
@@ -875,11 +873,8 @@ pub fn get_suit_melds_min_shanten(
             //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
             // );
 
-            // print_queue(&queue);
-            continue;
-        }
-
-        if tile_count_array[tile_idx] == 2 {
+            // however, it's possible that these three tiles are used as multiple sequences / incomplete groups e.g. 666778s can be 678s-67s-6s
+        } else if tile_count_array[tile_idx] == 2 {
             // break out a pair and then let it continue trying to add as a single
             let mut new_state_after_pair = partial_interpretation.clone();
             let tile_meld = TileMeld::new(vec![tile_id, tile_id]);
@@ -1371,20 +1366,20 @@ pub fn get_ukiere_helper(hand_interpretations: &Vec<HandInterpretation>, shanten
             continue;
         }
 
-        println!(
-            "finding ukiere tiles for hand interpretation {} with shanten {}",
-            interpretation, shanten
-        );
+        // println!(
+        //     "finding ukiere tiles for hand interpretation {} with shanten {}",
+        //     interpretation, shanten
+        // );
         let new_tile_ids = interpretation.get_ukiere();
         for &tile_id in new_tile_ids.iter() {
-            print!(
-                "ukiere tile: {}",
-                mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
-            );
+            // print!(
+            //     "ukiere tile: {}",
+            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            // );
             if !ukiere_tiles.contains(&tile_id) {
                 ukiere_tiles.push(tile_id);
             }
-            print!("\n");
+            // print!("\n");
         }
     }
     ukiere_tiles
@@ -2919,33 +2914,50 @@ mod tests {
     fn upgrade_analysis_tenhou_hand_example() {
         // hand: 345m1156p4666778s (in game: i had 345m11256p46778s6s, could discard 2p and draw 6s to reach this hand state)
         // my program's analysis outputs: cut 4s => 17 ukiere: 147p679s
-        // but this is wrong: https://tenhou.net/2/?q=345m1156p4666778s
+        // but this is wrong: https://tenhou.net/2/?q=345m1156p4666778s - it's missing 58s as additional ukiere tiles
         // cut 4s => 24 ukiere: 147p56789s (my program's analysis of ukiere after cut 7s is correct: 147p569s)
         let tiles_after_draw = tiles_to_count_array("345m1156p4666778s");
         let shanten_after_discard =
             get_best_shanten_after_discard(tiles_after_draw, &get_shanten_optimized);
         assert_eq!(shanten_after_discard, 1);
 
-        let expected_ukiere_after_discard_4s = tiles_to_tile_ids("147p56789s");
-        let ukiere_after_discard_4s = get_ukiere_after_discard(
-            tiles_after_draw,
-            mahjong_tile::get_id_from_tile_text("4s").unwrap(),
-            &get_ukiere,
+        let tile_id_4s = mahjong_tile::get_id_from_tile_text("4s").unwrap();
+        let tiles_after_discard_4s = remove_tile_id_from_count_array(tiles_after_draw, tile_id_4s);
+        // this hand interpretation is missing from the hand interpretations, because it splits up the three 6s tiles into a sequence, an incomplete group, and a isolated tile
+        let hand_interpretation = HandInterpretation {
+            total_tile_count_array: tiles_after_discard_4s,
+            groups: vec![
+                TileMeld::new(tiles_to_tile_ids("345m")),
+                TileMeld::new(tiles_to_tile_ids("11p")),
+                TileMeld::new(tiles_to_tile_ids("56p")),
+                TileMeld::new(tiles_to_tile_ids("6s")),
+                TileMeld::new(tiles_to_tile_ids("67s")),
+                TileMeld::new(tiles_to_tile_ids("678s")),
+            ],
+        };
+        assert_tile_ids_match(
+            &hand_interpretation.get_ukiere(),
+            &tiles_to_tile_ids("47p58s"),
         );
-        println!("checking ukiere after discard 4s from 345m1156p4666778s (using get_ukiere):");
+        assert_eq!(hand_interpretation.get_standard_shanten(), 1);
+
+        let expected_ukiere_after_discard_4s = tiles_to_tile_ids("147p56789s");
+        let ukiere_after_discard_4s =
+            get_ukiere_after_discard(tiles_after_draw, tile_id_4s, &get_ukiere);
+        // println!("checking ukiere after discard 4s from 345m1156p4666778s (using get_ukiere):");
         assert_tile_ids_match(&ukiere_after_discard_4s, &expected_ukiere_after_discard_4s);
-        println!("get_ukiere after discard 4s from 345m1156p4666778s is correct");
+        // println!("get_ukiere after discard 4s from 345m1156p4666778s is correct");
 
         let ukiere_after_discard_4s = get_ukiere_after_discard(
             tiles_after_draw,
             mahjong_tile::get_id_from_tile_text("4s").unwrap(),
             &get_ukiere_optimized,
         );
-        println!(
-            "checking ukiere after discard 4s from 345m1156p4666778s (using get_ukiere_optimized):"
-        );
+        // println!(
+        //     "checking ukiere after discard 4s from 345m1156p4666778s (using get_ukiere_optimized):"
+        // );
         assert_tile_ids_match(&ukiere_after_discard_4s, &expected_ukiere_after_discard_4s);
-        println!("get_ukiere_optimized after discard 4s from 345m1156p4666778s is correct");
+        // println!("get_ukiere_optimized after discard 4s from 345m1156p4666778s is correct");
     }
 
     #[test]
