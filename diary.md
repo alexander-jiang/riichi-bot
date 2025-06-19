@@ -16,7 +16,7 @@ toimen (west): 4z5z6z3z1s3z
 kami  (north): 4z1z6z5z1s4m
 
 Analysis:
-- In game, I chose to cut 6m -- I think my logic was that I wanted to keep the two dora (7s) and the nearby tiles (including 4s). But in hindsight, with shimo discarding two 3p already, keeping the 2p is questionable. And the 6m is quite useful, expanding our ability to accept manzu tiles for good waits, which is useful given that we do not have 5 clear groups yet: the souzu tiles would ideally become 2 groups that both use dora (7s), but we'd also like to keep 4s to be able to accept 23s. The pinzu tiles look like a clear pair + group (112p-56p): because two 3p tiles are visible, the 2p is unlikely to be useful.
+- In game, I chose to cut 6m -- I think my logic was that I wanted to keep the two dora (7s) and the nearby tiles (including 4s). But in hindsight, this hand does not yet have 5 clear groups if manzu is restricted to 1 group. the souzu tiles would ideally become 2 groups that both use dora (7s), but we'd also like to keep 4s to be able to accept 23s. The pinzu tiles look like a clear pair + group (112p-56p): because two 3p tiles are visible (shimo discarded), the 2p is unlikely to be useful. And the 3456m shape is quite useful, allowing us to accept almost any manzu tile to improve to 1-shanten.
 
 ukiere map after discard: (improving to 1 shanten)
 discard 7s: 12345678m12347p23456  9s
@@ -31,24 +31,24 @@ discard 8s:          1 347p   5 7s
 shanten + ukiere after each discard: 345m11256p46778s6m
 discard 7s -> 2 shanten, 67 ukiere tiles: 12345678m12347p234569s
   after advancing shanten:
-    draw 4p -> cut 2p => 52 ukiere: 5s6s9s6m7m8m5m4m1p4s3s2s2m3m1m
-    draw 7p -> cut 2p => 52 ukiere: 5s6s9s6m7m8m5m4m1p4s3s2s2m3m1m
-    draw 5s -> cut 3m => 19 ukiere: 4p7p6s9s3s; cut 6m => 19 ukiere: 4p7p6s9s3s; cut 2p => 19 ukiere: 4p7p6s9s3s
+    draw 4p -> cut 2p => 52 ukiere: 1m2m3m4m5m6m7m8m1p2s3s4s5s6s9s
+    draw 7p -> cut 2p => 52 ukiere: 1m2m3m4m5m6m7m8m1p2s3s4s5s6s9s
+    draw 1p -> cut 4s => 21 ukiere: 3m6m2p3p4p7p
+    draw 5s -> cut 3m => 19 ukiere: 4p7p3s6s9s; cut 6m => 19 ukiere: 4p7p3s6s9s; cut 2p => 19 ukiere: 4p7p3s6s9s
+    draw 7m -> cut 2p => 19 ukiere: 2m5m8m4p7p; cut 4s => 19 ukiere: 2m5m8m4p7p
+    draw 2m -> cut 2p => 19 ukiere: 1m4m7m4p7p; cut 4s => 19 ukiere: 1m4m7m4p7p
+    draw 3p -> cut 1p => 17 ukiere: 3m6m4p7p4s
+    draw 6m -> cut 4s => 16 ukiere: 6m1p3p4p7p
+    draw 4s -> cut 3m => 16 ukiere: 1p3p4p7p4s; cut 6m => 16 ukiere: 1p3p4p7p4s
+    draw 3s -> cut 3m => 16 ukiere: 4p7p2s5s; cut 6m => 16 ukiere: 4p7p2s5s; cut 2p => 16 ukiere: 4p7p2s5s
+    draw 3m -> cut 4s => 16 ukiere: 3m1p3p4p7p
+    draw 5m -> cut 2p => 15 ukiere: 4m7m4p7p; cut 4s => 15 ukiere: 4m7m4p7p
+    draw 4m -> cut 2p => 15 ukiere: 2m5m4p7p; cut 4s => 15 ukiere: 2m5m4p7p
     draw 6s -> cut 3m => 12 ukiere: 4p7p5s; cut 6m => 12 ukiere: 4p7p5s; cut 2p => 12 ukiere: 4p7p5s
     draw 9s -> cut 3m => 12 ukiere: 4p7p5s; cut 6m => 12 ukiere: 4p7p5s; cut 2p => 12 ukiere: 4p7p5s
-    draw 6m -> cut 4s => 16 ukiere: 3p4p7p6m1p
-    draw 3p -> cut 1p => 17 ukiere: 6m4p7p4s3m
-    draw 1p -> cut 4s => 21 ukiere: 6m2p4p7p3p3m
-    draw 4s -> cut 3m => 16 ukiere: 3p4p7p1p4s; cut 6m => 16 ukiere: 3p4p7p1p4s
-    draw 7m -> cut 2p => 19 ukiere: 5m8m4p7p2m; cut 4s => 19 ukiere: 5m8m4p7p2m
     draw 8m -> cut 2p => 12 ukiere: 7m4p7p; cut 4s => 12 ukiere: 7m4p7p
-    draw 5m -> cut 2p => 15 ukiere: 4m7m4p7p; cut 4s => 15 ukiere: 4m7m4p7p
-    draw 4m -> cut 2p => 15 ukiere: 5m4p7p2m; cut 4s => 15 ukiere: 5m4p7p2m
     draw 2p -> cut 3m => 12 ukiere: 1p2p4p7p; cut 6m => 12 ukiere: 1p2p4p7p; cut 4s => 12 ukiere: 1p2p4p7p
-    draw 3s -> cut 3m => 16 ukiere: 4p7p2s5s; cut 6m => 16 ukiere: 4p7p2s5s; cut 2p => 16 ukiere: 4p7p2s5s
     draw 2s -> cut 3m => 12 ukiere: 4p7p3s; cut 6m => 12 ukiere: 4p7p3s; cut 2p => 12 ukiere: 4p7p3s
-    draw 2m -> cut 2p => 19 ukiere: 4m7m4p7p1m; cut 4s => 19 ukiere: 4m7m4p7p1m
-    draw 3m -> cut 4s => 16 ukiere: 3p4p7p3m1p
     draw 1m -> cut 2p => 12 ukiere: 2m4p7p; cut 4s => 12 ukiere: 2m4p7p
   upgrades:
     draw 8p -> cut 2p => 77 ukiere: 1m2m3m4m5m6m7m8m1p3p4p5p6p7p8p9p2s3s4s5s6s9s
@@ -56,113 +56,113 @@ discard 7s -> 2 shanten, 67 ukiere tiles: 12345678m12347p234569s
     draw 5p -> cut 2p => 73 ukiere: 1m2m3m4m5m6m7m8m1p3p4p5p6p7p8p2s3s4s5s6s9s; cut 1p => 71 ukiere: 1m2m3m4m5m6m7m8m3p4p5p6p7p8p2s3s4s5s6s9s
 discard 2p -> 2 shanten, 65 ukiere tiles: 12345678m147p23456789s
   after advancing shanten:
-    draw 4p -> cut 7s => 52 ukiere: 5s6s9s6m7m8m5m4m1p4s3s2s2m3m1m
-    draw 7p -> cut 7s => 52 ukiere: 5s6s9s6m7m8m5m4m1p4s3s2s2m3m1m
-    draw 5s -> cut 3m => 23 ukiere: 4p7p6s9s1p7s3s; cut 6m => 23 ukiere: 4p7p6s9s1p7s3s
-    draw 6s -> cut 3m => 15 ukiere: 4p7p5s8s; cut 6m => 15 ukiere: 4p7p5s8s; cut 4s => 15 ukiere: 4p7p5s8s
-    draw 9s -> cut 3m => 15 ukiere: 4p7p5s8s; cut 6m => 15 ukiere: 4p7p5s8s; cut 4s => 15 ukiere: 4p7p8s5s
-    draw 1p -> cut 3m => 17 ukiere: 4p7p5s4s7s; cut 6m => 17 ukiere: 4p7p5s4s7s; cut 7s => 17 ukiere: 6m4p7p4s3m
-    draw 7s -> cut 3m => 15 ukiere: 4p7p5s1p7s; cut 6m => 15 ukiere: 4p7p5s1p7s
-    draw 6m -> cut 4s => 12 ukiere: 6m1p4p7p; cut 7s => 12 ukiere: 6m1p4p7p
-    draw 7m -> cut 4s => 19 ukiere: 5m8m4p7p2m; cut 7s => 19 ukiere: 5m8m4p7p2m
-    draw 8m -> cut 4s => 12 ukiere: 7m4p7p; cut 7s => 12 ukiere: 7m4p7p
-    draw 5m -> cut 4s => 15 ukiere: 4m7m4p7p; cut 7s => 15 ukiere: 4m7m4p7p
-    draw 4m -> cut 4s => 15 ukiere: 5m4p7p2m; cut 7s => 15 ukiere: 5m4p7p2m
-    draw 4s -> cut 3m => 12 ukiere: 1p4p7p4s; cut 6m => 12 ukiere: 1p4p7p4s; cut 7s => 12 ukiere: 1p4p7p4s
+    draw 4p -> cut 7s => 52 ukiere: 1m2m3m4m5m6m7m8m1p2s3s4s5s6s9s
+    draw 7p -> cut 7s => 52 ukiere: 1m2m3m4m5m6m7m8m1p2s3s4s5s6s9s
+    draw 5s -> cut 3m => 23 ukiere: 1p4p7p3s6s7s9s; cut 6m => 23 ukiere: 1p4p7p3s6s7s9s
+    draw 7m -> cut 4s => 19 ukiere: 2m5m8m4p7p; cut 7s => 19 ukiere: 2m5m8m4p7p
+    draw 2m -> cut 4s => 19 ukiere: 1m4m7m4p7p; cut 7s => 19 ukiere: 1m4m7m4p7p
+    draw 1p -> cut 3m => 17 ukiere: 4p7p4s5s7s; cut 6m => 17 ukiere: 4p7p4s5s7s; cut 7s => 17 ukiere: 3m6m4p7p4s
     draw 3s -> cut 3m => 16 ukiere: 4p7p2s5s; cut 6m => 16 ukiere: 4p7p2s5s; cut 7s => 16 ukiere: 4p7p2s5s
-    draw 2s -> cut 3m => 12 ukiere: 4p7p3s; cut 6m => 12 ukiere: 4p7p3s; cut 7s => 12 ukiere: 4p7p3s
+    draw 6s -> cut 3m => 15 ukiere: 4p7p5s8s; cut 6m => 15 ukiere: 4p7p5s8s; cut 4s => 15 ukiere: 4p7p5s8s
+    draw 9s -> cut 3m => 15 ukiere: 4p7p5s8s; cut 6m => 15 ukiere: 4p7p5s8s; cut 4s => 15 ukiere: 4p7p5s8s
+    draw 7s -> cut 3m => 15 ukiere: 1p4p7p5s7s; cut 6m => 15 ukiere: 1p4p7p5s7s
+    draw 5m -> cut 4s => 15 ukiere: 4m7m4p7p; cut 7s => 15 ukiere: 4m7m4p7p
+    draw 4m -> cut 4s => 15 ukiere: 2m5m4p7p; cut 7s => 15 ukiere: 2m5m4p7p
     draw 8s -> cut 3m => 15 ukiere: 4p7p6s9s; cut 6m => 15 ukiere: 4p7p6s9s; cut 4s => 15 ukiere: 4p7p6s9s
-    draw 2m -> cut 4s => 19 ukiere: 4m7m4p7p1m; cut 7s => 19 ukiere: 4m7m4p7p1m
+    draw 6m -> cut 4s => 12 ukiere: 6m1p4p7p; cut 7s => 12 ukiere: 6m1p4p7p
+    draw 8m -> cut 4s => 12 ukiere: 7m4p7p; cut 7s => 12 ukiere: 7m4p7p
+    draw 4s -> cut 3m => 12 ukiere: 1p4p7p4s; cut 6m => 12 ukiere: 1p4p7p4s; cut 7s => 12 ukiere: 1p4p7p4s
+    draw 2s -> cut 3m => 12 ukiere: 4p7p3s; cut 6m => 12 ukiere: 4p7p3s; cut 7s => 12 ukiere: 4p7p3s
     draw 3m -> cut 4s => 12 ukiere: 3m1p4p7p; cut 7s => 12 ukiere: 3m1p4p7p
     draw 1m -> cut 4s => 12 ukiere: 2m4p7p; cut 7s => 12 ukiere: 2m4p7p
   upgrades:
-    draw 3p -> cut 7s => 77 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p5p6p7p8p2s3s4s5s6s9s; cut 4s => 71 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p5p6p7p8p5s6s7s8s9s
     draw 8p -> cut 7s => 77 ukiere: 1m2m3m4m5m6m7m8m1p3p4p5p6p7p8p9p2s3s4s5s6s9s; cut 4s => 71 ukiere: 1m2m3m4m5m6m7m8m1p3p4p5p6p7p8p9p5s6s7s8s9s
+    draw 3p -> cut 7s => 77 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p5p6p7p8p2s3s4s5s6s9s; cut 4s => 71 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p5p6p7p8p5s6s7s8s9s
     draw 6p -> cut 7s => 73 ukiere: 1m2m3m4m5m6m7m8m1p3p4p5p6p7p8p2s3s4s5s6s9s; cut 4s => 67 ukiere: 1m2m3m4m5m6m7m8m1p3p4p5p6p7p8p5s6s7s8s9s
     draw 5p -> cut 7s => 73 ukiere: 1m2m3m4m5m6m7m8m1p3p4p5p6p7p8p2s3s4s5s6s9s; cut 4s => 67 ukiere: 1m2m3m4m5m6m7m8m1p3p4p5p6p7p8p5s6s7s8s9s
     draw 2p -> cut 7s => 67 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p2s3s4s5s6s9s
     draw 9p -> cut 7s => 67 ukiere: 1m2m3m4m5m6m7m8m1p4p7p8p9p2s3s4s5s6s9s
 discard 4s -> 2 shanten, 61 ukiere tiles: 12345678m12347p56789s
   after advancing shanten:
-    draw 6m -> cut 7s => 16 ukiere: 3p4p7p6m1p
-    draw 3p -> cut 1p => 16 ukiere: 6m4p7p7s3m; cut 7s => 16 ukiere: 6m1p4p7p3m
-    draw 1p -> cut 7s => 21 ukiere: 6m2p4p7p3p3m
-    draw 4p -> cut 2p => 46 ukiere: 6m7m8m5m4m1p7s8s9s6s5s2m3m1m
-    draw 7p -> cut 2p => 46 ukiere: 6m7m8m5m4m1p7s8s9s6s5s2m3m1m
-    draw 7s -> cut 3m => 15 ukiere: 3p4p7p1p7s; cut 6m => 15 ukiere: 3p4p7p1p7s
-    draw 7m -> cut 2p => 19 ukiere: 5m8m4p7p2m; cut 7s => 19 ukiere: 5m8m4p7p2m
-    draw 8m -> cut 2p => 12 ukiere: 7m4p7p; cut 7s => 12 ukiere: 7m4p7p
+    draw 4p -> cut 2p => 46 ukiere: 1m2m3m4m5m6m7m8m1p5s6s7s8s9s
+    draw 7p -> cut 2p => 46 ukiere: 1m2m3m4m5m6m7m8m1p5s6s7s8s9s
+    draw 1p -> cut 7s => 21 ukiere: 3m6m2p3p4p7p
+    draw 7m -> cut 2p => 19 ukiere: 2m5m8m4p7p; cut 7s => 19 ukiere: 2m5m8m4p7p
+    draw 2m -> cut 2p => 19 ukiere: 1m4m7m4p7p; cut 7s => 19 ukiere: 1m4m7m4p7p
+    draw 6m -> cut 7s => 16 ukiere: 6m1p3p4p7p
+    draw 3p -> cut 1p => 16 ukiere: 3m6m4p7p7s; cut 7s => 16 ukiere: 3m6m1p4p7p
+    draw 3m -> cut 7s => 16 ukiere: 3m1p3p4p7p
+    draw 7s -> cut 3m => 15 ukiere: 1p3p4p7p7s; cut 6m => 15 ukiere: 1p3p4p7p7s
     draw 5m -> cut 2p => 15 ukiere: 4m7m4p7p; cut 7s => 15 ukiere: 4m7m4p7p
-    draw 4m -> cut 2p => 15 ukiere: 5m4p7p2m; cut 7s => 15 ukiere: 5m4p7p2m
-    draw 2p -> cut 3m => 12 ukiere: 1p2p4p7p; cut 6m => 12 ukiere: 1p2p4p7p; cut 7s => 12 ukiere: 1p2p4p7p
+    draw 4m -> cut 2p => 15 ukiere: 2m5m4p7p; cut 7s => 15 ukiere: 2m5m4p7p
     draw 8s -> cut 3m => 15 ukiere: 4p7p6s9s; cut 6m => 15 ukiere: 4p7p6s9s; cut 2p => 15 ukiere: 4p7p6s9s
-    draw 9s -> cut 3m => 15 ukiere: 4p7p8s5s; cut 6m => 15 ukiere: 4p7p8s5s; cut 2p => 15 ukiere: 4p7p8s5s
+    draw 9s -> cut 3m => 15 ukiere: 4p7p5s8s; cut 6m => 15 ukiere: 4p7p5s8s; cut 2p => 15 ukiere: 4p7p5s8s
     draw 6s -> cut 3m => 15 ukiere: 4p7p5s8s; cut 6m => 15 ukiere: 4p7p5s8s; cut 2p => 15 ukiere: 4p7p5s8s
     draw 5s -> cut 3m => 15 ukiere: 4p7p6s9s; cut 6m => 15 ukiere: 4p7p6s9s; cut 2p => 15 ukiere: 4p7p6s9s
-    draw 2m -> cut 2p => 19 ukiere: 4m7m4p7p1m; cut 7s => 19 ukiere: 4m7m4p7p1m
-    draw 3m -> cut 7s => 16 ukiere: 3p4p7p3m1p
+    draw 8m -> cut 2p => 12 ukiere: 7m4p7p; cut 7s => 12 ukiere: 7m4p7p
+    draw 2p -> cut 3m => 12 ukiere: 1p2p4p7p; cut 6m => 12 ukiere: 1p2p4p7p; cut 7s => 12 ukiere: 1p2p4p7p
     draw 1m -> cut 2p => 12 ukiere: 2m4p7p; cut 7s => 12 ukiere: 2m4p7p
   upgrades:
     draw 8p -> cut 2p => 71 ukiere: 1m2m3m4m5m6m7m8m1p3p4p5p6p7p8p9p5s6s7s8s9s
-    draw 3s -> cut 2p => 69 ukiere: 1m2m3m4m5m6m7m8m1p4p7p1s2s3s4s5s6s7s8s9s; cut 7s => 64 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p1s2s3s4s5s
     draw 2s -> cut 2p => 69 ukiere: 1m2m3m4m5m6m7m8m1p4p7p1s2s3s4s5s6s7s8s9s
-    draw 4s -> cut 7s => 67 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 65 ukiere: 1m2m3m4m5m6m7m8m1p4p7p2s3s4s5s6s7s8s9s
+    draw 3s -> cut 2p => 69 ukiere: 1m2m3m4m5m6m7m8m1p4p7p1s2s3s4s5s6s7s8s9s; cut 7s => 64 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p1s2s3s4s5s
     draw 5p -> cut 2p => 67 ukiere: 1m2m3m4m5m6m7m8m1p3p4p5p6p7p8p5s6s7s8s9s; cut 1p => 65 ukiere: 1m2m3m4m5m6m7m8m3p4p5p6p7p8p5s6s7s8s9s
+    draw 4s -> cut 7s => 67 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 65 ukiere: 1m2m3m4m5m6m7m8m1p4p7p2s3s4s5s6s7s8s9s
     draw 6p -> cut 2p => 67 ukiere: 1m2m3m4m5m6m7m8m1p3p4p5p6p7p8p5s6s7s8s9s
     draw 1s -> cut 2p => 65 ukiere: 1m2m3m4m5m6m7m8m1p4p7p1s2s3s5s6s7s8s9s
 discard 3m -> 2 shanten, 44 ukiere tiles: 12347p23456789s
   after advancing shanten:
-    draw 3p -> cut 1p => 17 ukiere: 4p7p5s4s7s
-    draw 4p -> cut 7s => 38 ukiere: 3p1p4s5s6s9s4p7p2p3s2s
-    draw 7p -> cut 7s => 35 ukiere: 5s6s9s3p1p4s2p4p3s2s
-    draw 5s -> cut 2p => 23 ukiere: 4p7p6s9s1p7s3s
-    draw 6s -> cut 2p => 15 ukiere: 4p7p5s8s; cut 4s => 15 ukiere: 4p7p5s8s
-    draw 9s -> cut 2p => 15 ukiere: 4p7p5s8s; cut 4s => 15 ukiere: 4p7p8s5s
-    draw 1p -> cut 7s => 18 ukiere: 2p4p7p4s3p
-    draw 7s -> cut 2p => 15 ukiere: 4p7p5s1p7s; cut 4s => 15 ukiere: 3p4p7p1p7s
-    draw 4s -> cut 7s => 16 ukiere: 3p4p7p1p4s
-    draw 2p -> cut 4s => 12 ukiere: 1p2p4p7p; cut 7s => 12 ukiere: 1p2p4p7p
+    draw 4p -> cut 7s => 38 ukiere: 1p2p3p4p7p2s3s4s5s6s9s
+    draw 7p -> cut 7s => 35 ukiere: 1p2p3p4p2s3s4s5s6s9s
+    draw 5s -> cut 2p => 23 ukiere: 1p4p7p3s6s7s9s
+    draw 1p -> cut 7s => 18 ukiere: 2p3p4p7p4s
+    draw 3p -> cut 1p => 17 ukiere: 4p7p4s5s7s
+    draw 4s -> cut 7s => 16 ukiere: 1p3p4p7p4s
     draw 3s -> cut 2p => 16 ukiere: 4p7p2s5s; cut 7s => 16 ukiere: 4p7p2s5s
-    draw 2s -> cut 2p => 12 ukiere: 4p7p3s; cut 7s => 12 ukiere: 4p7p3s
+    draw 6s -> cut 2p => 15 ukiere: 4p7p5s8s; cut 4s => 15 ukiere: 4p7p5s8s
+    draw 9s -> cut 2p => 15 ukiere: 4p7p5s8s; cut 4s => 15 ukiere: 4p7p5s8s
+    draw 7s -> cut 2p => 15 ukiere: 1p4p7p5s7s; cut 4s => 15 ukiere: 1p3p4p7p7s
     draw 8s -> cut 2p => 15 ukiere: 4p7p6s9s; cut 4s => 15 ukiere: 4p7p6s9s
+    draw 2p -> cut 4s => 12 ukiere: 1p2p4p7p; cut 7s => 12 ukiere: 1p2p4p7p
+    draw 2s -> cut 2p => 12 ukiere: 4p7p3s; cut 7s => 12 ukiere: 4p7p3s
   upgrades:
     draw 3m -> cut 7s => 67 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 65 ukiere: 1m2m3m4m5m6m7m8m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 61 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p5s6s7s8s9s
     draw 7m -> cut 7s => 67 ukiere: 2m3m4m5m6m7m8m9m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 65 ukiere: 2m3m4m5m6m7m8m9m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 61 ukiere: 2m3m4m5m6m7m8m9m1p2p3p4p7p5s6s7s8s9s
     draw 6m -> cut 7s => 59 ukiere: 3m4m5m6m7m8m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 57 ukiere: 3m4m5m6m7m8m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 53 ukiere: 3m4m5m6m7m8m1p2p3p4p7p5s6s7s8s9s
     draw 4m -> cut 7s => 59 ukiere: 2m3m4m5m6m7m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 57 ukiere: 2m3m4m5m6m7m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 53 ukiere: 2m3m4m5m6m7m1p2p3p4p7p5s6s7s8s9s
-    draw 2m -> cut 7s => 57 ukiere: 1m2m3m4m7m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 55 ukiere: 1m2m3m4m7m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 51 ukiere: 1m2m3m4m7m1p2p3p4p7p5s6s7s8s9s
     draw 8m -> cut 7s => 57 ukiere: 3m6m7m8m9m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 55 ukiere: 3m6m7m8m9m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 51 ukiere: 3m6m7m8m9m1p2p3p4p7p5s6s7s8s9s
+    draw 2m -> cut 7s => 57 ukiere: 1m2m3m4m7m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 55 ukiere: 1m2m3m4m7m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 51 ukiere: 1m2m3m4m7m1p2p3p4p7p5s6s7s8s9s
     draw 5m -> cut 7s => 55 ukiere: 3m4m5m6m7m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 53 ukiere: 3m4m5m6m7m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 49 ukiere: 3m4m5m6m7m1p2p3p4p7p5s6s7s8s9s
     draw 8p -> cut 2p => 54 ukiere: 1p3p4p5p6p7p8p9p2s3s4s5s6s7s8s9s; cut 7s => 52 ukiere: 1p2p3p4p5p6p7p8p9p2s3s4s5s6s9s; cut 4s => 46 ukiere: 1p2p3p4p5p6p7p8p9p5s6s7s8s9s
-    draw 6p -> cut 2p => 50 ukiere: 1p3p4p5p6p7p8p2s3s4s5s6s7s8s9s; cut 7s => 48 ukiere: 1p2p3p4p5p6p7p8p2s3s4s5s6s9s
     draw 1m -> cut 7s => 50 ukiere: 1m2m3m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 48 ukiere: 1m2m3m1p4p7p2s3s4s5s6s7s8s9s
+    draw 6p -> cut 2p => 50 ukiere: 1p3p4p5p6p7p8p2s3s4s5s6s7s8s9s; cut 7s => 48 ukiere: 1p2p3p4p5p6p7p8p2s3s4s5s6s9s
     draw 9m -> cut 7s => 50 ukiere: 7m8m9m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 48 ukiere: 7m8m9m1p4p7p2s3s4s5s6s7s8s9s
     draw 5p -> cut 2p => 50 ukiere: 1p3p4p5p6p7p8p2s3s4s5s6s7s8s9s; cut 1p => 48 ukiere: 3p4p5p6p7p8p2s3s4s5s6s7s8s9s; cut 7s => 48 ukiere: 1p2p3p4p5p6p7p8p2s3s4s5s6s9s
     draw 9p -> cut 7s => 46 ukiere: 1p2p3p4p7p8p9p2s3s4s5s6s9s
 discard 6m -> 2 shanten, 44 ukiere tiles: 12347p23456789s
   after advancing shanten:
-    draw 3p -> cut 1p => 17 ukiere: 4p7p5s4s7s
-    draw 4p -> cut 7s => 38 ukiere: 3p1p4s5s6s9s4p7p2p3s2s
-    draw 7p -> cut 7s => 35 ukiere: 5s6s9s3p1p4s2p4p3s2s
-    draw 5s -> cut 2p => 23 ukiere: 4p7p6s9s1p7s3s
-    draw 6s -> cut 2p => 15 ukiere: 4p7p5s8s; cut 4s => 15 ukiere: 4p7p5s8s
-    draw 9s -> cut 2p => 15 ukiere: 4p7p5s8s; cut 4s => 15 ukiere: 4p7p8s5s
-    draw 1p -> cut 7s => 18 ukiere: 2p4p7p4s3p
-    draw 7s -> cut 2p => 15 ukiere: 4p7p5s1p7s; cut 4s => 15 ukiere: 3p4p7p1p7s
-    draw 4s -> cut 7s => 16 ukiere: 3p4p7p1p4s
-    draw 2p -> cut 4s => 12 ukiere: 1p2p4p7p; cut 7s => 12 ukiere: 1p2p4p7p
+    draw 4p -> cut 7s => 38 ukiere: 1p2p3p4p7p2s3s4s5s6s9s
+    draw 7p -> cut 7s => 35 ukiere: 1p2p3p4p2s3s4s5s6s9s
+    draw 5s -> cut 2p => 23 ukiere: 1p4p7p3s6s7s9s
+    draw 1p -> cut 7s => 18 ukiere: 2p3p4p7p4s
+    draw 3p -> cut 1p => 17 ukiere: 4p7p4s5s7s
+    draw 4s -> cut 7s => 16 ukiere: 1p3p4p7p4s
     draw 3s -> cut 2p => 16 ukiere: 4p7p2s5s; cut 7s => 16 ukiere: 4p7p2s5s
-    draw 2s -> cut 2p => 12 ukiere: 4p7p3s; cut 7s => 12 ukiere: 4p7p3s
+    draw 6s -> cut 2p => 15 ukiere: 4p7p5s8s; cut 4s => 15 ukiere: 4p7p5s8s
+    draw 9s -> cut 2p => 15 ukiere: 4p7p5s8s; cut 4s => 15 ukiere: 4p7p5s8s
+    draw 7s -> cut 2p => 15 ukiere: 1p4p7p5s7s; cut 4s => 15 ukiere: 1p3p4p7p7s
     draw 8s -> cut 2p => 15 ukiere: 4p7p6s9s; cut 4s => 15 ukiere: 4p7p6s9s
+    draw 2p -> cut 4s => 12 ukiere: 1p2p4p7p; cut 7s => 12 ukiere: 1p2p4p7p
+    draw 2s -> cut 2p => 12 ukiere: 4p7p3s; cut 7s => 12 ukiere: 4p7p3s
   upgrades:
     draw 6m -> cut 7s => 67 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 65 ukiere: 1m2m3m4m5m6m7m8m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 61 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p5s6s7s8s9s
     draw 2m -> cut 7s => 63 ukiere: 1m2m3m4m5m6m7m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 61 ukiere: 1m2m3m4m5m6m7m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 57 ukiere: 1m2m3m4m5m6m7m1p2p3p4p7p5s6s7s8s9s
     draw 7m -> cut 7s => 61 ukiere: 2m5m6m7m8m9m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 59 ukiere: 2m5m6m7m8m9m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 55 ukiere: 2m5m6m7m8m9m1p2p3p4p7p5s6s7s8s9s
-    draw 5m -> cut 7s => 59 ukiere: 2m3m4m5m6m7m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 57 ukiere: 2m3m4m5m6m7m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 53 ukiere: 2m3m4m5m6m7m1p2p3p4p7p5s6s7s8s9s
     draw 3m -> cut 7s => 59 ukiere: 1m2m3m4m5m6m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 57 ukiere: 1m2m3m4m5m6m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 53 ukiere: 1m2m3m4m5m6m1p2p3p4p7p5s6s7s8s9s
+    draw 5m -> cut 7s => 59 ukiere: 2m3m4m5m6m7m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 57 ukiere: 2m3m4m5m6m7m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 53 ukiere: 2m3m4m5m6m7m1p2p3p4p7p5s6s7s8s9s
     draw 4m -> cut 7s => 55 ukiere: 2m3m4m5m6m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 53 ukiere: 2m3m4m5m6m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 49 ukiere: 2m3m4m5m6m1p2p3p4p7p5s6s7s8s9s
-    draw 8m -> cut 7s => 54 ukiere: 6m7m8m9m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 52 ukiere: 6m7m8m9m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 48 ukiere: 6m7m8m9m1p2p3p4p7p5s6s7s8s9s
     draw 8p -> cut 2p => 54 ukiere: 1p3p4p5p6p7p8p9p2s3s4s5s6s7s8s9s; cut 7s => 52 ukiere: 1p2p3p4p5p6p7p8p9p2s3s4s5s6s9s; cut 4s => 46 ukiere: 1p2p3p4p5p6p7p8p9p5s6s7s8s9s
+    draw 8m -> cut 7s => 54 ukiere: 6m7m8m9m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 52 ukiere: 6m7m8m9m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 48 ukiere: 6m7m8m9m1p2p3p4p7p5s6s7s8s9s
     draw 1m -> cut 7s => 53 ukiere: 1m2m3m6m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 51 ukiere: 1m2m3m6m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 47 ukiere: 1m2m3m6m1p2p3p4p7p5s6s7s8s9s
     draw 9m -> cut 7s => 50 ukiere: 7m8m9m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 48 ukiere: 7m8m9m1p4p7p2s3s4s5s6s7s8s9s
     draw 6p -> cut 2p => 50 ukiere: 1p3p4p5p6p7p8p2s3s4s5s6s7s8s9s; cut 7s => 48 ukiere: 1p2p3p4p5p6p7p8p2s3s4s5s6s9s
@@ -170,56 +170,56 @@ discard 6m -> 2 shanten, 44 ukiere tiles: 12347p23456789s
     draw 9p -> cut 7s => 46 ukiere: 1p2p3p4p7p8p9p2s3s4s5s6s9s
 discard 1p -> 2 shanten, 27 ukiere tiles: 36m347p457s
   after advancing shanten:
-    draw 3p -> cut 3m => 17 ukiere: 4p7p5s4s7s; cut 6m => 17 ukiere: 4p7p5s4s7s; cut 7s => 17 ukiere: 6m4p7p4s3m
-    draw 4p -> cut 3m => 13 ukiere: 3p5s4s7s; cut 6m => 13 ukiere: 3p5s4s7s; cut 7s => 13 ukiere: 6m3p4s3m
-    draw 7p -> cut 3m => 13 ukiere: 3p5s4s7s; cut 6m => 13 ukiere: 3p5s4s7s; cut 7s => 13 ukiere: 6m3p4s3m
+    draw 3p -> cut 3m => 17 ukiere: 4p7p4s5s7s; cut 6m => 17 ukiere: 4p7p4s5s7s; cut 7s => 17 ukiere: 3m6m4p7p4s
+    draw 4p -> cut 3m => 13 ukiere: 3p4s5s7s; cut 6m => 13 ukiere: 3p4s5s7s; cut 7s => 13 ukiere: 3m6m3p4s
+    draw 7p -> cut 3m => 13 ukiere: 3p4s5s7s; cut 6m => 13 ukiere: 3p4s5s7s; cut 7s => 13 ukiere: 3m6m3p4s
     draw 5s -> cut 3m => 12 ukiere: 3p4p7p; cut 6m => 12 ukiere: 3p4p7p; cut 8s => 12 ukiere: 3p4p7p
     draw 6m -> cut 4s => 12 ukiere: 3p4p7p; cut 7s => 12 ukiere: 3p4p7p
     draw 4s -> cut 3m => 12 ukiere: 3p4p7p; cut 6m => 12 ukiere: 3p4p7p; cut 7s => 12 ukiere: 3p4p7p
     draw 7s -> cut 3m => 12 ukiere: 3p4p7p; cut 6m => 12 ukiere: 3p4p7p; cut 4s => 12 ukiere: 3p4p7p
     draw 3m -> cut 4s => 12 ukiere: 3p4p7p; cut 7s => 12 ukiere: 3p4p7p
   upgrades:
-    draw 5p -> cut 7s => 71 ukiere: 1m2m3m4m5m6m7m8m3p4p5p6p7p8p2s3s4s5s6s9s; cut 4s => 65 ukiere: 1m2m3m4m5m6m7m8m3p4p5p6p7p8p5s6s7s8s9s; cut 6p => 61 ukiere: 1m2m3m4m5m6m7m8m3p5p2s3s4s5s6s7s8s9s; cut 3m => 48 ukiere: 3p4p5p6p7p8p2s3s4s5s6s7s8s9s; cut 6m => 48 ukiere: 3p4p5p6p7p8p2s3s4s5s6s7s8s9s
+    draw 5p -> cut 7s => 71 ukiere: 1m2m3m4m5m6m7m8m3p4p5p6p7p8p2s3s4s5s6s9s; cut 4s => 65 ukiere: 1m2m3m4m5m6m7m8m3p4p5p6p7p8p5s6s7s8s9s; cut 6p => 61 ukiere: 1m2m3m4m5m6m7m8m3p5p2s3s4s5s6s7s8s9s; cut 6m => 48 ukiere: 3p4p5p6p7p8p2s3s4s5s6s7s8s9s; cut 3m => 48 ukiere: 3p4p5p6p7p8p2s3s4s5s6s7s8s9s
+    draw 1p -> cut 7s => 67 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 65 ukiere: 1m2m3m4m5m6m7m8m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 61 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p5s6s7s8s9s; cut 6m => 44 ukiere: 1p2p3p4p7p2s3s4s5s6s7s8s9s; cut 3m => 44 ukiere: 1p2p3p4p7p2s3s4s5s6s7s8s9s
     draw 2p -> cut 7s => 67 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p2s3s4s5s6s9s; cut 1p => 65 ukiere: 1m2m3m4m5m6m7m8m2p4p7p2s3s4s5s6s7s8s9s; cut 4s => 61 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p5s6s7s8s9s; cut 6m => 44 ukiere: 1p2p3p4p7p2s3s4s5s6s7s8s9s; cut 3m => 44 ukiere: 1p2p3p4p7p2s3s4s5s6s7s8s9s
     draw 6p -> cut 7s => 67 ukiere: 1m2m3m4m5m6m7m8m3p4p5p6p7p2s3s4s5s6s9s; cut 5p => 61 ukiere: 1m2m3m4m5m6m7m8m3p6p2s3s4s5s6s7s8s9s; cut 4s => 61 ukiere: 1m2m3m4m5m6m7m8m3p4p5p6p7p5s6s7s8s9s; cut 3m => 44 ukiere: 3p4p5p6p7p2s3s4s5s6s7s8s9s; cut 6m => 44 ukiere: 3p4p5p6p7p2s3s4s5s6s7s8s9s
-    draw 1p -> cut 7s => 67 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 65 ukiere: 1m2m3m4m5m6m7m8m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 61 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p5s6s7s8s9s; cut 6m => 44 ukiere: 1p2p3p4p7p2s3s4s5s6s7s8s9s; cut 3m => 44 ukiere: 1p2p3p4p7p2s3s4s5s6s7s8s9s
-    draw 2m -> cut 7s => 50 ukiere: 1m2m3m4m5m6m7m1p2p3p4p5p6p7p4s; cut 4s => 49 ukiere: 1m2m3m4m5m6m7m1p2p3p4p5p6p7p7s; cut 2p => 31 ukiere: 1m4m7m1p4p7p4s5s7s; cut 1p => 31 ukiere: 1m4m7m2p4p7p4s5s7s
     draw 7m -> cut 7s => 50 ukiere: 2m3m4m5m6m7m8m1p2p3p4p5p6p7p4s; cut 4s => 49 ukiere: 2m3m4m5m6m7m8m1p2p3p4p5p6p7p7s; cut 1p => 31 ukiere: 2m5m8m2p4p7p4s5s7s; cut 2p => 31 ukiere: 2m5m8m1p4p7p4s5s7s
-    draw 5m -> cut 7s => 46 ukiere: 2m3m4m5m6m7m1p2p3p4p5p6p7p4s; cut 4s => 45 ukiere: 2m3m4m5m6m7m1p2p3p4p5p6p7p7s
+    draw 2m -> cut 7s => 50 ukiere: 1m2m3m4m5m6m7m1p2p3p4p5p6p7p4s; cut 4s => 49 ukiere: 1m2m3m4m5m6m7m1p2p3p4p5p6p7p7s; cut 1p => 31 ukiere: 1m4m7m2p4p7p4s5s7s; cut 2p => 31 ukiere: 1m4m7m1p4p7p4s5s7s
     draw 4m -> cut 7s => 46 ukiere: 2m3m4m5m6m7m1p2p3p4p5p6p7p4s; cut 4s => 45 ukiere: 2m3m4m5m6m7m1p2p3p4p5p6p7p7s
-    draw 8s -> cut 4s => 45 ukiere: 3m6m1p2p3p4p5p6p7p5s6s7s8s9s; cut 6m => 42 ukiere: 1p2p3p4p5p6p7p4s5s6s7s8s9s; cut 3m => 42 ukiere: 1p2p3p4p5p6p7p4s5s6s7s8s9s; cut 2p => 35 ukiere: 3m6m1p4p7p4s5s6s7s8s9s; cut 1p => 35 ukiere: 3m6m2p4p7p4s5s6s7s8s9s; cut 5p => 31 ukiere: 3m6m3p6p4s5s6s7s8s9s; cut 6p => 31 ukiere: 3m6m3p5p4s5s6s7s8s9s
-    draw 6s -> cut 4s => 45 ukiere: 3m6m1p2p3p4p5p6p7p5s6s7s8s9s; cut 7s => 43 ukiere: 3m6m1p2p3p4p5p6p7p4s5s6s9s; cut 6m => 42 ukiere: 1p2p3p4p5p6p7p4s5s6s7s8s9s; cut 3m => 42 ukiere: 1p2p3p4p5p6p7p4s5s6s7s8s9s; cut 2p => 29 ukiere: 3m6m1p4p7p4s5s7s8s; cut 1p => 29 ukiere: 3m6m2p4p7p4s5s7s8s
-    draw 9s -> cut 4s => 45 ukiere: 3m6m1p2p3p4p5p6p7p5s6s7s8s9s; cut 7s => 43 ukiere: 3m6m1p2p3p4p5p6p7p4s5s6s9s; cut 6m => 42 ukiere: 1p2p3p4p5p6p7p4s5s6s7s8s9s; cut 3m => 42 ukiere: 1p2p3p4p5p6p7p4s5s6s7s8s9s; cut 2p => 29 ukiere: 3m6m1p4p7p4s5s7s8s; cut 1p => 29 ukiere: 3m6m2p4p7p4s5s7s8s
-    draw 3s -> cut 7s => 44 ukiere: 3m6m1p2p3p4p5p6p7p2s3s4s5s; cut 3m => 40 ukiere: 1p2p3p4p5p6p7p2s3s4s5s7s; cut 6m => 40 ukiere: 1p2p3p4p5p6p7p2s3s4s5s7s
-    draw 2s -> cut 3m => 40 ukiere: 1p2p3p4p5p6p7p2s3s4s5s7s; cut 6m => 40 ukiere: 1p2p3p4p5p6p7p2s3s4s5s7s; cut 7s => 40 ukiere: 3m6m1p2p3p4p5p6p7p2s3s4s
+    draw 5m -> cut 7s => 46 ukiere: 2m3m4m5m6m7m1p2p3p4p5p6p7p4s; cut 4s => 45 ukiere: 2m3m4m5m6m7m1p2p3p4p5p6p7p7s
+    draw 6s -> cut 4s => 45 ukiere: 3m6m1p2p3p4p5p6p7p5s6s7s8s9s; cut 7s => 43 ukiere: 3m6m1p2p3p4p5p6p7p4s5s6s9s; cut 6m => 42 ukiere: 1p2p3p4p5p6p7p4s5s6s7s8s9s; cut 3m => 42 ukiere: 1p2p3p4p5p6p7p4s5s6s7s8s9s; cut 1p => 29 ukiere: 3m6m2p4p7p4s5s7s8s; cut 2p => 29 ukiere: 3m6m1p4p7p4s5s7s8s
+    draw 8s -> cut 4s => 45 ukiere: 3m6m1p2p3p4p5p6p7p5s6s7s8s9s; cut 3m => 42 ukiere: 1p2p3p4p5p6p7p4s5s6s7s8s9s; cut 6m => 42 ukiere: 1p2p3p4p5p6p7p4s5s6s7s8s9s; cut 2p => 35 ukiere: 3m6m1p4p7p4s5s6s7s8s9s; cut 1p => 35 ukiere: 3m6m2p4p7p4s5s6s7s8s9s; cut 6p => 31 ukiere: 3m6m3p5p4s5s6s7s8s9s; cut 5p => 31 ukiere: 3m6m3p6p4s5s6s7s8s9s
+    draw 9s -> cut 4s => 45 ukiere: 3m6m1p2p3p4p5p6p7p5s6s7s8s9s; cut 7s => 43 ukiere: 3m6m1p2p3p4p5p6p7p4s5s6s9s; cut 3m => 42 ukiere: 1p2p3p4p5p6p7p4s5s6s7s8s9s; cut 6m => 42 ukiere: 1p2p3p4p5p6p7p4s5s6s7s8s9s; cut 1p => 29 ukiere: 3m6m2p4p7p4s5s7s8s; cut 2p => 29 ukiere: 3m6m1p4p7p4s5s7s8s
+    draw 3s -> cut 7s => 44 ukiere: 3m6m1p2p3p4p5p6p7p2s3s4s5s; cut 6m => 40 ukiere: 1p2p3p4p5p6p7p2s3s4s5s7s; cut 3m => 40 ukiere: 1p2p3p4p5p6p7p2s3s4s5s7s
     draw 1m -> cut 7s => 40 ukiere: 1m2m3m6m1p2p3p4p5p6p7p4s; cut 4s => 39 ukiere: 1m2m3m6m1p2p3p4p5p6p7p7s
+    draw 2s -> cut 3m => 40 ukiere: 1p2p3p4p5p6p7p2s3s4s5s7s; cut 6m => 40 ukiere: 1p2p3p4p5p6p7p2s3s4s5s7s; cut 7s => 40 ukiere: 3m6m1p2p3p4p5p6p7p2s3s4s
     draw 8m -> cut 7s => 40 ukiere: 3m6m7m8m1p2p3p4p5p6p7p4s; cut 4s => 39 ukiere: 3m6m7m8m1p2p3p4p5p6p7p7s
 discard 8s -> 2 shanten, 20 ukiere tiles: 1347p57s
   after advancing shanten:
+    draw 5s -> cut 3m => 16 ukiere: 1p3p4p7p7s; cut 6m => 16 ukiere: 1p3p4p7p7s
     draw 3p -> cut 3m => 12 ukiere: 4p7p5s; cut 6m => 12 ukiere: 4p7p5s; cut 1p => 12 ukiere: 4p7p5s
-    draw 4p -> cut 3m => 12 ukiere: 3p5s1p7s; cut 6m => 12 ukiere: 3p5s1p7s
-    draw 7p -> cut 3m => 12 ukiere: 3p5s1p7s; cut 6m => 12 ukiere: 3p5s1p7s
-    draw 5s -> cut 3m => 16 ukiere: 3p4p7p1p7s; cut 6m => 16 ukiere: 3p4p7p1p7s
+    draw 4p -> cut 3m => 12 ukiere: 1p3p5s7s; cut 6m => 12 ukiere: 1p3p5s7s
+    draw 7p -> cut 3m => 12 ukiere: 1p3p5s7s; cut 6m => 12 ukiere: 1p3p5s7s
     draw 1p -> cut 3m => 12 ukiere: 4p7p5s; cut 6m => 12 ukiere: 4p7p5s; cut 2p => 12 ukiere: 4p7p5s
     draw 7s -> cut 3m => 12 ukiere: 4p7p5s; cut 6m => 12 ukiere: 4p7p5s; cut 2p => 12 ukiere: 4p7p5s
   upgrades:
-    draw 8s -> cut 7s => 67 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 65 ukiere: 1m2m3m4m5m6m7m8m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 61 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p5s6s7s8s9s; cut 3m => 44 ukiere: 1p2p3p4p7p2s3s4s5s6s7s8s9s; cut 6m => 44 ukiere: 1p2p3p4p7p2s3s4s5s6s7s8s9s; cut 1p => 27 ukiere: 3m6m3p4p7p4s5s7s
-    draw 2m -> cut 4s => 35 ukiere: 1m4m7m1p3p4p7p5s7s8s; cut 2p => 31 ukiere: 1m4m7m1p4p7p5s7s8s; cut 1p => 27 ukiere: 1m4m7m3p4p7p5s; cut 7s => 27 ukiere: 1m4m7m4p7p5s8s; cut 6s => 27 ukiere: 1m4m7m1p3p4p7p7s; cut 6p => 23 ukiere: 1m4m7m1p3p5s7s; cut 5p => 23 ukiere: 1m4m7m1p3p5s7s
-    draw 7m -> cut 4s => 35 ukiere: 2m5m8m1p3p4p7p5s7s8s; cut 2p => 31 ukiere: 2m5m8m1p4p7p5s7s8s; cut 6s => 27 ukiere: 2m5m8m1p3p4p7p7s; cut 1p => 27 ukiere: 2m5m8m3p4p7p5s; cut 7s => 27 ukiere: 2m5m8m4p7p5s8s; cut 6p => 23 ukiere: 2m5m8m1p3p5s7s; cut 5p => 23 ukiere: 2m5m8m1p3p5s7s
-    draw 4m -> cut 4s => 31 ukiere: 2m5m1p3p4p7p5s7s8s; cut 2p => 27 ukiere: 2m5m1p4p7p5s7s8s; cut 6s => 23 ukiere: 2m5m1p3p4p7p7s; cut 1p => 23 ukiere: 2m5m3p4p7p5s; cut 7s => 23 ukiere: 2m5m4p7p5s8s
-    draw 5m -> cut 4s => 31 ukiere: 4m7m1p3p4p7p5s7s8s; cut 2p => 27 ukiere: 4m7m1p4p7p5s7s8s; cut 6s => 23 ukiere: 4m7m1p3p4p7p7s; cut 1p => 23 ukiere: 4m7m3p4p7p5s; cut 7s => 23 ukiere: 4m7m4p7p5s8s
-    draw 2s -> cut 3m => 28 ukiere: 1p3p4p7p3s5s7s8s; cut 6m => 28 ukiere: 1p3p4p7p3s5s7s8s; cut 2p => 24 ukiere: 1p4p7p3s5s7s8s
-    draw 3s -> cut 6m => 28 ukiere: 1p3p4p7p2s5s7s8s; cut 3m => 28 ukiere: 1p3p4p7p2s5s7s8s; cut 6s => 24 ukiere: 1p3p4p7p2s5s7s; cut 2p => 24 ukiere: 1p4p7p2s5s7s8s
-    draw 8m -> cut 4s => 28 ukiere: 7m1p3p4p7p5s7s8s; cut 2p => 24 ukiere: 7m1p4p7p5s7s8s
+    draw 8s -> cut 7s => 67 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p2s3s4s5s6s9s; cut 2p => 65 ukiere: 1m2m3m4m5m6m7m8m1p4p7p2s3s4s5s6s7s8s9s; cut 4s => 61 ukiere: 1m2m3m4m5m6m7m8m1p2p3p4p7p5s6s7s8s9s; cut 6m => 44 ukiere: 1p2p3p4p7p2s3s4s5s6s7s8s9s; cut 3m => 44 ukiere: 1p2p3p4p7p2s3s4s5s6s7s8s9s; cut 1p => 27 ukiere: 3m6m3p4p7p4s5s7s
+    draw 2m -> cut 4s => 35 ukiere: 1m4m7m1p3p4p7p5s7s8s; cut 2p => 31 ukiere: 1m4m7m1p4p7p5s7s8s; cut 1p => 27 ukiere: 1m4m7m3p4p7p5s; cut 6s => 27 ukiere: 1m4m7m1p3p4p7p7s; cut 7s => 27 ukiere: 1m4m7m4p7p5s8s; cut 5p => 23 ukiere: 1m4m7m1p3p5s7s; cut 6p => 23 ukiere: 1m4m7m1p3p5s7s
+    draw 7m -> cut 4s => 35 ukiere: 2m5m8m1p3p4p7p5s7s8s; cut 2p => 31 ukiere: 2m5m8m1p4p7p5s7s8s; cut 6s => 27 ukiere: 2m5m8m1p3p4p7p7s; cut 7s => 27 ukiere: 2m5m8m4p7p5s8s; cut 1p => 27 ukiere: 2m5m8m3p4p7p5s; cut 6p => 23 ukiere: 2m5m8m1p3p5s7s; cut 5p => 23 ukiere: 2m5m8m1p3p5s7s
+    draw 4m -> cut 4s => 31 ukiere: 2m5m1p3p4p7p5s7s8s; cut 2p => 27 ukiere: 2m5m1p4p7p5s7s8s; cut 1p => 23 ukiere: 2m5m3p4p7p5s; cut 6s => 23 ukiere: 2m5m1p3p4p7p7s; cut 7s => 23 ukiere: 2m5m4p7p5s8s
+    draw 5m -> cut 4s => 31 ukiere: 4m7m1p3p4p7p5s7s8s; cut 2p => 27 ukiere: 4m7m1p4p7p5s7s8s; cut 6s => 23 ukiere: 4m7m1p3p4p7p7s; cut 7s => 23 ukiere: 4m7m4p7p5s8s; cut 1p => 23 ukiere: 4m7m3p4p7p5s
     draw 1m -> cut 4s => 28 ukiere: 2m1p3p4p7p5s7s8s; cut 2p => 24 ukiere: 2m1p4p7p5s7s8s
-    draw 6s -> cut 6m => 26 ukiere: 1p3p4p7p5s6s7s8s; cut 3m => 26 ukiere: 1p3p4p7p5s6s7s8s; cut 4s => 26 ukiere: 1p3p4p7p5s6s7s8s; cut 2p => 22 ukiere: 1p4p7p5s6s7s8s
+    draw 8m -> cut 4s => 28 ukiere: 7m1p3p4p7p5s7s8s; cut 2p => 24 ukiere: 7m1p4p7p5s7s8s
+    draw 3s -> cut 3m => 28 ukiere: 1p3p4p7p2s5s7s8s; cut 6m => 28 ukiere: 1p3p4p7p2s5s7s8s; cut 2p => 24 ukiere: 1p4p7p2s5s7s8s; cut 6s => 24 ukiere: 1p3p4p7p2s5s7s
+    draw 2s -> cut 3m => 28 ukiere: 1p3p4p7p3s5s7s8s; cut 6m => 28 ukiere: 1p3p4p7p3s5s7s8s; cut 2p => 24 ukiere: 1p4p7p3s5s7s8s
+    draw 2p -> cut 4s => 26 ukiere: 1p2p3p4p7p5s7s8s; cut 3m => 26 ukiere: 1p2p3p4p7p5s7s8s; cut 6m => 26 ukiere: 1p2p3p4p7p5s7s8s
     draw 6m -> cut 4s => 26 ukiere: 6m1p3p4p7p5s7s8s; cut 7s => 24 ukiere: 6m1p3p4p7p5s8s; cut 1p => 24 ukiere: 6m3p4p7p5s7s8s; cut 2p => 22 ukiere: 6m1p4p7p5s7s8s
-    draw 4s -> cut 3m => 26 ukiere: 1p3p4p7p4s5s7s8s; cut 6m => 26 ukiere: 1p3p4p7p4s5s7s8s; cut 7s => 24 ukiere: 1p3p4p7p4s5s8s; cut 1p => 24 ukiere: 3p4p7p4s5s7s8s; cut 2p => 22 ukiere: 1p4p7p4s5s7s8s
-    draw 2p -> cut 3m => 26 ukiere: 1p2p3p4p7p5s7s8s; cut 6m => 26 ukiere: 1p2p3p4p7p5s7s8s; cut 4s => 26 ukiere: 1p2p3p4p7p5s7s8s
+    draw 6s -> cut 3m => 26 ukiere: 1p3p4p7p5s6s7s8s; cut 6m => 26 ukiere: 1p3p4p7p5s6s7s8s; cut 4s => 26 ukiere: 1p3p4p7p5s6s7s8s; cut 2p => 22 ukiere: 1p4p7p5s6s7s8s
     draw 3m -> cut 4s => 26 ukiere: 3m1p3p4p7p5s7s8s; cut 7s => 24 ukiere: 3m1p3p4p7p5s8s; cut 1p => 24 ukiere: 3m3p4p7p5s7s8s; cut 2p => 22 ukiere: 3m1p4p7p5s7s8s
-    draw 9s -> cut 3m => 24 ukiere: 1p3p4p7p5s7s8s; cut 6m => 24 ukiere: 1p3p4p7p5s7s8s
-    draw 5p -> cut 6m => 22 ukiere: 1p3p4p5p7p5s7s; cut 3m => 22 ukiere: 1p3p4p5p7p5s7s
-    draw 6p -> cut 6m => 22 ukiere: 1p3p4p6p7p5s7s; cut 3m => 22 ukiere: 1p3p4p6p7p5s7s
+    draw 4s -> cut 6m => 26 ukiere: 1p3p4p7p4s5s7s8s; cut 3m => 26 ukiere: 1p3p4p7p4s5s7s8s; cut 1p => 24 ukiere: 3p4p7p4s5s7s8s; cut 7s => 24 ukiere: 1p3p4p7p4s5s8s; cut 2p => 22 ukiere: 1p4p7p4s5s7s8s
+    draw 9s -> cut 6m => 24 ukiere: 1p3p4p7p5s7s8s; cut 3m => 24 ukiere: 1p3p4p7p5s7s8s
+    draw 5p -> cut 3m => 22 ukiere: 1p3p4p5p7p5s7s; cut 6m => 22 ukiere: 1p3p4p5p7p5s7s
+    draw 6p -> cut 3m => 22 ukiere: 1p3p4p6p7p5s7s; cut 6m => 22 ukiere: 1p3p4p6p7p5s7s
 discard 5p -> 3 shanten, 82 ukiere tiles: 1m2m3m4m5m6m7m8m1p2p3p4p5p6p7p8p2s3s4s5s6s7s8s9s
 discard 6p -> 3 shanten, 78 ukiere tiles: 1m2m3m4m5m6m7m8m1p2p3p4p5p6p7p2s3s4s5s6s7s8s9s
 discard 4m -> 3 shanten, 72 ukiere tiles: 1m2m3m4m5m6m7m8m1p2p3p4p7p2s3s4s5s6s7s8s9s

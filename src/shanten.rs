@@ -2842,23 +2842,28 @@ mod tests {
                 for improve_tile_id in ukiere_tile_ids_after_discard {
                     let after_improve_draw_count_array =
                         add_tile_id_to_count_array(new_count_array, improve_tile_id);
-                    let options_after_ukiere_draw = get_most_ukiere_after_discard(
+                    let mut options_after_ukiere_draw = get_most_ukiere_after_discard(
                         after_improve_draw_count_array,
                         new_shanten - 1,
                         &get_shanten_optimized,
                         &get_ukiere_optimized,
                         other_visible_tiles,
                     );
+                    options_after_ukiere_draw.iter_mut().for_each(
+                        |(_, ukiere_after_upgrade_discard, _)| {
+                            ukiere_after_upgrade_discard.sort();
+                        },
+                    );
 
                     // sort discard options (after drawing improvement tile) by descending number of ukiere tiles
-                    let mut options_after_improve_sorted = options_after_ukiere_draw.clone();
-                    options_after_improve_sorted.sort_by(
+                    // let mut options_after_improve_sorted = options_after_ukiere_draw.clone();
+                    options_after_ukiere_draw.sort_by(
                         |(_, _, num_ukiere_tiles_after_improve1),
                          (_, _, num_ukiere_tiles_after_improve2)| {
                             num_ukiere_tiles_after_improve2.cmp(num_ukiere_tiles_after_improve1)
                         },
                     );
-                    improve_options.push((improve_tile_id, options_after_improve_sorted));
+                    improve_options.push((improve_tile_id, options_after_ukiere_draw));
                 }
 
                 // sort improve options by max number of ukiere tiles after discard (descending)
@@ -2923,6 +2928,7 @@ mod tests {
                         for (discard_tile_id, (ukiere_after_discard, num_ukiere_after_discard)) in
                             discard_to_ukiere
                         {
+                            // sort the ukiere tiles by tile id
                             let mut sorted_ukiere_after_discard = ukiere_after_discard.clone();
                             sorted_ukiere_after_discard.sort();
 
@@ -3191,7 +3197,7 @@ mod tests {
     }
 
     #[test]
-    fn wwyd_tenhou_hand_east1_turn7() {
+    fn wwyd_tenhou_hand_east1_turn8() {
         // east-1, seat: east, (25k points all), dora indicator: 6s (dora: 7s)
         let tiles_after_draw = tiles_to_count_array("345m11256p46778s6s");
         let shanten_after_discard =
@@ -3245,7 +3251,7 @@ mod tests {
     }
 
     #[test]
-    fn wwyd_tenhou_hand_east1_turn6() {
+    fn wwyd_tenhou_hand_east1_turn7() {
         // I think there was a bigger mistake on the previous turn/discard decision in this same hand:
         // 345m11256p46778s6m
         let tiles_after_draw = tiles_to_count_array("345m11256p46778s6m");
