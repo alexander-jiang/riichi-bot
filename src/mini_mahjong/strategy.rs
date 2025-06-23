@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use rand::prelude::*;
 
 pub fn discard_random(game_state: &simulator::MiniGameState) -> usize {
-    let mut rng: ThreadRng = rand::thread_rng();
-    rng.gen_range(0..game_state.hand_tiles.len())
+    let mut rng: ThreadRng = rand::rng();
+    rng.random_range(0..game_state.hand_tiles.len())
 }
 
 pub fn discard_lowest_rank(game_state: &simulator::MiniGameState) -> usize {
@@ -42,7 +42,7 @@ pub fn discard_highest_rank(game_state: &simulator::MiniGameState) -> usize {
 }
 
 pub fn discard_isolated(game_state: &simulator::MiniGameState) -> usize {
-    let mut rng: ThreadRng = rand::thread_rng();
+    let mut rng: ThreadRng = rand::rng();
     let mut isolated_tile_idxs: Vec<usize> = Vec::new();
 
     // build count by rank of hand tiles
@@ -74,14 +74,14 @@ pub fn discard_isolated(game_state: &simulator::MiniGameState) -> usize {
 
     if !isolated_tile_idxs.is_empty() {
         // prioritize a discard among the isolated tiles
-        let random_isolated_tile_list_idx = rng.gen_range(0..isolated_tile_idxs.len());
+        let random_isolated_tile_list_idx = rng.random_range(0..isolated_tile_idxs.len());
         let index_to_discard = isolated_tile_idxs
             .get(random_isolated_tile_list_idx)
             .expect("should be a valid element of isolated_tile_idxs");
         *index_to_discard
     } else {
         // no isolated tiles: pick a tile at random
-        rng.gen_range(0..game_state.hand_tiles.len())
+        rng.random_range(0..game_state.hand_tiles.len())
     }
 }
 

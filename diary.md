@@ -1,8 +1,102 @@
 # Diary
 
+### Jun 21 2025
+
+optimized the monte carlo simulation. We know what the possible improvement tiles are, so we pre-compute the resulting (discard_tile, ukiere_tiles_after_discard) for each possible discard, and we can look up how many ukiere tiles are actually remaining at the time we draw the tile.
+
+```
+initial hand: 345m1156466778s
+initial ukiere tiles: 47p58s (to reach tenpai)
+```
+
+The result is ~30x faster: ~0.05 seconds for 1000 trials (instead of 1.58 seconds):
+
+```
+$ cargo test monte_carlo_analysis::tests::test_basic_analysis -- --show-output
+...
+summary:
+1000 total trials, 864 reached tenpai in at most 12 draws
+average 4.72 turns to reach tenpai (among success)
+average 7.53 ukiere tiles at tenpai (choosing discard that maximizes ukiere)
+count of number of trials that we reached tenpai: (starting from first draw)
+[145, 118, 113, 109, 74, 67, 55, 46, 47, 38, 30, 22]
+
+successes:
+    monte_carlo_analysis::tests::test_basic_analysis
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 172 filtered out; finished in 0.05s
+```
+
+Running with 100k trials: (takes about 4.11 seconds)
+
+```
+$ cargo test monte_carlo_analysis::tests::test_basic_analysis -- --show-output
+...
+summary:
+100000 total trials, 87677 reached tenpai in at most 12 draws
+average 4.70 turns to reach tenpai (among success)
+average 7.50 ukiere tiles at tenpai (choosing discard that maximizes ukiere)
+count of number of trials that we reached tenpai: (starting from first draw)
+[15112, 12833, 11089, 9480, 8095, 6863, 5833, 5083, 4144, 3559, 3049, 2537]
+
+successes:
+    monte_carlo_analysis::tests::test_basic_analysis
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 172 filtered out; finished in 4.11s
+```
+
+From this [calculator](https://gkmtg.pro/tools/calculator/), the % chance of reaching tenpai in X draws vs. simulation estimate:
+
+- calculator % chance of reaching tenpai in 1 draw : 16.13% vs. simulation 15112/100000 = 15.11%
+- calculator % chance of reaching tenpai in 2 draws: 29.80% vs. simulation (15112+12833)/100000 = 27.95%
+- calculator % chance of reaching tenpai in 3 draws: 41.37% vs. simulation (15112+12833+11089)/100000 = 39.03%
+
+### Jun 20 2025
+
+testing the monte carlo simulation. Starting with hand 345m1156466778s (the situation on turn 8, if we hypothetically discarded 2p). If we just accept ukiere (and not upgrades), we expect that:
+
+- given there are 136 total tiles - 43 total visible tiles = 93 remaining tiles. (13 in hand + 29 discarded tiles + 1 dora indicator tile = 43 visible tiles)
+- and the ukiere tiles are 47p58s, of which only 1 is visible (one 8s in hand already), there are 15 "outs"
+- naive calculation says we need 93/15 = 6.2 draws to reach tenpai. But is that accurate?
+- based on calculator [here](https://gkmtg.pro/tools/calculator/), with 93 in the "deck", 15 "outs" and we only need to draw 1 "out" (to advance to tenpai), after 6 draws, we have a 66.30% chance of reaching tenpai.
+- I set the max number of draws to 12, based on the calculator above, we have a 89.57% chance of reaching tenpai within that many draws.
+
+```
+initial hand: 345m1156466778s
+initial ukiere tiles: 47p58s (to reach tenpai)
+trial 100
+trial 200
+trial 300
+trial 400
+trial 500
+trial 600
+trial 700
+trial 800
+trial 900
+trial 1000
+summary:
+1000 total trials, 878 reached tenpai in at most 12 draws
+average 4.76 turns to reach tenpai (among success)
+average 7.51 ukiere tiles at tenpai (choosing discard that maximizes ukiere)
+
+
+(subsequent runs:)
+summary:
+1000 total trials, 872 reached tenpai in at most 12 draws
+average 4.68 turns to reach tenpai (among success)
+average 7.53 ukiere tiles at tenpai (choosing discard that maximizes ukiere)
+
+summary:
+1000 total trials, 878 reached tenpai in at most 12 draws
+average 4.73 turns to reach tenpai (among success)
+average 7.51 ukiere tiles at tenpai (choosing discard that maximizes ukiere)
+```
+
+Unfortunately, this took about 1.58 seconds, which is quite slow (if we wanted to run 1 million trials, that would take ~26.3 mins).
+
 ### Jun 18 2025
 
-revisited the tenhou hand replay, East-1 round, in east. I felt I had a pretty good & fast hand but somehow lost in the race to tenpai/riichi to kami (player to my left). I think the real mistake was on the turn before the decision to discard 4s vs. 2p:
+revisited the tenhou hand replay, East-1 round, seat: east. I felt I had a pretty good & fast hand but somehow lost in the race to tenpai/riichi to kami (player to my left). I think the real mistake was on the turn before the decision to discard 4s vs. 2p:
 
 ```
 hand: 345m11256p46778s6m
@@ -16,7 +110,11 @@ toimen (west): 4z5z6z3z1s3z
 kami  (north): 4z1z6z5z1s4m
 
 Analysis:
-- In game, I chose to cut 6m -- I think my logic was that I wanted to keep the two dora (7s) and the nearby tiles (including 4s). But in hindsight, this hand does not yet have 5 clear groups if manzu is restricted to 1 group. the souzu tiles would ideally become 2 groups that both use dora (7s), but we'd also like to keep 4s to be able to accept 23s. The pinzu tiles look like a clear pair + group (112p-56p): because two 3p tiles are visible (shimo discarded), the 2p is unlikely to be useful. And the 3456m shape is quite useful, allowing us to accept almost any manzu tile to improve to 1-shanten.
+- In game, I chose to cut 6m -- I think my logic was that I wanted to keep the two dora (7s) and I saw the souzu as two groups: 4s-67s-78s. But in hindsight, the souzu can be considered as one group (678s-4s-7s) for the sake of speed, and I don't even have to cut a souzu tile right now - I could cut 2p (note that shimo has discarded two 3p already). I should consider the 6m a lucky draw: it is pretty much the optimal draw for forming a second group in manzu (3456m can accept 12345678m), and ~half of those manzu tiles (2457m) guarantee a ryanmen wait or better, which further increases speed at 1-shanten.
+
+Also, accounting for game state, it's the first hand of a tonpuusen game (east-1, all players at 25k points), and we are dealer, so we should be willing to sacrifice some value (i.e. cut one of the two dora tiles) in exchange for reaching tenpai more quickly (better chance to retain dealership and puts pressure on the non-dealers).
+
+
 
 ukiere map after discard: (improving to 1 shanten)
 discard 7s: 12345678m12347p23456  9s

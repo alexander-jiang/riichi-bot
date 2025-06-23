@@ -53,7 +53,7 @@ fn unshuffled_wall_tiles(game_state: &MiniGameState) -> Vec<mini_game::MiniTile>
 }
 
 pub fn initialize_mini_game_state() -> MiniGameState {
-    let mut rng: ThreadRng = rand::thread_rng();
+    let mut rng: ThreadRng = rand::rng();
 
     let empty_game_state = MiniGameState {
         hand_tiles: vec![],
@@ -81,7 +81,7 @@ pub fn initialize_mini_game_state() -> MiniGameState {
 }
 
 pub fn set_up_wall(game_state: &MiniGameState) -> Vec<mini_game::MiniTile> {
-    let mut rng: ThreadRng = rand::thread_rng();
+    let mut rng: ThreadRng = rand::rng();
 
     let mut tile_wall = unshuffled_wall_tiles(game_state);
     // println!("unshuffled tile wall:");

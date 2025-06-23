@@ -7,6 +7,7 @@ pub mod mahjong_error;
 pub mod mahjong_hand;
 pub mod mahjong_tile;
 pub mod mini_mahjong;
+pub mod monte_carlo_analysis;
 pub mod shanten;
 pub mod state;
 pub mod tile_grouping;
