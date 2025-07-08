@@ -1,5 +1,32 @@
 # Diary
 
+### Jul 7 2025
+
+Fixed the bug with the monte carlo basic analysis: need to include the tiles that are in the starting hand from the remaining tile count array when initializing the pool of tiles to draw from, which means the tenpai rate on the first turn matches the expectation (should be 15/93 = 16.13%).
+
+Re-running the basic analysis (took about 3.74 seconds)
+
+```
+initial hand: 3m4m5m1p1p5p6p4s6s6s7s7s8s
+initial ukiere tiles: 4p7p5s8s
+num tiles visible initially: 43
+initially visible tiles: 6s4z2z3z9m9p7z6m2p8p4z1z2z3p3p9s4z5z6z3z1s3z7z4z1z6z5z1s4m9m
+
+summary:
+100000 total trials, 89396 reached tenpai in at most 12 draws
+average 4.56 turns to reach tenpai (among success)
+average 7.47 ukiere tiles at tenpai (choosing discard that maximizes ukiere)
+count of number of trials that we reached tenpai: (starting from first draw)
+[16172, 13632, 11605, 9804, 8082, 6950, 5737, 4834, 3981, 3382, 2846, 2371]
+```
+
+From this [calculator](https://gkmtg.pro/tools/calculator/), the % chance of reaching tenpai in X draws vs. simulation estimate is much closer now:
+
+- calculator % chance of reaching tenpai in 1 draw : 16.13% vs. simulation 16172/100000 = 16.17%
+- calculator % chance of reaching tenpai in 2 draws: 29.80% vs. simulation (16172+13632)/100000 = 29.80%
+- calculator % chance of reaching tenpai in 3 draws: 41.37% vs. simulation (16172+13632+11605)/100000 = 41.41%
+- calculator % chance of reaching tenpai in 12 draws: 89.57% vs. simulation 89396/100000 = 89.40%
+
 ### Jun 21 2025
 
 optimized the monte carlo simulation. We know what the possible improvement tiles are, so we pre-compute the resulting (discard_tile, ukiere_tiles_after_discard) for each possible discard, and we can look up how many ukiere tiles are actually remaining at the time we draw the tile.

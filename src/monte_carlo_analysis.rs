@@ -72,7 +72,7 @@ fn run_basic_analysis(
     }
     let starting_ukiere_tile_ids = shanten::get_ukiere_optimized(starting_hand);
     let starting_hand_tile_ids = shanten::get_tile_ids_from_count_array(starting_hand);
-    let num_visible_tiles =
+    let total_num_visible_tiles =
         visible_tile_ids.len() + shanten::get_total_tiles_from_count_array(starting_hand);
     println!(
         "initial hand: {}",
@@ -82,7 +82,14 @@ fn run_basic_analysis(
         "initial ukiere tiles: {}",
         shanten::tile_ids_to_string(&starting_ukiere_tile_ids)
     );
-    println!("num tiles visible initially: {}", num_visible_tiles);
+    println!(
+        "total num tiles visible initially: {}",
+        total_num_visible_tiles
+    );
+    println!(
+        "initially visible tiles: {}",
+        shanten::tile_ids_to_string(&visible_tile_ids)
+    );
 
     // precompute (discard tile id, resulting ukiere tile ids) after each possible improvement tile draw
     let mut draw_tile_id_to_ukiere_tile_ids: HashMap<u8, Vec<(u8, Vec<u8>, u16)>> = HashMap::new();
@@ -115,8 +122,11 @@ fn run_basic_analysis(
         if _iter_number % 10000 == 0 {
             println!("trial {}", _iter_number);
         }
+        // start the trial: set up initial remaining tile count (remove visible tiles and the tiles from the starting hand)
+        let remaining_tile_count = remove_tile_ids_from_count_array([4u8; 34], visible_tile_ids);
         let mut remaining_tile_count =
-            remove_tile_ids_from_count_array([4u8; 34], visible_tile_ids);
+            remove_tile_ids_from_count_array(remaining_tile_count, &starting_hand_tile_ids);
+
         let mut hand = [0u8; 34];
         for tile_id in 0..starting_hand.len() {
             hand[tile_id] = starting_hand[tile_id];
@@ -298,11 +308,21 @@ mod tests {
         let expected_remaining_tile_count: [u8; 34] = [
             4, 4, 3, 2, 3, 3, 4, 4, 2, // manzu
             2, 3, 2, 4, 3, 3, 4, 3, 3, // pinzu
-            2, 4, 4, 3, 4, 2, 2, 3, 3, // souzu
+            2, 4, 4, 3, 4, 1, 2, 3, 3, // souzu
             2, 2, 1, 0, 2, 2, 2, // honor
         ];
+        let tile_id_4p = mahjong_tile::get_id_from_tile_text("4p").unwrap();
+        let tile_id_7p = mahjong_tile::get_id_from_tile_text("7p").unwrap();
+        let tile_id_5s = mahjong_tile::get_id_from_tile_text("5s").unwrap();
+        let tile_id_8s = mahjong_tile::get_id_from_tile_text("8s").unwrap();
         assert_eq!(remaining_tile_count, expected_remaining_tile_count);
-        assert_eq!(mahjong_tile::get_id_from_tile_text("1z").unwrap(), mahjong_tile::FIRST_WIND_ID);
+        assert_eq!(
+            remaining_tile_count[usize::from(tile_id_4p)]
+                + remaining_tile_count[usize::from(tile_id_7p)]
+                + remaining_tile_count[usize::from(tile_id_5s)]
+                + remaining_tile_count[usize::from(tile_id_8s)],
+            15
+        );
 
         let mut generated_tile_count_array = [0u32; 34];
         let num_iters = 1_000_000;
@@ -313,6 +333,19 @@ mod tests {
         println!(
             "generated tile distribution: over {} iterations\n{:?}",
             num_iters, generated_tile_count_array
+        );
+        let mut num_ukiere_iters = 0;
+        num_ukiere_iters += generated_tile_count_array[usize::from(tile_id_4p)];
+        num_ukiere_iters += generated_tile_count_array[usize::from(tile_id_7p)];
+        num_ukiere_iters += generated_tile_count_array[usize::from(tile_id_5s)];
+        num_ukiere_iters += generated_tile_count_array[usize::from(tile_id_8s)];
+        println!(
+            "sampled percentage of drawing an ukiere tile = {:.2}%",
+            (num_ukiere_iters as f64) / (num_iters as f64) * 100.0
+        );
+        println!(
+            "expected percentage (15 / 93) = {:.2}%",
+            15.0 / 93.0 * 100.0
         );
     }
 
