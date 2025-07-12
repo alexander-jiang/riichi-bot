@@ -1031,6 +1031,10 @@ pub fn get_shanten_after_each_discard(
     tile_count_array: [u8; 34],
     shanten_function: &dyn Fn([u8; 34]) -> i8,
 ) -> HashMap<i8, Vec<u8>> {
+    if get_total_tiles_from_count_array(tile_count_array) != 14 {
+        // TODO eventually will need to handle the case when there are more tiles due to quads
+        panic!("invalid number of tiles")
+    }
     // naive implementation: just try every possible discard -> call `get_shanten` -> pick the best overall
     // but is there a more clever way?
     let mut tile_id = 0u8;
@@ -1052,6 +1056,13 @@ pub fn get_shanten_after_each_discard(
         }
         tile_id += 1;
     }
+    // println!(
+    //     "shanten after each discard: {:?}",
+    //     shanten_by_discard_tile_id
+    //         .iter()
+    //         .map(|(shanten, tile_ids)| (*shanten, tile_ids_to_string(tile_ids)))
+    //         .collect::<HashMap<i8, String>>()
+    // );
     shanten_by_discard_tile_id
 }
 
@@ -2896,6 +2907,7 @@ mod tests {
 
         let best_shanten = get_best_shanten_after_discard(tile_count_array, &get_shanten_optimized);
 
+        // from the initial hand - try each discard
         for (
             discard_tile_id,
             shanten_after_discard,
@@ -2916,6 +2928,11 @@ mod tests {
             let new_count_array =
                 remove_tile_id_from_count_array(tile_count_array, discard_tile_id);
             let new_shanten = get_shanten_optimized(new_count_array);
+            // println!(
+            //     "hand {} is {} shanten",
+            //     mahjong_hand::tile_count_array_to_string(&new_count_array),
+            //     new_shanten
+            // );
 
             // for performance, only print out improve results (i.e. results after drawing an ukiere tile)
             // for the discards that result in best shanten (i.e. don't print out for suboptimal discards)
@@ -2927,7 +2944,7 @@ mod tests {
                         add_tile_id_to_count_array(new_count_array, improve_tile_id);
                     let mut options_after_ukiere_draw = get_most_ukiere_after_discard(
                         after_improve_draw_count_array,
-                        new_shanten - 1,
+                        new_shanten,
                         &get_shanten_optimized,
                         &get_ukiere_optimized,
                         other_visible_tiles,

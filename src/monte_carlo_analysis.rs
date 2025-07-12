@@ -2,7 +2,6 @@ extern crate test;
 
 pub use crate::mahjong_tile;
 pub use crate::shanten;
-use crate::shanten::add_tile_id_to_count_array;
 use rand::rngs::ThreadRng;
 use rand::Rng;
 use std::collections::HashMap;
@@ -123,9 +122,14 @@ fn run_basic_analysis(
             println!("trial {}", _iter_number);
         }
         // start the trial: set up initial remaining tile count (remove visible tiles and the tiles from the starting hand)
-        let remaining_tile_count = remove_tile_ids_from_count_array([4u8; 34], visible_tile_ids);
+        let mut total_visible_tiles_so_far =
+            shanten::combine_tile_ids_from_count_array_and_vec(starting_hand, visible_tile_ids);
+        // println!(
+        //     "total visible tiles so far: {}",
+        //     shanten::tile_ids_to_string(&total_visible_tiles_so_far)
+        // );
         let mut remaining_tile_count =
-            remove_tile_ids_from_count_array(remaining_tile_count, &starting_hand_tile_ids);
+            remove_tile_ids_from_count_array([4u8; 34], &total_visible_tiles_so_far);
 
         let mut hand = [0u8; 34];
         for tile_id in 0..starting_hand.len() {
@@ -133,15 +137,9 @@ fn run_basic_analysis(
         }
 
         // draw a tile
-        let mut total_visible_tiles_so_far =
-            shanten::combine_tile_ids_from_count_array_and_vec(starting_hand, visible_tile_ids);
-        // println!(
-        //     "total visible tiles so far: {}",
-        //     shanten::tile_ids_to_string(&total_visible_tiles_so_far)
-        // );
         for draw_number in 1..=max_allowed_draws {
             let drawn_tile_id = generate_random_tile_id_rng(remaining_tile_count);
-            let hand_tile_ids = shanten::get_tile_ids_from_count_array(hand);
+            // let hand_tile_ids = shanten::get_tile_ids_from_count_array(hand);
             // println!(
             //     "draw {}, hand = {}",
             //     mahjong_tile::get_tile_text_from_id(drawn_tile_id).unwrap(),
@@ -190,12 +188,9 @@ fn run_basic_analysis(
                 num_times_reached_tenpai += 1;
                 total_num_turns_to_reach_tenpai += u32::from(draw_number);
                 let draw_number_index = draw_number - 1;
-                let prev_times_reached_tenpai_on_this_turn = count_turns_reached_tenpai
-                    .get(usize::from(draw_number_index))
-                    .unwrap();
                 *count_turns_reached_tenpai
                     .get_mut(usize::from(draw_number_index))
-                    .unwrap() = *prev_times_reached_tenpai_on_this_turn + 1;
+                    .unwrap() += 1;
                 total_num_ukiere_at_tenpai += u32::from(max_num_ukiere_after_improve_discard);
                 break;
             }
