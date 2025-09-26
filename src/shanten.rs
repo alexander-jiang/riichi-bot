@@ -3434,6 +3434,120 @@ mod tests {
         );
     }
 
+    #[test]
+    fn wwyd_tenhou_hand2_east1_turn1() {
+        // 4557m2307p23067s6p - dora indicator 8s (I'm sitting west, dealer discarded 2z, south discarded 3z, and I just drew 6p -> 1 shanten)
+        // TODO parse red fives
+        // The main options are cut 4m vs cut 7m. Both lead to 1-shanten waiting on 14s14p, with upgrades to headless 1-shanten.
+        // In game, I cut 4m to try to chase 567 sanshoku.
+        // What is the loss in efficiency? Cutting 7m (instead of 4m) means my hand can also upgrade on 3m (in addition to 56m -> headless 1-shanten and 23s23p -> complete 1-shanten)
+        // What is the value-speed tradeoff? My hand already has 2 dora locked in - the remaining potential yaku are:
+        // tanyao (which isn't guaranteed due to the two 23 ryanmen shapes), pinfu (which is more likely but prevents the hand from calling),
+        // and 567 sanshoku (but calling 6m to complete 567m leads to headless 1-shanten, which could result in tanki wait at tenpai).
+        // -> can we open the hand at all? if we discard 4m and call 6m, that locks in sanshoku. But besides that, there isn't a completely
+        // safe option to call and guarantee yaku. For example, if I discard 4m or 7m and then decide to call on 4s, the 23p shape
+        // means I can't ron on 1p (and drawing 1p myself is worse: I don't have yaku since I opened the hand and I will be in furiten)
+        // -> so if we can't safely open the hand (unless we can call on 6m after cut 4m), is that extra han worth it to not be able to upgrade on 3m?
+        // with the call on 6m, the value is 3 han (and could be tanki wait)
+        // but without call, the value could be 3-4 hand (with riichi and pinfu) and the wait could still be a tanki wait
+        // the other thing is: it's so early in the hand, it seems unlikely that kamicha (player to my left) would discard a 6m for me to call
+        // -> overall, I think cutting 7m is better - I cannot guarantee yaku if I open the hand (unless I specifically call 6m for sanshoku,
+        // and kamicha probably shouldn't drop 6m this early into the hand)
+        let tiles_after_draw = tiles_to_count_array("4557m2357p23567s6p");
+        let shanten_after_discard =
+        get_best_shanten_after_discard(tiles_after_draw, &get_shanten_optimized);
+        assert_eq!(shanten_after_discard, 1);
+        let other_visible_tiles = Vec::new();
+        let best_ukiere_after_discard = get_most_ukiere_after_discard(
+            tiles_after_draw,
+            shanten_after_discard,
+            &get_shanten_optimized,
+            &get_ukiere_optimized,
+            &other_visible_tiles,
+        );
+        let mut expected_discard_ukiere: Vec<(u8, Vec<u8>, u16)> = Vec::new();
+        expected_discard_ukiere.push((
+            mahjong_tile::get_id_from_tile_text("4m").unwrap(),
+            tiles_to_tile_ids("14p14s"),
+            16,
+        ));
+        expected_discard_ukiere.push((
+            mahjong_tile::get_id_from_tile_text("7m").unwrap(),
+            tiles_to_tile_ids("14p14s"),
+            16,
+        ));
+        assert_discards_ukiere_match(&best_ukiere_after_discard, &expected_discard_ukiere);
+
+        let shanten_ukiere_after_each_discard = get_shanten_ukiere_after_each_discard(
+            tiles_after_draw,
+            &get_shanten_optimized,
+            &get_ukiere_optimized,
+            &other_visible_tiles,
+        );
+        print_shanten_ukiere_after_each_discard(
+            tiles_after_draw,
+            &shanten_ukiere_after_each_discard,
+            &other_visible_tiles,
+        );
+    }
+
+
+    #[test]
+    fn wwyd_tenhou_hand3_east4_turn6() {
+        // 2246778m234677p5p - dora indicator 2m (I'm sitting east, just drew 5p -> kutsuki 1-shanten, with 47m7p as floating tiles)
+        // self  discards: 3z7z1m9s4p
+        // south discards: 4z1p1s2p9p
+        // west  discards: 9m8m9s6m2s
+        // north discards: 3p8m5m8s2s
+        let tiles_after_draw = tiles_to_count_array("2246778m234677p5p");
+        let shanten_after_discard =
+        get_best_shanten_after_discard(tiles_after_draw, &get_shanten_optimized);
+        assert_eq!(shanten_after_discard, 1);
+        let other_visible_tiles = Vec::new();
+        let best_ukiere_after_discard = get_most_ukiere_after_discard(
+            tiles_after_draw,
+            shanten_after_discard,
+            &get_shanten_optimized,
+            &get_ukiere_optimized,
+            &other_visible_tiles,
+        );
+        let mut expected_discard_ukiere: Vec<(u8, Vec<u8>, u16)> = Vec::new();
+        expected_discard_ukiere.push((
+            mahjong_tile::get_id_from_tile_text("7m").unwrap(),
+            tiles_to_tile_ids("234569m1456789p"),
+            43,
+        ));
+        expected_discard_ukiere.push((
+            mahjong_tile::get_id_from_tile_text("4m").unwrap(),
+            tiles_to_tile_ids("256789m1456789p"),
+            41,
+        ));
+        expected_discard_ukiere.push((
+            mahjong_tile::get_id_from_tile_text("7p").unwrap(),
+            tiles_to_tile_ids("23456789m"),
+            25,
+        ));
+        expected_discard_ukiere.push((
+            mahjong_tile::get_id_from_tile_text("2m").unwrap(),
+            tiles_to_tile_ids("37m147p"),
+            15,
+        ));
+        assert_discards_ukiere_match(&best_ukiere_after_discard, &expected_discard_ukiere);
+
+        let shanten_ukiere_after_each_discard = get_shanten_ukiere_after_each_discard(
+            tiles_after_draw,
+            &get_shanten_optimized,
+            &get_ukiere_optimized,
+            &other_visible_tiles,
+        );
+        print_shanten_ukiere_after_each_discard(
+            tiles_after_draw,
+            &shanten_ukiere_after_each_discard,
+            &other_visible_tiles,
+        );
+    }
+
+
     // hand: "234678s2345577p6z" - tenpai (57p shanpon) - but how many upgrade tiles? and how much value does it add?
 }
 

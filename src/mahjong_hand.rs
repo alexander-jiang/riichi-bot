@@ -185,7 +185,11 @@ pub fn can_make_kanchan(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
 }
 
 // TODO test
+// TODO check total number of tiles
 fn is_incomplete_group(tile_count_array: &[u8; 34]) -> bool {
+    if get_total_num_tiles(tile_count_array) > 2 {
+        return false;
+    }
     for tile_id in 0..34u8 {
         let tile_idx = usize::from(tile_id);
         if tile_count_array[tile_idx] == 0 {
@@ -196,6 +200,30 @@ fn is_incomplete_group(tile_count_array: &[u8; 34]) -> bool {
         let is_complete =
             can_make_sequence(tile_count_array, tile_id) || tile_count_array[tile_idx] >= 3;
         return !is_complete;
+    }
+    return false;
+}
+
+fn get_total_num_tiles(tile_count_array: &[u8; 34]) -> u16 {
+    let mut total_num_tiles: u16 = 0;
+    for tile_id in 0..34u8 {
+        let tile_idx = usize::from(tile_id);
+        total_num_tiles = total_num_tiles.saturating_add(tile_count_array[tile_idx].into());
+    }
+    total_num_tiles
+}
+
+fn is_pair(tile_count_array: &[u8; 34]) -> bool {
+    if get_total_num_tiles(tile_count_array) != 2 {
+        return false;
+    }
+    for tile_id in 0..34u8 {
+        let tile_idx = usize::from(tile_id);
+        if tile_count_array[tile_idx] == 0 {
+            continue;
+        }
+
+        return tile_count_array[tile_idx] == 2;
     }
     return false;
 }
@@ -815,7 +843,13 @@ impl MahjongHand {
         let tenpai_groupings = self.build_shapes(1);
         for grouping in tenpai_groupings.iter() {
             for group in &grouping.groups_tile_counts {
-                if is_incomplete_group(group) {
+                // if there's 3 complete groups and this group is the only pair, we can't "complete" the pair into a triplet to make a winning hand
+                // but if we have 3 complete groups and 2 pairs, then we can complete either pair (shanpon wait)
+                if is_incomplete_group(group)
+                    && !(grouping.num_complete_groups == 3
+                        && grouping.num_pairs == 1
+                        && is_pair(group))
+                {
                     let tile_ids_to_complete = tile_ids_to_complete_group(group).unwrap();
                     for tile_id in tile_ids_to_complete {
                         if !tenpai_tiles.contains(&tile_id) {
@@ -1455,7 +1489,7 @@ mod tests {
         );
     }
 
-    fn tenpai_hand() -> MahjongHand {
+    fn ryanmen_tenpai_hand() -> MahjongHand {
         MahjongHand {
             // hand: 22s111234p34789m (wins on 25m)
             tiles: vec![
@@ -1477,9 +1511,53 @@ mod tests {
         }
     }
 
+    fn shanpon_tenpai_hand() -> MahjongHand {
+        MahjongHand {
+            // hand: 22s111234p33789m (wins on 2s3m)
+            tiles: vec![
+                mahjong_tile::MahjongTile::from_text("2s").unwrap(),
+                mahjong_tile::MahjongTile::from_text("2s").unwrap(),
+                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
+                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
+                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
+                mahjong_tile::MahjongTile::from_text("2p").unwrap(),
+                mahjong_tile::MahjongTile::from_text("3p").unwrap(),
+                mahjong_tile::MahjongTile::from_text("4p").unwrap(),
+                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
+                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
+                mahjong_tile::MahjongTile::from_text("7m").unwrap(),
+                mahjong_tile::MahjongTile::from_text("8m").unwrap(),
+                mahjong_tile::MahjongTile::from_text("9m").unwrap(),
+            ],
+            ..Default::default()
+        }
+    }
+
+    fn tanki_tenpai_hand() -> MahjongHand {
+        MahjongHand {
+            // hand: 2s111234p333789m (wins on 2s)
+            tiles: vec![
+                mahjong_tile::MahjongTile::from_text("2s").unwrap(),
+                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
+                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
+                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
+                mahjong_tile::MahjongTile::from_text("2p").unwrap(),
+                mahjong_tile::MahjongTile::from_text("3p").unwrap(),
+                mahjong_tile::MahjongTile::from_text("4p").unwrap(),
+                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
+                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
+                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
+                mahjong_tile::MahjongTile::from_text("7m").unwrap(),
+                mahjong_tile::MahjongTile::from_text("8m").unwrap(),
+                mahjong_tile::MahjongTile::from_text("9m").unwrap(),
+            ],
+            ..Default::default()
+        }
+    }
+
     #[test]
-    fn hand_is_tenpai() {
-        let hand = tenpai_hand();
+    fn hand_is_tenpai_ryanmen() {
+        let hand = ryanmen_tenpai_hand();
         assert!(hand.is_tenpai_brute_force());
         assert!(hand.is_tenpai_build_shapes());
         assert!(hand.is_tenpai());
@@ -1489,14 +1567,61 @@ mod tests {
         assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("5m").unwrap()));
 
         let tenpai_tile_ids = hand.get_tenpai_tiles_build_shapes();
+        // let tenpai_tile_id_strs: Vec<String> = tenpai_tile_ids
+        //     .iter()
+        //     .map(|tile_id| mahjong_tile::get_tile_text_from_id(*tile_id).unwrap())
+        //     .collect();
+        // println!("{}", tenpai_tile_id_strs.join(", "));
         assert_eq!(tenpai_tile_ids.len(), 2);
         assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2m").unwrap()));
         assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("5m").unwrap()));
     }
 
     #[test]
+    fn hand_is_tenpai_shanpon() {
+        let hand = shanpon_tenpai_hand();
+        assert!(hand.is_tenpai_brute_force());
+        assert!(hand.is_tenpai_build_shapes());
+        assert!(hand.is_tenpai());
+        let tenpai_tile_ids = hand.get_tenpai_tiles_brute_force();
+        assert_eq!(tenpai_tile_ids.len(), 2);
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2s").unwrap()));
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("3m").unwrap()));
+
+        let tenpai_tile_ids = hand.get_tenpai_tiles_build_shapes();
+        // let tenpai_tile_id_strs: Vec<String> = tenpai_tile_ids
+        //     .iter()
+        //     .map(|tile_id| mahjong_tile::get_tile_text_from_id(*tile_id).unwrap())
+        //     .collect();
+        // println!("{}", tenpai_tile_id_strs.join(", "));
+        assert_eq!(tenpai_tile_ids.len(), 2);
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2s").unwrap()));
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("3m").unwrap()));
+    }
+
+    #[test]
+    fn hand_is_tenpai_tanki() {
+        let hand = tanki_tenpai_hand();
+        assert!(hand.is_tenpai_brute_force());
+        assert!(hand.is_tenpai_build_shapes());
+        assert!(hand.is_tenpai());
+        let tenpai_tile_ids = hand.get_tenpai_tiles_brute_force();
+        assert_eq!(tenpai_tile_ids.len(), 1);
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2s").unwrap()));
+
+        let tenpai_tile_ids = hand.get_tenpai_tiles_build_shapes();
+        // let tenpai_tile_id_strs: Vec<String> = tenpai_tile_ids
+        //     .iter()
+        //     .map(|tile_id| mahjong_tile::get_tile_text_from_id(*tile_id).unwrap())
+        //     .collect();
+        // println!("{}", tenpai_tile_id_strs.join(", "));
+        assert_eq!(tenpai_tile_ids.len(), 1);
+        assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2s").unwrap()));
+    }
+
+    #[test]
     fn time_is_tenpai_brute_force() {
-        let hand = tenpai_hand();
+        let hand = ryanmen_tenpai_hand();
         let before = Instant::now();
         hand.is_tenpai_brute_force();
         println!(
@@ -1507,7 +1632,7 @@ mod tests {
 
     #[test]
     fn time_is_tenpai_build_shapes() {
-        let hand = tenpai_hand();
+        let hand = ryanmen_tenpai_hand();
         let before = Instant::now();
         hand.is_tenpai_build_shapes();
         println!(
@@ -1518,7 +1643,7 @@ mod tests {
 
     #[test]
     fn time_get_tenpai_tiles_brute_force() {
-        let hand = tenpai_hand();
+        let hand = ryanmen_tenpai_hand();
         let before = Instant::now();
         hand.get_tenpai_tiles_brute_force();
         println!(
