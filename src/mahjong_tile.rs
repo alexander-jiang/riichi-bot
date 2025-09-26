@@ -33,14 +33,14 @@
 
 use crate::mahjong_error;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MahjongTileSuit {
     Man,
     Pin,
     Sou,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MahjongTileValue {
     /// 1-9 m, p or s
     Number(u8, MahjongTileSuit),
@@ -188,11 +188,12 @@ pub fn get_num_tile_suit(tile_id: u8) -> Option<MahjongTileSuit> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct MahjongTile {
     value: MahjongTileValue,
     is_red: bool,
 }
+// TODO is it valid to compare based on MahjongTile::get_id() (i.e. should a red-five be considered equal to a normal five?)
 
 impl Default for MahjongTile {
     fn default() -> Self {
@@ -293,6 +294,53 @@ pub fn get_id_from_tile_text(tile_string: &str) -> Result<u8, mahjong_error::Mah
 
 pub fn get_tile_text_from_id(tile_id: u8) -> Result<String, mahjong_error::MahjongError> {
     MahjongTileValue::from_id(tile_id).map(|tile| tile.to_text())
+}
+
+// utility function to generate a list of `Tile` objects from a string
+pub fn get_tiles_from_string(tile_string: &str) -> Vec<MahjongTile> {
+    let mut tiles = Vec::new();
+    let mut tile_ranks_so_far: Vec<char> = Vec::new();
+    let tile_suit_chars = vec!['m', 'p', 's', 'z'];
+    for current_tile_string_char in tile_string.chars() {
+        if tile_suit_chars.contains(&current_tile_string_char) {
+            for tile_rank in tile_ranks_so_far {
+                let mut single_tile_string = String::new();
+                single_tile_string.push(tile_rank);
+                single_tile_string.push(current_tile_string_char.clone());
+                tiles.push(MahjongTile::from_text(single_tile_string.as_str()).unwrap());
+            }
+            tile_ranks_so_far = vec![];
+        } else {
+            // assume if it's not a tile suit char, then it's a tile rank
+            tile_ranks_so_far.push(current_tile_string_char);
+        }
+    }
+    tiles
+}
+
+/// Note: expects input string to be concatenated mspz notation e.g. 3m4m5m (and not 345m)
+pub fn tiles_to_tile_ids(tiles_string: &str) -> Vec<u8> {
+    let mut tile_ids = Vec::new();
+    let mut rank_chars: Vec<char> = Vec::new();
+    for char in tiles_string.chars() {
+        if char == 'm' || char == 's' || char == 'p' || char == 'z' {
+            if rank_chars.is_empty() {
+                panic!("expected some numbers/ranks to come before the suit character")
+            }
+            for rank_char in rank_chars {
+                let mut tile_string = String::new();
+                // println!("found tile {}{}", rank_char, char);
+                tile_string.push(rank_char);
+                tile_string.push(char);
+                let tile_id = get_id_from_tile_text(&tile_string).unwrap();
+                tile_ids.push(tile_id);
+            }
+            rank_chars = Vec::new();
+        } else {
+            rank_chars.push(char);
+        }
+    }
+    tile_ids
 }
 
 #[cfg(test)]
@@ -585,5 +633,78 @@ mod tests {
         };
 
         assert!(get_tile_text_from_id(34).is_err());
+    }
+
+    #[test]
+    fn test_get_tiles_from_string_single_suit() {
+        let tile_string = "2333344445678s".to_string();
+        let mut tiles_from_string = get_tiles_from_string(&tile_string);
+        tiles_from_string.sort();
+
+        let mut expected_tiles = vec![
+            MahjongTile::from_text("2s").unwrap(),
+            MahjongTile::from_text("3s").unwrap(),
+            MahjongTile::from_text("3s").unwrap(),
+            MahjongTile::from_text("3s").unwrap(),
+            MahjongTile::from_text("3s").unwrap(),
+            MahjongTile::from_text("4s").unwrap(),
+            MahjongTile::from_text("4s").unwrap(),
+            MahjongTile::from_text("4s").unwrap(),
+            MahjongTile::from_text("4s").unwrap(),
+            MahjongTile::from_text("5s").unwrap(),
+            MahjongTile::from_text("6s").unwrap(),
+            MahjongTile::from_text("7s").unwrap(),
+            MahjongTile::from_text("8s").unwrap(),
+        ];
+        expected_tiles.sort();
+        assert_eq!(tiles_from_string, expected_tiles);
+    }
+
+    #[test]
+    fn test_get_tiles_from_string_mixed_suits() {
+        let tile_string = "23445588s345p11z".to_string();
+        let mut tiles_from_string = get_tiles_from_string(&tile_string);
+        tiles_from_string.sort();
+
+        let mut expected_tiles = vec![
+            MahjongTile::from_text("2s").unwrap(),
+            MahjongTile::from_text("3s").unwrap(),
+            MahjongTile::from_text("4s").unwrap(),
+            MahjongTile::from_text("4s").unwrap(),
+            MahjongTile::from_text("5s").unwrap(),
+            MahjongTile::from_text("5s").unwrap(),
+            MahjongTile::from_text("8s").unwrap(),
+            MahjongTile::from_text("8s").unwrap(),
+            MahjongTile::from_text("3p").unwrap(),
+            MahjongTile::from_text("4p").unwrap(),
+            MahjongTile::from_text("5p").unwrap(),
+            MahjongTile::from_text("1z").unwrap(),
+            MahjongTile::from_text("1z").unwrap(),
+        ];
+        expected_tiles.sort();
+        assert_eq!(tiles_from_string, expected_tiles);
+
+        let tile_string = "122234m789s345p33z".to_string();
+        let mut tiles_from_string = get_tiles_from_string(&tile_string);
+        tiles_from_string.sort();
+
+        let mut expected_tiles = vec![
+            MahjongTile::from_text("3z").unwrap(),
+            MahjongTile::from_text("3z").unwrap(),
+            MahjongTile::from_text("1m").unwrap(),
+            MahjongTile::from_text("2m").unwrap(),
+            MahjongTile::from_text("2m").unwrap(),
+            MahjongTile::from_text("2m").unwrap(),
+            MahjongTile::from_text("3m").unwrap(),
+            MahjongTile::from_text("4m").unwrap(),
+            MahjongTile::from_text("7s").unwrap(),
+            MahjongTile::from_text("8s").unwrap(),
+            MahjongTile::from_text("9s").unwrap(),
+            MahjongTile::from_text("3p").unwrap(),
+            MahjongTile::from_text("4p").unwrap(),
+            MahjongTile::from_text("5p").unwrap(),
+        ];
+        expected_tiles.sort();
+        assert_eq!(tiles_from_string, expected_tiles);
     }
 }

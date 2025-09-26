@@ -3101,11 +3101,62 @@ mod tests {
         assert!(wait_tiles_human_strs.contains(&String::from("9s")));
     }
 
-
     #[test]
     fn test_tenpai_wait_tiles_sample_pro_test_q8() {
         // from https://mahjong-ny.com/features/sample-pro-test/
         // question 8: 1233455566678s
+        let tenpai_tiles = Vec::from([
+            tiles::Tile::from_string("1s"),
+            tiles::Tile::from_string("2s"),
+            tiles::Tile::from_string("3s"),
+            tiles::Tile::from_string("3s"),
+            tiles::Tile::from_string("4s"),
+            tiles::Tile::from_string("5s"),
+            tiles::Tile::from_string("5s"),
+            tiles::Tile::from_string("5s"),
+            tiles::Tile::from_string("6s"),
+            tiles::Tile::from_string("6s"),
+            tiles::Tile::from_string("6s"),
+            tiles::Tile::from_string("7s"),
+            tiles::Tile::from_string("8s"),
+        ]);
+
+        let tile_groups: Vec<tiles::TileGroup> = Vec::new();
+        let tenpai_tile_groups = tenpai_grouping(&tenpai_tiles, &tile_groups);
+        assert!(tenpai_tile_groups.is_some());
+
+        // calculator: https://riichi.harphield.com/tools/hand-analyzer/?hand=1233455566678s
+        let wait_tiles = get_all_tenpai_wait_tiles(&tenpai_tiles);
+        println!("tenpai wait tiles = {:?}", wait_tiles);
+        assert_eq!(wait_tiles.len(), 4);
+        let wait_tiles_human_strs: Vec<String> =
+            wait_tiles.iter().map(|tile| tile.to_string()).collect();
+        // from 1s , could be complete group or incomplete group:
+        // a) 1s tanki -> forces remaining tiles to form 4 complete groups in order to get tenpai -> 1|234|355566678 -> not tenpai
+        // b) 12s -> forces remaining tiles to form 3 complete groups and a pair in order to get tenpai -> 12|33|456|556678 or 12|345|35566678 -> not tenpai
+        // c) 13s -> 13|23455566678 -> 13|234|555|66|678 or 13|234|55|566678 -> kanchan 2s
+        // d) 123s -> 123|3455566678 ->
+        // 3 could be any:
+        // a) 3 is tanki: 123|3|456|556678 -> not tenpai
+        // b) 34s -> 123|34|55566678 -> 123|34|55|566678 or 123|34|555|66|678 -> ryanmen 25s
+        // c) 35s -> 123|35|45566678 -> 123|35|456|56678 -> not tenpai
+        // d) 345s -> 123|345|5566678 ->
+        // 5 could be any:
+        // a) 5 is tanki -> 123|345|5|566678 -> not tenpai
+        // b) 55s -> 123|345|55|66678 -> 123|345|55|666|78 or 123|345|55|66|678 -> ryanmen 69s or shanpon 56s
+        // b) 56s -> 123|345|56|56678 -> not tenpai
+        // c) 57s -> 123|345|57|56668 -> not tenpai
+        // d) 567s -> 123|345|567|5668 -> not tenpai
+        assert!(wait_tiles_human_strs.contains(&String::from("2s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("5s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("6s")));
+        assert!(wait_tiles_human_strs.contains(&String::from("9s")));
+    }
+
+    #[test]
+    fn test_tenpai_wait_tiles_sample_pro_test_q9() {
+        // from https://mahjong-ny.com/features/sample-pro-test/
+        // question 9: 2333344445566s
         let tenpai_tiles = Vec::from([
             tiles::Tile::from_string("1s"),
             tiles::Tile::from_string("2s"),

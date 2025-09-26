@@ -2,13 +2,17 @@ end goal: evaluate and analyse mahjong plays (like a chess engine) with interpre
 
 ### milestone 1: Fundamentals
 
-- recognizing a winning hand + yaku
-- recognizing a tenpai hand (which is needed for riichi)
+- recognizing a winning hand
+- recognizing whether a hand is tenpai or not (which is needed for riichi)
+  - not strictly necessary to know which tiles are winning, but that will be needed for han/fu scoring (e.g. if the hand can be grouped to have a ryanmen wait, a non-ryanmen wait, or both)
+- recognizing all yaku
 
 ### milestone 2: Tenpai Value and Shanten
 
 - point counting for a winning hand based on han and fu
-- in tenpai, what are the winning tiles, and what is the point value of those winning tiles? (to get an expected value of tenpai hand winning) -> should the player call for riichi or is that call unlikely to win?
+  - need to be able to determine all possible groupings of the winning hand's tiles, and then pick the one with the maximum value (e.g. in a choice between pinfu + ryanmen wait or non-ryanmen wait -- should score as pinfu + ryanmen wait e.g. 456m123s3456678p -> winning on 6p could be considered a tanki wait: 345-6-678p or a ryanmen wait: 345-66-78p)
+  - need to track many other things besides the tiles in the hand: which tile groups are open/declared, what is the player's seat wind, what is the round win, where was the winning tile drawn from (self-draw, dead-wall-draw after a kan, or claimed from discard)
+- in tenpai, what are the winning tiles, and what is the point value for each winning tile? (to get an expected value of tenpai hand winning) -> should the player call for riichi or is that call unlikely to win?
 - how close is the player's hand to tenpai? (N-shanten i.e. N away from tenpai)
   - For 1-shanten hands, what is the likelihood of getting to tenpai, and then winning (once you get to tenpai, you can win off of any player's discard -- some yaku aren't required to be closed, so they can progress off of other player's discards as well)
 - what yaku are available for the player given the current game state? (round wind, seat wind, dead tiles, the player's tiles, whether the player's hand is open / closed)

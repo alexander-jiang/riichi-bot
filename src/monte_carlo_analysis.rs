@@ -239,7 +239,7 @@ mod tests {
         // shimo (south): 8p4z1z2z3p3p9s
         // toimen (west): 4z5z6z3z1s3z7z
         // kami  (north): 4z1z6z5z1s4m9m
-        let visible_tiles = shanten::tiles_to_tile_ids(
+        let visible_tiles = mahjong_tile::tiles_to_tile_ids(
             "6s4z2z3z9m9p7z6m2p8p4z1z2z3p3p9s4z5z6z3z1s3z7z4z1z6z5z1s4m9m",
         );
         run_basic_analysis(starting_hand, &visible_tiles, 100_000, 12);
@@ -291,11 +291,11 @@ mod tests {
 
     #[test]
     fn test_random_tile_distribution() {
-        let mut visible_tile_ids = shanten::tiles_to_tile_ids(
+        let mut visible_tile_ids = mahjong_tile::tiles_to_tile_ids(
             "6s4z2z3z9m9p7z6m2p8p4z1z2z3p3p9s4z5z6z3z1s3z7z4z1z6z5z1s4m9m",
         );
         // hand after discarding 2p
-        let mut hand_tile_ids = shanten::tiles_to_tile_ids("345m1156p46778s6s");
+        let mut hand_tile_ids = mahjong_tile::tiles_to_tile_ids("345m1156p46778s6s");
         visible_tile_ids.append(&mut hand_tile_ids);
 
         let remaining_tile_count = remove_tile_ids_from_count_array([4u8; 34], &visible_tile_ids);
@@ -381,7 +381,7 @@ mod tests {
     fn bench_remove_tile_ids_from_count_array(b: &mut Bencher) {
         // 30.17 ns/iter (+/- 1.05)
         let remaining_tile_count = [4u8; 34];
-        let visible_tile_ids = shanten::tiles_to_tile_ids(
+        let visible_tile_ids = mahjong_tile::tiles_to_tile_ids(
             "6s4z2z3z9m9p7z6m2p8p4z1z2z3p3p9s4z5z6z3z1s3z7z4z1z6z5z1s4m9m",
         );
         b.iter(|| remove_tile_ids_from_count_array(remaining_tile_count, &visible_tile_ids));

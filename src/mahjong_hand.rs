@@ -1230,11 +1230,7 @@ mod tests {
     #[test]
     fn hand_add_tile_and_get_tile_count_array() {
         let mut hand = MahjongHand {
-            tiles: vec![
-                mahjong_tile::MahjongTile::from_text("1m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3z").unwrap(),
-            ],
+            tiles: mahjong_tile::get_tiles_from_string("12m3z"),
             ..Default::default()
         };
 
@@ -1280,11 +1276,7 @@ mod tests {
     #[test]
     fn hand_get_and_update_tile_count_array() {
         let mut hand = MahjongHand {
-            tiles: vec![
-                mahjong_tile::MahjongTile::from_text("1m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3z").unwrap(),
-            ],
+            tiles: mahjong_tile::get_tiles_from_string("12m3z"),
             ..Default::default()
         };
         assert!(hand.tile_count_array.is_none());
@@ -1307,24 +1299,8 @@ mod tests {
     #[test]
     fn hand_is_winning_shape() {
         let hand = MahjongHand {
-            // hand: 22234m789s345p33z - waits on 2m,5m,3z
-            tiles: vec![
-                mahjong_tile::MahjongTile::from_text("3z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("7s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("8s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("9s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("5p").unwrap(),
-                // add a 2m tile to make it a winning hand
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-            ],
+            // hand: 22234m789s345p33z - waits on 2m,5m,3z, so add a 2m tile to make it a winning hand
+            tiles: mahjong_tile::get_tiles_from_string("22234m789s345p33z2m"),
             ..Default::default()
         };
         assert!(hand.is_winning_shape_iterative());
@@ -1336,24 +1312,8 @@ mod tests {
 
     fn complex_winning_shape_hand() -> MahjongHand {
         MahjongHand {
-            // hand: 2223444567m111z - waits on 1m,2m,3m,4m,5m,8m
-            tiles: vec![
-                mahjong_tile::MahjongTile::from_text("1z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("5m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("6m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("7m").unwrap(),
-                // add a 3m tile to make it a winning hand
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-            ],
+            // hand: 2223444567m111z - waits on 1m,2m,3m,4m,5m,8m, so add a 3m tile to make it a winning hand
+            tiles: mahjong_tile::get_tiles_from_string("2223444567m111z3m"),
             ..Default::default()
         }
     }
@@ -1371,22 +1331,7 @@ mod tests {
     fn not_winning_shape_hand() -> MahjongHand {
         MahjongHand {
             // hand: 122234m789s345p33z
-            tiles: vec![
-                mahjong_tile::MahjongTile::from_text("3z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("7s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("8s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("9s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("5p").unwrap(),
-            ],
+            tiles: mahjong_tile::get_tiles_from_string("122234m789s345p33z"),
             ..Default::default()
         }
     }
@@ -1492,21 +1437,7 @@ mod tests {
     fn ryanmen_tenpai_hand() -> MahjongHand {
         MahjongHand {
             // hand: 22s111234p34789m (wins on 25m)
-            tiles: vec![
-                mahjong_tile::MahjongTile::from_text("2s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("7m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("8m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("9m").unwrap(),
-            ],
+            tiles: mahjong_tile::get_tiles_from_string("22s111234p34789m"),
             ..Default::default()
         }
     }
@@ -1514,21 +1445,7 @@ mod tests {
     fn shanpon_tenpai_hand() -> MahjongHand {
         MahjongHand {
             // hand: 22s111234p33789m (wins on 2s3m)
-            tiles: vec![
-                mahjong_tile::MahjongTile::from_text("2s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("7m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("8m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("9m").unwrap(),
-            ],
+            tiles: mahjong_tile::get_tiles_from_string("22s111234p33789m"),
             ..Default::default()
         }
     }
@@ -1536,21 +1453,7 @@ mod tests {
     fn tanki_tenpai_hand() -> MahjongHand {
         MahjongHand {
             // hand: 2s111234p333789m (wins on 2s)
-            tiles: vec![
-                mahjong_tile::MahjongTile::from_text("2s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("7m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("8m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("9m").unwrap(),
-            ],
+            tiles: mahjong_tile::get_tiles_from_string("2s111234p333789m"),
             ..Default::default()
         }
     }
@@ -1655,21 +1558,7 @@ mod tests {
     fn not_tenpai_hand() -> MahjongHand {
         MahjongHand {
             // hand: 23445588s345p11z
-            tiles: vec![
-                mahjong_tile::MahjongTile::from_text("1z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1z").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("5s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("5s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("8s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("8s").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("5p").unwrap(),
-            ],
+            tiles: mahjong_tile::get_tiles_from_string("23445588s345p11z"),
             ..Default::default()
         }
     }
@@ -1690,21 +1579,7 @@ mod tests {
         // aka pure nine gates
         MahjongHand {
             // hand: 11123445678999p (wins on 123456789p)
-            tiles: vec![
-                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("1p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("2p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("5p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("6p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("7p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("8p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("9p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("9p").unwrap(),
-                mahjong_tile::MahjongTile::from_text("9p").unwrap(),
-            ],
+            tiles: mahjong_tile::get_tiles_from_string("11123445678999p"),
             ..Default::default()
         }
     }
@@ -2104,12 +1979,7 @@ mod tests {
     fn nobetan_shape() -> MahjongHand {
         MahjongHand {
             // hand: 2m3m4m5m
-            tiles: vec![
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("5m").unwrap(),
-            ],
+            tiles: mahjong_tile::get_tiles_from_string("2345m"),
             ..Default::default()
         }
     }
@@ -2134,15 +2004,7 @@ mod tests {
     fn embedded_ryankan_shape() -> MahjongHand {
         MahjongHand {
             // hand: 2m3m3m4m5m7m8m
-            tiles: vec![
-                mahjong_tile::MahjongTile::from_text("2m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("3m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("4m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("5m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("7m").unwrap(),
-                mahjong_tile::MahjongTile::from_text("8m").unwrap(),
-            ],
+            tiles: mahjong_tile::get_tiles_from_string("234578m"),
             ..Default::default()
         }
     }
