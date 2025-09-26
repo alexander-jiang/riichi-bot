@@ -343,6 +343,13 @@ pub fn tiles_to_tile_ids(tiles_string: &str) -> Vec<u8> {
     tile_ids
 }
 
+pub fn tile_ids_to_strings(tile_ids: &Vec<u8>) -> Vec<String> {
+    tile_ids
+        .iter()
+        .map(|tile_id| get_tile_text_from_id(*tile_id).unwrap())
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1470,10 +1470,7 @@ mod tests {
         assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("5m").unwrap()));
 
         let tenpai_tile_ids = hand.get_tenpai_tiles_build_shapes();
-        // let tenpai_tile_id_strs: Vec<String> = tenpai_tile_ids
-        //     .iter()
-        //     .map(|tile_id| mahjong_tile::get_tile_text_from_id(*tile_id).unwrap())
-        //     .collect();
+        // let tenpai_tile_id_strs = mahjong_tile::tile_ids_to_strings(&tenpai_tile_ids);
         // println!("{}", tenpai_tile_id_strs.join(", "));
         assert_eq!(tenpai_tile_ids.len(), 2);
         assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2m").unwrap()));
@@ -1492,10 +1489,7 @@ mod tests {
         assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("3m").unwrap()));
 
         let tenpai_tile_ids = hand.get_tenpai_tiles_build_shapes();
-        // let tenpai_tile_id_strs: Vec<String> = tenpai_tile_ids
-        //     .iter()
-        //     .map(|tile_id| mahjong_tile::get_tile_text_from_id(*tile_id).unwrap())
-        //     .collect();
+        // let tenpai_tile_id_strs = mahjong_tile::tile_ids_to_strings(&tenpai_tile_ids);
         // println!("{}", tenpai_tile_id_strs.join(", "));
         assert_eq!(tenpai_tile_ids.len(), 2);
         assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2s").unwrap()));
@@ -1513,10 +1507,7 @@ mod tests {
         assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2s").unwrap()));
 
         let tenpai_tile_ids = hand.get_tenpai_tiles_build_shapes();
-        // let tenpai_tile_id_strs: Vec<String> = tenpai_tile_ids
-        //     .iter()
-        //     .map(|tile_id| mahjong_tile::get_tile_text_from_id(*tile_id).unwrap())
-        //     .collect();
+        // let tenpai_tile_id_strs = mahjong_tile::tile_ids_to_strings(&tenpai_tile_ids);
         // println!("{}", tenpai_tile_id_strs.join(", "));
         assert_eq!(tenpai_tile_ids.len(), 1);
         assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2s").unwrap()));
@@ -1578,8 +1569,8 @@ mod tests {
     fn chuuren_poutou_tenpai_hand() -> MahjongHand {
         // aka pure nine gates
         MahjongHand {
-            // hand: 11123445678999p (wins on 123456789p)
-            tiles: mahjong_tile::get_tiles_from_string("11123445678999p"),
+            // hand: 1112345678999p (wins on 123456789p)
+            tiles: mahjong_tile::get_tiles_from_string("1112345678999p"),
             ..Default::default()
         }
     }
@@ -1591,6 +1582,8 @@ mod tests {
         assert!(hand.is_tenpai_build_shapes());
         assert!(hand.is_tenpai());
         let tenpai_tile_ids = hand.get_tenpai_tiles_brute_force();
+        let tenpai_tile_id_strs = mahjong_tile::tile_ids_to_strings(&tenpai_tile_ids);
+        println!("{}", tenpai_tile_id_strs.join(", "));
         assert_eq!(tenpai_tile_ids.len(), 9);
         assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("1p").unwrap()));
         assert!(tenpai_tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2p").unwrap()));
