@@ -1,5 +1,10 @@
 # Diary
 
+### Sep 26 2025
+
+- Fixed bug with `mahjong_hand::MahjongHand::get_tenpai_tiles_build_shapes` function falsely saying that completing a pair into a triplet would be a winning tile (even if the hand has 3 complete groups and 1 pair and 1 non-pair incomplete group)
+- Fixed bug with tenpai `tile_grouping::get_all_tenpai_wait_tiles` function allowing to be tenpai on a tile when all four copies of that tile are in your hand
+
 ### Jul 7 2025
 
 Fixed the bug with the monte carlo basic analysis: need to include the tiles that are in the starting hand from the remaining tile count array when initializing the pool of tiles to draw from, which means the tenpai rate on the first turn matches the expectation (should be 15/93 = 16.13%).
