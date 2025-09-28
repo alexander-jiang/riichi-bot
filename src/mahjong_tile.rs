@@ -33,22 +33,27 @@
 
 use crate::mahjong_error;
 
+/// One of the numbered mahjong tile suits (i.e. excludes Wind and Dragon suits)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum MahjongTileSuit {
+pub enum MahjongTileNumberedSuit {
     Man,
     Pin,
     Sou,
 }
 
+/// One of the distinct Mahjong tile values (does not differentiate between red tiles and non-red tiles)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MahjongTileValue {
     /// 1-9 m, p or s
-    Number(u8, MahjongTileSuit),
+    Number(u8, MahjongTileNumberedSuit),
     /// 1-4z
     Wind(u8),
     /// 5-7z
     Dragon(u8),
 }
+
+/// An integer representation of a `MahjongTileValue` (maps 1-to-1 for more compact storage)
+pub struct MahjongTileId(pub u8);
 
 pub const NUM_DISTINCT_TILE_VALUES: u8 = 34;
 pub const FIRST_PINZU_ID: u8 = 9;
@@ -71,9 +76,9 @@ impl MahjongTileValue {
                     });
                 }
                 match *tile_suit {
-                    MahjongTileSuit::Man => Ok(val - 1),
-                    MahjongTileSuit::Pin => Ok(val - 1 + FIRST_PINZU_ID),
-                    MahjongTileSuit::Sou => Ok(val - 1 + FIRST_SOUZU_ID),
+                    MahjongTileNumberedSuit::Man => Ok(val - 1),
+                    MahjongTileNumberedSuit::Pin => Ok(val - 1 + FIRST_PINZU_ID),
+                    MahjongTileNumberedSuit::Sou => Ok(val - 1 + FIRST_SOUZU_ID),
                 }
             }
             MahjongTileValue::Wind(value) => {
@@ -112,18 +117,18 @@ impl MahjongTileValue {
         }
         if id < FIRST_PINZU_ID {
             // 0-8 is manzu (1m-9m)
-            return Ok(MahjongTileValue::Number(id + 1, MahjongTileSuit::Man));
+            return Ok(MahjongTileValue::Number(id + 1, MahjongTileNumberedSuit::Man));
         } else if id < FIRST_SOUZU_ID {
             // 9-17 is pinzu (1p-9p)
             return Ok(MahjongTileValue::Number(
                 (id - FIRST_PINZU_ID) + 1,
-                MahjongTileSuit::Pin,
+                MahjongTileNumberedSuit::Pin,
             ));
         } else if id < FIRST_WIND_ID {
             // 18-26 is souzu (1s-9s)
             return Ok(MahjongTileValue::Number(
                 (id - FIRST_SOUZU_ID) + 1,
-                MahjongTileSuit::Sou,
+                MahjongTileNumberedSuit::Sou,
             ));
         } else if id < FIRST_DRAGON_ID {
             // 27-30 is winds (1z-4z)
@@ -141,9 +146,9 @@ impl MahjongTileValue {
                 let mut tile_string = String::new();
                 tile_string.push_str(&(rank.to_string()));
                 tile_string.push_str(match suit {
-                    MahjongTileSuit::Man => "m",
-                    MahjongTileSuit::Pin => "p",
-                    MahjongTileSuit::Sou => "s",
+                    MahjongTileNumberedSuit::Man => "m",
+                    MahjongTileNumberedSuit::Pin => "p",
+                    MahjongTileNumberedSuit::Sou => "s",
                 });
                 tile_string
             }
@@ -174,16 +179,16 @@ pub fn get_num_tile_rank(tile_id: u8) -> Option<u8> {
 
 /// Returns Some with the suit of the tile (man, pin, or sou) if the tile
 /// is in a numbered suit. Returns None otherise.
-pub fn get_num_tile_suit(tile_id: u8) -> Option<MahjongTileSuit> {
+pub fn get_num_tile_suit(tile_id: u8) -> Option<MahjongTileNumberedSuit> {
     if tile_id >= FIRST_HONOR_ID {
         None
     } else {
         if tile_id < 9 {
-            Some(MahjongTileSuit::Man)
+            Some(MahjongTileNumberedSuit::Man)
         } else if tile_id < 18 {
-            Some(MahjongTileSuit::Pin)
+            Some(MahjongTileNumberedSuit::Pin)
         } else {
-            Some(MahjongTileSuit::Sou)
+            Some(MahjongTileNumberedSuit::Sou)
         }
     }
 }
@@ -239,9 +244,9 @@ impl MahjongTile {
         match second_char {
             suit if ['m', 'p', 's'].contains(&suit) => {
                 let tile_suit = match suit {
-                    'm' => MahjongTileSuit::Man,
-                    'p' => MahjongTileSuit::Pin,
-                    's' => MahjongTileSuit::Sou,
+                    'm' => MahjongTileNumberedSuit::Man,
+                    'p' => MahjongTileNumberedSuit::Pin,
+                    's' => MahjongTileNumberedSuit::Sou,
                     _ => {
                         return Err(mahjong_error::MahjongError::new(
                             "Expected number suit, should be m, p, or s",
@@ -296,7 +301,19 @@ pub fn get_tile_text_from_id(tile_id: u8) -> Result<String, mahjong_error::Mahjo
     MahjongTileValue::from_id(tile_id).map(|tile| tile.to_text())
 }
 
-// utility function to generate a list of `Tile` objects from a string
+// ##### CONVERSION FUNCTIONS #####
+// Individual tiles can be represented as:
+// - `MahjongTile` objects, which distinguish between red-fives and non-red-fives (useful for scoring, but not as useful for shanten/tenpai analysis)
+// - `u8` tile_id values, which do not distinguish between red-fives and non-red-fives
+// - String tile representation in MSPZ notation e.g. "1z" -> east wind, "3p" -> 3-pin (can represent red fives as "0" i.e. "0s" means red-5-sou vs "5s" means non-red-5-sou)
+// Groups/sets of tiles (e.g. a meld, a hand, etc.) can be represented as:
+// - a collection (e.g. `Vec`) of any of the above, but usually either `Vec<MahjongTile>` or `Vec<u8>` -- it
+//   doesn't have to be a `Vec`, what we really want is a multi-set (i.e. duplicates are allowed and order doesn't
+//   matter i.e. [1s, 2s, 3s] should be equal to [3s, 1s, 2s], for gameplay purposes, we can have multiple tiles of the same value/type)
+// - a "count array" i.e. a `[u8; 34]` array, where the value at index i represents the number of tiles of tile_id = i. For example, [1, 2, 0, 0, ..., 0] means [1m, 2m, 2m]
+// - a condensed String representation in MSPZ notation e.g. "123s444p555z" -> [1s, 2s, 3s, 4p, 4p, 4p, 5z, 5z, 5z]
+
+// utility function to generate a list of `MahjongTile` objects from a string
 pub fn get_tiles_from_string(tile_string: &str) -> Vec<MahjongTile> {
     let mut tiles = Vec::new();
     let mut tile_ranks_so_far: Vec<char> = Vec::new();
@@ -358,19 +375,19 @@ mod tests {
     #[test]
     fn number_tile_ids_suit_and_rank() {
         // tile_id for 1m = 0
-        assert_eq!(get_num_tile_suit(0), Some(MahjongTileSuit::Man));
+        assert_eq!(get_num_tile_suit(0), Some(MahjongTileNumberedSuit::Man));
         assert_eq!(get_num_tile_rank(0), Some(1));
 
         // tile_id for 5m = 4
-        assert_eq!(get_num_tile_suit(4), Some(MahjongTileSuit::Man));
+        assert_eq!(get_num_tile_suit(4), Some(MahjongTileNumberedSuit::Man));
         assert_eq!(get_num_tile_rank(4), Some(5));
 
         // tile_id for 7p = 15
-        assert_eq!(get_num_tile_suit(15), Some(MahjongTileSuit::Pin));
+        assert_eq!(get_num_tile_suit(15), Some(MahjongTileNumberedSuit::Pin));
         assert_eq!(get_num_tile_rank(15), Some(7));
 
         // tile_id for 2s = 19
-        assert_eq!(get_num_tile_suit(19), Some(MahjongTileSuit::Sou));
+        assert_eq!(get_num_tile_suit(19), Some(MahjongTileNumberedSuit::Sou));
         assert_eq!(get_num_tile_rank(19), Some(2));
 
         // tile_id for 1z = 27
@@ -388,25 +405,25 @@ mod tests {
 
     #[test]
     fn tile_value_to_id() {
-        let one_man = MahjongTileValue::Number(1, MahjongTileSuit::Man);
+        let one_man = MahjongTileValue::Number(1, MahjongTileNumberedSuit::Man);
         assert_eq!(one_man.to_id(), Ok(0));
-        let five_man = MahjongTileValue::Number(5, MahjongTileSuit::Man);
+        let five_man = MahjongTileValue::Number(5, MahjongTileNumberedSuit::Man);
         assert_eq!(five_man.to_id(), Ok(4));
-        let nine_man = MahjongTileValue::Number(9, MahjongTileSuit::Man);
+        let nine_man = MahjongTileValue::Number(9, MahjongTileNumberedSuit::Man);
         assert_eq!(nine_man.to_id(), Ok(8));
 
-        let three_pin = MahjongTileValue::Number(3, MahjongTileSuit::Pin);
+        let three_pin = MahjongTileValue::Number(3, MahjongTileNumberedSuit::Pin);
         assert_eq!(three_pin.to_id(), Ok(11));
-        let four_pin = MahjongTileValue::Number(4, MahjongTileSuit::Pin);
+        let four_pin = MahjongTileValue::Number(4, MahjongTileNumberedSuit::Pin);
         assert_eq!(four_pin.to_id(), Ok(12));
-        let seven_pin = MahjongTileValue::Number(7, MahjongTileSuit::Pin);
+        let seven_pin = MahjongTileValue::Number(7, MahjongTileNumberedSuit::Pin);
         assert_eq!(seven_pin.to_id(), Ok(15));
 
-        let two_sou = MahjongTileValue::Number(2, MahjongTileSuit::Sou);
+        let two_sou = MahjongTileValue::Number(2, MahjongTileNumberedSuit::Sou);
         assert_eq!(two_sou.to_id(), Ok(19));
-        let six_sou = MahjongTileValue::Number(6, MahjongTileSuit::Sou);
+        let six_sou = MahjongTileValue::Number(6, MahjongTileNumberedSuit::Sou);
         assert_eq!(six_sou.to_id(), Ok(23));
-        let eight_sou = MahjongTileValue::Number(8, MahjongTileSuit::Sou);
+        let eight_sou = MahjongTileValue::Number(8, MahjongTileNumberedSuit::Sou);
         assert_eq!(eight_sou.to_id(), Ok(25));
 
         let east_wind = MahjongTileValue::Wind(1);
@@ -425,11 +442,11 @@ mod tests {
         assert_eq!(red_dragon.to_id(), Ok(33));
 
         // invalid to_id values:
-        let invalid_man = MahjongTileValue::Number(0, MahjongTileSuit::Man);
+        let invalid_man = MahjongTileValue::Number(0, MahjongTileNumberedSuit::Man);
         assert!(invalid_man.to_id().is_err());
-        let invalid_sou = MahjongTileValue::Number(10, MahjongTileSuit::Sou);
+        let invalid_sou = MahjongTileValue::Number(10, MahjongTileNumberedSuit::Sou);
         assert!(invalid_sou.to_id().is_err());
-        let invalid_pin = MahjongTileValue::Number(11, MahjongTileSuit::Pin);
+        let invalid_pin = MahjongTileValue::Number(11, MahjongTileNumberedSuit::Pin);
         assert!(invalid_pin.to_id().is_err());
 
         let invalid_wind = MahjongTileValue::Wind(0);
@@ -444,25 +461,25 @@ mod tests {
 
     #[test]
     fn tile_value_from_id() {
-        let one_man = MahjongTileValue::Number(1, MahjongTileSuit::Man);
+        let one_man = MahjongTileValue::Number(1, MahjongTileNumberedSuit::Man);
         assert_eq!(MahjongTileValue::from_id(0), Ok(one_man));
-        let five_man = MahjongTileValue::Number(5, MahjongTileSuit::Man);
+        let five_man = MahjongTileValue::Number(5, MahjongTileNumberedSuit::Man);
         assert_eq!(MahjongTileValue::from_id(4), Ok(five_man));
-        let nine_man = MahjongTileValue::Number(9, MahjongTileSuit::Man);
+        let nine_man = MahjongTileValue::Number(9, MahjongTileNumberedSuit::Man);
         assert_eq!(MahjongTileValue::from_id(8), Ok(nine_man));
 
-        let three_pin = MahjongTileValue::Number(3, MahjongTileSuit::Pin);
+        let three_pin = MahjongTileValue::Number(3, MahjongTileNumberedSuit::Pin);
         assert_eq!(MahjongTileValue::from_id(11), Ok(three_pin));
-        let four_pin = MahjongTileValue::Number(4, MahjongTileSuit::Pin);
+        let four_pin = MahjongTileValue::Number(4, MahjongTileNumberedSuit::Pin);
         assert_eq!(MahjongTileValue::from_id(12), Ok(four_pin));
-        let seven_pin = MahjongTileValue::Number(7, MahjongTileSuit::Pin);
+        let seven_pin = MahjongTileValue::Number(7, MahjongTileNumberedSuit::Pin);
         assert_eq!(MahjongTileValue::from_id(15), Ok(seven_pin));
 
-        let two_sou = MahjongTileValue::Number(2, MahjongTileSuit::Sou);
+        let two_sou = MahjongTileValue::Number(2, MahjongTileNumberedSuit::Sou);
         assert_eq!(MahjongTileValue::from_id(19), Ok(two_sou));
-        let six_sou = MahjongTileValue::Number(6, MahjongTileSuit::Sou);
+        let six_sou = MahjongTileValue::Number(6, MahjongTileNumberedSuit::Sou);
         assert_eq!(MahjongTileValue::from_id(23), Ok(six_sou));
-        let eight_sou = MahjongTileValue::Number(8, MahjongTileSuit::Sou);
+        let eight_sou = MahjongTileValue::Number(8, MahjongTileNumberedSuit::Sou);
         assert_eq!(MahjongTileValue::from_id(25), Ok(eight_sou));
 
         let east_wind = MahjongTileValue::Wind(1);
@@ -490,28 +507,28 @@ mod tests {
         assert!(one_man.is_ok());
         let one_man_tile = one_man.unwrap();
         assert!(
-            one_man_tile.value == MahjongTileValue::Number(1, MahjongTileSuit::Man)
+            one_man_tile.value == MahjongTileValue::Number(1, MahjongTileNumberedSuit::Man)
                 && !one_man_tile.is_red
         );
         let three_pin = MahjongTile::from_text("3p");
         assert!(three_pin.is_ok());
         let three_pin_tile = three_pin.unwrap();
         assert!(
-            three_pin_tile.value == MahjongTileValue::Number(3, MahjongTileSuit::Pin)
+            three_pin_tile.value == MahjongTileValue::Number(3, MahjongTileNumberedSuit::Pin)
                 && !three_pin_tile.is_red
         );
         let five_sou = MahjongTile::from_text("5s");
         assert!(five_sou.is_ok());
         let five_sou_tile = five_sou.unwrap();
         assert!(
-            five_sou_tile.value == MahjongTileValue::Number(5, MahjongTileSuit::Sou)
+            five_sou_tile.value == MahjongTileValue::Number(5, MahjongTileNumberedSuit::Sou)
                 && !five_sou_tile.is_red
         );
         let red_five_sou = MahjongTile::from_text("0s");
         assert!(red_five_sou.is_ok());
         let red_five_sou_tile = red_five_sou.unwrap();
         assert!(
-            red_five_sou_tile.value == MahjongTileValue::Number(5, MahjongTileSuit::Sou)
+            red_five_sou_tile.value == MahjongTileValue::Number(5, MahjongTileNumberedSuit::Sou)
                 && red_five_sou_tile.is_red
         );
 

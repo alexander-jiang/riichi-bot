@@ -1198,7 +1198,7 @@ impl MahjongHand {
 //             }
 //         }
 
-//         let honor_suit = mahjong_tile::MahjongTileSuit::Honor;
+//         let honor_suit = mahjong_tile::MahjongTileNumberedSuit::Honor;
 //         match self.tile_counts.get(&honor_suit) {
 //             Some(&suit_counts) => {
 //                 for idx in 0..7 {
