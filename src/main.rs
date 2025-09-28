@@ -9,10 +9,10 @@ pub mod mahjong_tile;
 pub mod mini_mahjong;
 pub mod monte_carlo_analysis;
 pub mod shanten;
-pub mod state;
-pub mod tile_grouping;
-pub mod tiles;
-pub mod yaku;
+// pub mod state;
+// pub mod tile_grouping;
+// pub mod tiles;
+// pub mod yaku;
 
 fn main() {
     // for serial in 0..tiles::NUM_TILES {

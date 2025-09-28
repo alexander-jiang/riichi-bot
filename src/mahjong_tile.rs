@@ -318,6 +318,7 @@ pub fn get_tiles_from_string(tile_string: &str) -> Vec<MahjongTile> {
     tiles
 }
 
+// TODO make this consistent with get_tiles_from_string (i.e. it should parse both 345m and 3m4m5m correctl)
 /// Note: expects input string to be concatenated mspz notation e.g. 3m4m5m (and not 345m)
 pub fn tiles_to_tile_ids(tiles_string: &str) -> Vec<u8> {
     let mut tile_ids = Vec::new();
