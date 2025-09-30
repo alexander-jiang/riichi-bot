@@ -1,4 +1,5 @@
 pub use crate::mahjong_tile;
+use crate::mahjong_tile::MahjongTileId;
 use std::collections::VecDeque;
 use std::fmt;
 
@@ -53,7 +54,8 @@ impl fmt::Display for PartialHandGroupingState {
     }
 }
 
-fn tile_id_is_isolated(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
+fn tile_id_is_isolated<T: Into<MahjongTileId>>(tile_count_array: &[u8; 34], tile_id: T) -> bool {
+    let tile_id: MahjongTileId = tile_id.into();
     let tile_idx = usize::from(tile_id);
     if tile_count_array[tile_idx] != 1 {
         // multiple copies of a tile -> not isolated (could form a pair or triplet)
@@ -61,7 +63,7 @@ fn tile_id_is_isolated(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
         return false;
     }
     // from this point onward, there's only one copy of this tile
-    if tile_id >= mahjong_tile::FIRST_HONOR_ID {
+    if tile_id.0 >= mahjong_tile::FIRST_HONOR_ID {
         // a single honor tile is always isolated (honor tiles cannot form sequences)
         return true;
     }
@@ -92,7 +94,8 @@ pub fn tile_count_array_to_string(tile_count_array: &[u8; 34]) -> String {
 }
 
 /// sequence = three consecutive tiles (e.g. 123 or 678)
-pub fn can_make_sequence(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
+pub fn can_make_sequence<T: Into<MahjongTileId>>(tile_count_array: &[u8; 34], tile_id: T) -> bool {
+    let tile_id: MahjongTileId = tile_id.into();
     let tile_idx = usize::from(tile_id);
     let tile_num_rank = mahjong_tile::get_num_tile_rank(tile_id);
     tile_count_array[tile_idx] >= 1
@@ -133,7 +136,8 @@ pub fn can_make_sequence(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
 }
 
 /// ryanmen = two-sided wait (e.g. 23 or 78)
-pub fn can_make_ryanmen(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
+pub fn can_make_ryanmen<T: Into<MahjongTileId>>(tile_count_array: &[u8; 34], tile_id: T) -> bool {
+    let tile_id: MahjongTileId = tile_id.into();
     let tile_idx = usize::from(tile_id);
     let tile_num_rank = mahjong_tile::get_num_tile_rank(tile_id);
     tile_count_array[tile_idx] >= 1
@@ -152,7 +156,8 @@ pub fn can_make_ryanmen(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
 }
 
 /// penchan = one-sided wait (only 12 or 89)
-pub fn can_make_penchan(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
+pub fn can_make_penchan<T: Into<MahjongTileId>>(tile_count_array: &[u8; 34], tile_id: T) -> bool {
+    let tile_id: MahjongTileId = tile_id.into();
     let tile_idx = usize::from(tile_id);
     let tile_num_rank = mahjong_tile::get_num_tile_rank(tile_id);
     tile_count_array[tile_idx] >= 1
@@ -167,7 +172,8 @@ pub fn can_make_penchan(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
 }
 
 // kanchan = inner wait (e.g. 13 or 79)
-pub fn can_make_kanchan(tile_count_array: &[u8; 34], tile_id: u8) -> bool {
+pub fn can_make_kanchan<T: Into<MahjongTileId>>(tile_count_array: &[u8; 34], tile_id: T) -> bool {
+    let tile_id: MahjongTileId = tile_id.into();
     let tile_idx = usize::from(tile_id);
     let tile_num_rank = mahjong_tile::get_num_tile_rank(tile_id);
     tile_count_array[tile_idx] >= 1
@@ -190,7 +196,7 @@ fn is_incomplete_group(tile_count_array: &[u8; 34]) -> bool {
     if get_total_num_tiles(tile_count_array) > 2 {
         return false;
     }
-    for tile_id in 0..34u8 {
+    for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
         let tile_idx = usize::from(tile_id);
         if tile_count_array[tile_idx] == 0 {
             continue;
@@ -206,7 +212,7 @@ fn is_incomplete_group(tile_count_array: &[u8; 34]) -> bool {
 
 fn get_total_num_tiles(tile_count_array: &[u8; 34]) -> u16 {
     let mut total_num_tiles: u16 = 0;
-    for tile_id in 0..34u8 {
+    for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
         let tile_idx = usize::from(tile_id);
         total_num_tiles = total_num_tiles.saturating_add(tile_count_array[tile_idx].into());
     }
@@ -217,7 +223,7 @@ fn is_pair(tile_count_array: &[u8; 34]) -> bool {
     if get_total_num_tiles(tile_count_array) != 2 {
         return false;
     }
-    for tile_id in 0..34u8 {
+    for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
         let tile_idx = usize::from(tile_id);
         if tile_count_array[tile_idx] == 0 {
             continue;
@@ -230,8 +236,8 @@ fn is_pair(tile_count_array: &[u8; 34]) -> bool {
 
 // TODO test
 // TODO should we refactor this? the tile_count_array is no longer useful - would be better to know the meld type and tiles
-fn tile_ids_to_complete_group(tile_count_array: &[u8; 34]) -> Option<Vec<u8>> {
-    for tile_id in 0..34u8 {
+fn tile_ids_to_complete_group(tile_count_array: &[u8; 34]) -> Option<Vec<MahjongTileId>> {
+    for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
         let tile_idx = usize::from(tile_id);
         if tile_count_array[tile_idx] == 0 {
             continue;
@@ -244,9 +250,9 @@ fn tile_ids_to_complete_group(tile_count_array: &[u8; 34]) -> Option<Vec<u8>> {
         }
         if can_make_ryanmen(tile_count_array, tile_id) {
             if tile_idx + 1 < tile_count_array.len() && tile_count_array[tile_idx + 1] > 0 {
-                return Some(vec![tile_id - 1, tile_id + 2]);
+                return Some(vec![MahjongTileId(tile_id - 1), MahjongTileId(tile_id + 2)]);
             } else {
-                return Some(vec![tile_id - 2, tile_id + 1]);
+                return Some(vec![MahjongTileId(tile_id - 2), MahjongTileId(tile_id + 1)]);
             }
         } else if can_make_penchan(tile_count_array, tile_id) {
             let tile_num_rank = mahjong_tile::get_num_tile_rank(tile_id);
@@ -256,24 +262,24 @@ fn tile_ids_to_complete_group(tile_count_array: &[u8; 34]) -> Option<Vec<u8>> {
             }
             let tile_num_rank = tile_num_rank.unwrap();
             if tile_num_rank == 8 {
-                return Some(vec![tile_id - 1]);
+                return Some(vec![MahjongTileId(tile_id - 1)]);
             } else if tile_num_rank == 9 {
-                return Some(vec![tile_id - 2]);
+                return Some(vec![MahjongTileId(tile_id - 2)]);
             } else if tile_num_rank == 1 {
-                return Some(vec![tile_id + 2]);
+                return Some(vec![MahjongTileId(tile_id + 2)]);
             } else if tile_num_rank == 2 {
-                return Some(vec![tile_id + 1]);
+                return Some(vec![MahjongTileId(tile_id + 1)]);
             } else {
                 panic!("invalid penchan");
             }
         } else if can_make_kanchan(tile_count_array, tile_id) {
             if tile_idx + 2 < tile_count_array.len() && tile_count_array[tile_idx + 2] > 0 {
-                return Some(vec![tile_id + 1]);
+                return Some(vec![MahjongTileId(tile_id + 1)]);
             } else {
-                return Some(vec![tile_id - 1]);
+                return Some(vec![MahjongTileId(tile_id - 1)]);
             }
         } else {
-            return Some(vec![tile_id]);
+            return Some(vec![MahjongTileId(tile_id)]);
         }
     }
     return None;
@@ -816,10 +822,10 @@ impl MahjongHand {
         self.is_tenpai_brute_force()
     }
 
-    pub fn get_tenpai_tiles_brute_force(&self) -> Vec<u8> {
+    pub fn get_tenpai_tiles_brute_force(&self) -> Vec<MahjongTileId> {
         // if returns empty vec, then the hand is not in tenpai
         let mut tenpai_tiles = vec![];
-        for tile_id in 0..34 {
+        for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
             let mut new_hand = MahjongHand {
                 tiles: self.tiles.clone(),
                 ..Default::default()
@@ -831,13 +837,13 @@ impl MahjongHand {
                 //     "hand is tenpai, wins on {}",
                 //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
                 // );
-                tenpai_tiles.push(tile_id);
+                tenpai_tiles.push(MahjongTileId(tile_id));
             }
         }
         tenpai_tiles
     }
 
-    pub fn get_tenpai_tiles_build_shapes(&self) -> Vec<u8> {
+    pub fn get_tenpai_tiles_build_shapes(&self) -> Vec<MahjongTileId> {
         // if returns empty vec, then the hand is not in tenpai
         let mut tenpai_tiles = vec![];
         let tenpai_groupings = self.build_shapes(1);
@@ -1668,9 +1674,9 @@ mod tests {
         let mut tile_counts: [u8; 34] = [0; 34];
         let tile_id_9m = mahjong_tile::get_id_from_tile_text("9m").unwrap();
         tile_counts[usize::from(tile_id_9m)] = 1;
-        let tile_id_1p = tile_id_9m + 1;
+        let tile_id_1p = MahjongTileId(tile_id_9m.0 + 1);
         tile_counts[usize::from(tile_id_1p)] = 1;
-        let tile_id_2p = tile_id_9m + 2;
+        let tile_id_2p = MahjongTileId(tile_id_9m.0 + 2);
         tile_counts[usize::from(tile_id_2p)] = 1;
 
         assert!(!can_make_sequence(&tile_counts, tile_id_9m));
@@ -1747,7 +1753,7 @@ mod tests {
         let mut tile_counts: [u8; 34] = [0; 34];
         let tile_id_9p = mahjong_tile::get_id_from_tile_text("9p").unwrap();
         tile_counts[usize::from(tile_id_9p)] = 1;
-        let tile_id_1s = tile_id_9p + 1;
+        let tile_id_1s = MahjongTileId(tile_id_9p.0 + 1);
         tile_counts[usize::from(tile_id_1s)] = 1;
 
         assert!(!can_make_ryanmen(&tile_counts, tile_id_9p));
@@ -1813,7 +1819,7 @@ mod tests {
         let mut tile_counts: [u8; 34] = [0; 34];
         let tile_id_9p = mahjong_tile::get_id_from_tile_text("9p").unwrap();
         tile_counts[usize::from(tile_id_9p)] = 1;
-        let tile_id_1s = tile_id_9p + 1;
+        let tile_id_1s = MahjongTileId(tile_id_9p.0 + 1);
         tile_counts[usize::from(tile_id_1s)] = 1;
 
         assert!(!can_make_penchan(&tile_counts, tile_id_9p));
@@ -1884,7 +1890,7 @@ mod tests {
         let mut tile_counts: [u8; 34] = [0; 34];
         let tile_id_9m = mahjong_tile::get_id_from_tile_text("9m").unwrap();
         tile_counts[usize::from(tile_id_9m)] = 1;
-        let tile_id_2p = tile_id_9m + 2;
+        let tile_id_2p = MahjongTileId(tile_id_9m.0 + 2);
         tile_counts[usize::from(tile_id_2p)] = 1;
 
         assert!(!can_make_kanchan(&tile_counts, tile_id_9m));

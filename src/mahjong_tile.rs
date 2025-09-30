@@ -192,7 +192,9 @@ impl MahjongTileValue {
 
 /// Returns Some with the rank of the tile (a number from 1-9) if the tile
 /// is in a numbered suit (man, pin, or sou). Returns None otherise.
-pub fn get_num_tile_rank(tile_id: u8) -> Option<u8> {
+pub fn get_num_tile_rank<T: Into<MahjongTileId>>(tile_id: T) -> Option<u8> {
+    let tile_id: MahjongTileId = tile_id.into();
+    let tile_id = tile_id.0;
     if tile_id >= FIRST_HONOR_ID {
         None
     } else {
@@ -437,40 +439,40 @@ mod tests {
     #[test]
     fn tile_value_to_id() {
         let one_man = MahjongTileValue::Number(1, MahjongTileNumberedSuit::Man);
-        assert_eq!(one_man.to_id(), Ok(0));
+        assert_eq!(one_man.to_id(), Ok(MahjongTileId(0)));
         let five_man = MahjongTileValue::Number(5, MahjongTileNumberedSuit::Man);
-        assert_eq!(five_man.to_id(), Ok(4));
+        assert_eq!(five_man.to_id(), Ok(MahjongTileId(4)));
         let nine_man = MahjongTileValue::Number(9, MahjongTileNumberedSuit::Man);
-        assert_eq!(nine_man.to_id(), Ok(8));
+        assert_eq!(nine_man.to_id(), Ok(MahjongTileId(8)));
 
         let three_pin = MahjongTileValue::Number(3, MahjongTileNumberedSuit::Pin);
-        assert_eq!(three_pin.to_id(), Ok(11));
+        assert_eq!(three_pin.to_id(), Ok(MahjongTileId(11)));
         let four_pin = MahjongTileValue::Number(4, MahjongTileNumberedSuit::Pin);
-        assert_eq!(four_pin.to_id(), Ok(12));
+        assert_eq!(four_pin.to_id(), Ok(MahjongTileId(12)));
         let seven_pin = MahjongTileValue::Number(7, MahjongTileNumberedSuit::Pin);
-        assert_eq!(seven_pin.to_id(), Ok(15));
+        assert_eq!(seven_pin.to_id(), Ok(MahjongTileId(15)));
 
         let two_sou = MahjongTileValue::Number(2, MahjongTileNumberedSuit::Sou);
-        assert_eq!(two_sou.to_id(), Ok(19));
+        assert_eq!(two_sou.to_id(), Ok(MahjongTileId(19)));
         let six_sou = MahjongTileValue::Number(6, MahjongTileNumberedSuit::Sou);
-        assert_eq!(six_sou.to_id(), Ok(23));
+        assert_eq!(six_sou.to_id(), Ok(MahjongTileId(23)));
         let eight_sou = MahjongTileValue::Number(8, MahjongTileNumberedSuit::Sou);
-        assert_eq!(eight_sou.to_id(), Ok(25));
+        assert_eq!(eight_sou.to_id(), Ok(MahjongTileId(25)));
 
         let east_wind = MahjongTileValue::Wind(1);
-        assert_eq!(east_wind.to_id(), Ok(27));
+        assert_eq!(east_wind.to_id(), Ok(MahjongTileId(27)));
         let south_wind = MahjongTileValue::Wind(2);
-        assert_eq!(south_wind.to_id(), Ok(28));
+        assert_eq!(south_wind.to_id(), Ok(MahjongTileId(28)));
         let west_wind = MahjongTileValue::Wind(3);
-        assert_eq!(west_wind.to_id(), Ok(29));
+        assert_eq!(west_wind.to_id(), Ok(MahjongTileId(29)));
         let north_wind = MahjongTileValue::Wind(4);
-        assert_eq!(north_wind.to_id(), Ok(30));
+        assert_eq!(north_wind.to_id(), Ok(MahjongTileId(30)));
         let white_dragon = MahjongTileValue::Dragon(5);
-        assert_eq!(white_dragon.to_id(), Ok(31));
+        assert_eq!(white_dragon.to_id(), Ok(MahjongTileId(31)));
         let green_dragon = MahjongTileValue::Dragon(6);
-        assert_eq!(green_dragon.to_id(), Ok(32));
+        assert_eq!(green_dragon.to_id(), Ok(MahjongTileId(32)));
         let red_dragon = MahjongTileValue::Dragon(7);
-        assert_eq!(red_dragon.to_id(), Ok(33));
+        assert_eq!(red_dragon.to_id(), Ok(MahjongTileId(33)));
 
         // invalid to_id values:
         let invalid_man = MahjongTileValue::Number(0, MahjongTileNumberedSuit::Man);
@@ -596,27 +598,27 @@ mod tests {
     #[test]
     fn test_get_id_from_tile_text() {
         match get_id_from_tile_text("1m") {
-            Ok(tile_id) => assert_eq!(tile_id, 0),
+            Ok(tile_id) => assert_eq!(tile_id, MahjongTileId(0)),
             Err(_) => assert!(false),
         };
 
         match get_id_from_tile_text("3p") {
-            Ok(tile_id) => assert_eq!(tile_id, 11),
+            Ok(tile_id) => assert_eq!(tile_id, MahjongTileId(11)),
             Err(_) => assert!(false),
         };
 
         match get_id_from_tile_text("8s") {
-            Ok(tile_id) => assert_eq!(tile_id, 25),
+            Ok(tile_id) => assert_eq!(tile_id, MahjongTileId(25)),
             Err(_) => assert!(false),
         };
 
         match get_id_from_tile_text("1z") {
-            Ok(tile_id) => assert_eq!(tile_id, 27),
+            Ok(tile_id) => assert_eq!(tile_id, MahjongTileId(27)),
             Err(_) => assert!(false),
         };
 
         match get_id_from_tile_text("4z") {
-            Ok(tile_id) => assert_eq!(tile_id, 30),
+            Ok(tile_id) => assert_eq!(tile_id, MahjongTileId(30)),
             Err(_) => assert!(false),
         };
 
@@ -625,15 +627,15 @@ mod tests {
 
         // handle red fives
         match get_id_from_tile_text("0m") {
-            Ok(tile_id) => assert_eq!(tile_id, 4),
+            Ok(tile_id) => assert_eq!(tile_id, MahjongTileId(4)),
             Err(_) => assert!(false),
         };
         match get_id_from_tile_text("0p") {
-            Ok(tile_id) => assert_eq!(tile_id, 13),
+            Ok(tile_id) => assert_eq!(tile_id, MahjongTileId(13)),
             Err(_) => assert!(false),
         };
         match get_id_from_tile_text("0s") {
-            Ok(tile_id) => assert_eq!(tile_id, 22),
+            Ok(tile_id) => assert_eq!(tile_id, MahjongTileId(22)),
             Err(_) => assert!(false),
         };
 

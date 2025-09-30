@@ -1,6 +1,7 @@
 extern crate test;
 
 pub use crate::mahjong_tile;
+use crate::mahjong_tile::MahjongTileId;
 pub use crate::shanten;
 use rand::rngs::ThreadRng;
 use rand::Rng;
@@ -19,7 +20,7 @@ use std::collections::HashMap;
 
 /// generates a random tile id from the pool of tiles remaining (panics if there are no tiles left),
 /// weighted by the number of copies of tiles remaining
-fn generate_random_tile_id_rng(remaining_tile_count: [u8; 34]) -> u8 {
+fn generate_random_tile_id_rng(remaining_tile_count: [u8; 34]) -> MahjongTileId {
     let tiles_remaining = shanten::get_tile_ids_from_count_array(remaining_tile_count);
     if tiles_remaining.len() == 0 {
         panic!("no tiles remaining");
@@ -31,7 +32,7 @@ fn generate_random_tile_id_rng(remaining_tile_count: [u8; 34]) -> u8 {
 
 /// generates a random tile id from the pool of tiles remaining (panics if there are no tiles left),
 /// weighted by the number of copies of tiles remaining
-fn generate_random_tile_id(remaining_tile_count: [u8; 34], rng: &mut ThreadRng) -> u8 {
+fn generate_random_tile_id(remaining_tile_count: [u8; 34], rng: &mut ThreadRng) -> MahjongTileId {
     let tiles_remaining = shanten::get_tile_ids_from_count_array(remaining_tile_count);
     if tiles_remaining.len() == 0 {
         panic!("no tiles remaining");
@@ -40,15 +41,16 @@ fn generate_random_tile_id(remaining_tile_count: [u8; 34], rng: &mut ThreadRng) 
     *tiles_remaining.get(n).unwrap()
 }
 
-fn remove_tile_ids_from_count_array(
+fn remove_tile_ids_from_count_array<T: Into<MahjongTileId> + Clone>(
     tile_count_array: [u8; 34],
-    tile_ids_to_remove: &Vec<u8>,
+    tile_ids_to_remove: &Vec<T>,
 ) -> [u8; 34] {
     let mut tiles_after_remove = [0u8; 34];
     for i in 0..tiles_after_remove.len() {
         tiles_after_remove[i] = tile_count_array[i];
     }
-    for &tile_id in tile_ids_to_remove {
+    for tile_id in tile_ids_to_remove {
+        let tile_id: MahjongTileId = tile_id.clone().into();
         if tiles_after_remove[usize::from(tile_id)] == 0 {
             panic!("no more copies of tile left to remove");
         }
@@ -59,9 +61,9 @@ fn remove_tile_ids_from_count_array(
 
 /// takes a starting hand (after discard), any visible tiles outside of the starting hand, and the parameters for the simulation:
 /// number of trials and maximum allowed draws per trial
-fn run_basic_analysis(
+fn run_basic_analysis<T: Into<MahjongTileId> + Clone>(
     starting_hand: [u8; 34],
-    visible_tile_ids: &Vec<u8>,
+    visible_tile_ids: &Vec<T>,
     num_trials: u32,
     max_allowed_draws: u16,
 ) {
@@ -91,7 +93,7 @@ fn run_basic_analysis(
     );
 
     // precompute (discard tile id, resulting ukiere tile ids) after each possible improvement tile draw
-    let mut draw_tile_id_to_ukiere_tile_ids: HashMap<u8, Vec<(u8, Vec<u8>, u16)>> = HashMap::new();
+    let mut draw_tile_id_to_ukiere_tile_ids: HashMap<MahjongTileId, Vec<(MahjongTileId, Vec<MahjongTileId>, u16)>> = HashMap::new();
     for improve_tile_id in starting_ukiere_tile_ids.iter() {
         let improve_tile_id = *improve_tile_id;
         let mut tile_count_array_after_draw = starting_hand;

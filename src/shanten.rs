@@ -31,100 +31,101 @@ impl MeldType {
 #[derive(Clone)]
 pub struct TileMeld {
     meld_type: MeldType,
-    tile_ids: Vec<u8>,
+    tile_ids: Vec<MahjongTileId>,
 }
 
-fn tile_ids_are_all_same(tile_ids: &Vec<u8>) -> bool {
+fn tile_ids_are_all_same<T: Into<MahjongTileId> + Clone>(tile_ids: &Vec<T>) -> bool {
     if tile_ids.len() == 0 {
         return true;
     }
-    let first_tile_id = tile_ids.get(0).unwrap();
-    for &tile_id in tile_ids.iter() {
-        if tile_id != *first_tile_id {
+    let first_tile_id: MahjongTileId = tile_ids.get(0).unwrap().clone().into();
+    for tile_id in tile_ids.iter() {
+        let tile_id: MahjongTileId = tile_id.clone().into();
+        if tile_id != first_tile_id {
             return false;
         }
     }
     true
 }
 
-fn tile_ids_are_sequence(tile_ids: &Vec<u8>) -> bool {
+fn tile_ids_are_sequence<T: Into<MahjongTileId> + Clone>(tile_ids: &Vec<T>) -> bool {
     if tile_ids.len() != 3 {
         return false;
     }
-    let mut sorted_tile_ids = tile_ids.clone();
+    let mut sorted_tile_ids: Vec<MahjongTileId> = tile_ids.iter().cloned().map(|t| t.into()).collect();
     sorted_tile_ids.sort();
     let min_tile_id = *sorted_tile_ids.get(0).unwrap();
     let mid_tile_id = *sorted_tile_ids.get(1).unwrap();
     let max_tile_id = *sorted_tile_ids.get(2).unwrap();
     // all tiles must not be honor tiles
-    if max_tile_id >= mahjong_tile::FIRST_HONOR_ID {
+    if max_tile_id.0 >= mahjong_tile::FIRST_HONOR_ID {
         return false;
     }
 
     let min_tile_rank = mahjong_tile::get_num_tile_rank(min_tile_id).unwrap();
     let max_tile_rank = mahjong_tile::get_num_tile_rank(max_tile_id).unwrap();
     // tile ids must be sequential, but cannot wrap around the ends of a suit
-    (max_tile_id == mid_tile_id + 1)
-        && (mid_tile_id == min_tile_id + 1)
+    (max_tile_id.0 == mid_tile_id.0 + 1)
+        && (mid_tile_id.0 == min_tile_id.0 + 1)
         && (min_tile_rank <= 7 && max_tile_rank >= 3)
 }
 
-fn tile_ids_are_ryanmen(tile_ids: &Vec<u8>) -> bool {
+fn tile_ids_are_ryanmen<T: Into<MahjongTileId> + Clone>(tile_ids: &Vec<T>) -> bool {
     if tile_ids.len() != 2 {
         return false;
     }
-    let mut sorted_tile_ids = tile_ids.clone();
+    let mut sorted_tile_ids: Vec<MahjongTileId> = tile_ids.iter().cloned().map(|t| t.into()).collect();
     sorted_tile_ids.sort();
     let min_tile_id = *sorted_tile_ids.get(0).unwrap();
     let max_tile_id = *sorted_tile_ids.get(1).unwrap();
     // all tiles must not be honor tiles
-    if max_tile_id >= mahjong_tile::FIRST_HONOR_ID {
+    if max_tile_id.0 >= mahjong_tile::FIRST_HONOR_ID {
         return false;
     }
 
     let min_tile_rank = mahjong_tile::get_num_tile_rank(min_tile_id).unwrap();
-    max_tile_id == min_tile_id + 1 && (min_tile_rank >= 2 && min_tile_rank <= 7)
+    max_tile_id.0 == min_tile_id.0 + 1 && (min_tile_rank >= 2 && min_tile_rank <= 7)
 }
 
-fn tile_ids_are_kanchan(tile_ids: &Vec<u8>) -> bool {
+fn tile_ids_are_kanchan<T: Into<MahjongTileId> + Clone>(tile_ids: &Vec<T>) -> bool {
     if tile_ids.len() != 2 {
         return false;
     }
-    let mut sorted_tile_ids = tile_ids.clone();
+    let mut sorted_tile_ids: Vec<MahjongTileId> = tile_ids.iter().cloned().map(|t| t.into()).collect();
     sorted_tile_ids.sort();
     let min_tile_id = *sorted_tile_ids.get(0).unwrap();
     let max_tile_id = *sorted_tile_ids.get(1).unwrap();
     // all tiles must not be honor tiles
-    if max_tile_id >= mahjong_tile::FIRST_HONOR_ID {
+    if max_tile_id.0 >= mahjong_tile::FIRST_HONOR_ID {
         return false;
     }
 
     let min_tile_rank = mahjong_tile::get_num_tile_rank(min_tile_id).unwrap();
     let max_tile_rank = mahjong_tile::get_num_tile_rank(max_tile_id).unwrap();
-    max_tile_id == min_tile_id + 2 && (min_tile_rank <= 7 && max_tile_rank >= 3)
+    max_tile_id.0 == min_tile_id.0 + 2 && (min_tile_rank <= 7 && max_tile_rank >= 3)
 }
 
-fn tile_ids_are_penchan(tile_ids: &Vec<u8>) -> bool {
+fn tile_ids_are_penchan<T: Into<MahjongTileId> + Clone>(tile_ids: &Vec<T>) -> bool {
     if tile_ids.len() != 2 {
         return false;
     }
-    let mut sorted_tile_ids = tile_ids.clone();
+    let mut sorted_tile_ids: Vec<MahjongTileId> = tile_ids.iter().cloned().map(|t| t.into()).collect();
     sorted_tile_ids.sort();
     let min_tile_id = *sorted_tile_ids.get(0).unwrap();
     let max_tile_id = *sorted_tile_ids.get(1).unwrap();
     // all tiles must not be honor tiles
-    if max_tile_id >= mahjong_tile::FIRST_HONOR_ID {
+    if max_tile_id.0 >= mahjong_tile::FIRST_HONOR_ID {
         return false;
     }
 
     let min_tile_rank = mahjong_tile::get_num_tile_rank(min_tile_id).unwrap();
-    max_tile_id == min_tile_id + 1 && (min_tile_rank == 1 || min_tile_rank == 8)
+    max_tile_id.0 == min_tile_id.0 + 1 && (min_tile_rank == 1 || min_tile_rank == 8)
 }
 
 impl TileMeld {
     /// Constructor for TileMeld which also validates the meld and sorts the tile_ids,
     /// which is useful for optimizing some future steps.
-    fn new(tile_ids: Vec<u8>) -> Self {
+    fn new<T: Into<MahjongTileId> + Clone>(tile_ids: Vec<T>) -> Self {
         let meld_type = match tile_ids.len() {
             1 => MeldType::SingleTile,
             2 => {
@@ -162,7 +163,7 @@ impl TileMeld {
             0 => panic!("cannot form a meld with no tiles"),
             _ => panic!("invalid meld: too many tiles"),
         };
-        let mut sorted_tile_ids = tile_ids.clone();
+        let mut sorted_tile_ids: Vec<MahjongTileId> = tile_ids.iter().cloned().map(|t| t.into()).collect();
         sorted_tile_ids.sort();
         TileMeld {
             meld_type: meld_type,
@@ -184,16 +185,16 @@ impl TileMeld {
                 match mahjong_tile::get_num_tile_rank(tile_id) {
                     Some(tile_rank) => {
                         if tile_rank <= 8 {
-                            tile_ids.push(tile_id + 1);
+                            tile_ids.push(MahjongTileId(tile_id.0 + 1));
                         }
                         if tile_rank <= 7 {
-                            tile_ids.push(tile_id + 2);
+                            tile_ids.push(MahjongTileId(tile_id.0 + 2));
                         }
                         if tile_rank >= 2 {
-                            tile_ids.push(tile_id - 1);
+                            tile_ids.push(MahjongTileId(tile_id.0 - 1));
                         }
                         if tile_rank >= 3 {
-                            tile_ids.push(tile_id - 2);
+                            tile_ids.push(MahjongTileId(tile_id.0 - 2));
                         }
                     }
                     None => {}
@@ -207,19 +208,19 @@ impl TileMeld {
             MeldType::Ryanmen => {
                 let min_tile_id = self.tile_ids.get(0).unwrap();
                 let max_tile_id = self.tile_ids.get(1).unwrap();
-                vec![*min_tile_id - 1, *max_tile_id + 1]
+                vec![MahjongTileId(min_tile_id.0 - 1), MahjongTileId(max_tile_id.0 + 1)]
             }
             MeldType::Kanchan => {
                 let min_tile_id = self.tile_ids.get(0).unwrap();
-                vec![*min_tile_id + 1]
+                vec![MahjongTileId(min_tile_id.0 + 1)]
             }
             MeldType::Penchan => {
                 let min_tile_id = self.tile_ids.get(0).unwrap();
                 let min_tile_rank = mahjong_tile::get_num_tile_rank(*min_tile_id).unwrap();
                 if min_tile_rank == 1 {
-                    vec![*min_tile_id + 2]
+                    vec![MahjongTileId(min_tile_id.0 + 2)]
                 } else if min_tile_rank == 8 {
-                    vec![*min_tile_id - 1]
+                    vec![MahjongTileId(min_tile_id.0 - 1)]
                 } else {
                     panic!("invalid penchan! min tile rank should be 1 or 8")
                 }
@@ -308,11 +309,11 @@ pub fn get_total_tiles_from_count_array(tile_count_array: [u8; 34]) -> usize {
 
 pub fn get_tile_ids_from_count_array(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
     let mut tile_ids = vec![];
-    for tile_id in 0..34u8 {
+    for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
         let tile_idx = usize::from(tile_id);
         if tile_count_array[tile_idx] > 0 {
             for _i in 0..tile_count_array[tile_idx] {
-                tile_ids.push(tile_id);
+                tile_ids.push(MahjongTileId(tile_id));
             }
         }
     }
@@ -321,10 +322,10 @@ pub fn get_tile_ids_from_count_array(tile_count_array: [u8; 34]) -> Vec<MahjongT
 
 fn get_distinct_tile_ids_from_count_array(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
     let mut distinct_tile_ids = vec![];
-    for tile_id in 0..34u8 {
+    for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
         let tile_idx = usize::from(tile_id);
         if tile_count_array[tile_idx] > 0 {
-            distinct_tile_ids.push(tile_id);
+            distinct_tile_ids.push(MahjongTileId(tile_id));
         }
     }
     distinct_tile_ids
@@ -1023,7 +1024,7 @@ pub fn get_shanten_optimized(tile_count_array: [u8; 34]) -> i8 {
 pub fn get_shanten_after_each_discard(
     tile_count_array: [u8; 34],
     shanten_function: &dyn Fn([u8; 34]) -> i8,
-) -> HashMap<i8, Vec<u8>> {
+) -> HashMap<i8, Vec<MahjongTileId>> {
     if get_total_tiles_from_count_array(tile_count_array) != 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
@@ -1039,12 +1040,12 @@ pub fn get_shanten_after_each_discard(
             tile_count_after_discard[tile_idx] -= 1;
             let shanten_after_discard = shanten_function(tile_count_after_discard);
             if !shanten_by_discard_tile_id.contains_key(&shanten_after_discard) {
-                shanten_by_discard_tile_id.insert(shanten_after_discard, vec![tile_id]);
+                shanten_by_discard_tile_id.insert(shanten_after_discard, vec![MahjongTileId(tile_id)]);
             } else {
                 let tile_ids_for_shanten = shanten_by_discard_tile_id
                     .get_mut(&shanten_after_discard)
                     .unwrap();
-                tile_ids_for_shanten.push(tile_id);
+                tile_ids_for_shanten.push(MahjongTileId(tile_id));
             }
         }
         tile_id += 1;
@@ -1081,13 +1082,13 @@ pub fn get_best_shanten_after_discard(
 
 /// returns all discard options (discard tile id, ukiere tile ids, number of ukiere tiles) with the best shanten
 /// and that maximizes the count of ukiere
-pub fn get_most_ukiere_after_discard(
+pub fn get_most_ukiere_after_discard<T: Into<MahjongTileId> + Clone>(
     tile_count_array: [u8; 34],
     best_shanten: i8,
     shanten_function: &dyn Fn([u8; 34]) -> i8,
     ukiere_function: &dyn Fn([u8; 34]) -> Vec<MahjongTileId>,
-    other_visible_tiles: &Vec<u8>,
-) -> Vec<(u8, Vec<u8>, u16)> {
+    other_visible_tiles: &Vec<T>,
+) -> Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> {
     if get_total_tiles_from_count_array(tile_count_array) != 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
@@ -1123,13 +1124,13 @@ pub fn get_most_ukiere_after_discard(
 
 /// returns all discard options (discard tile id, ukiere tile ids, number of ukiere tiles) with the best shanten
 /// regardless of the ukiere
-pub fn get_all_ukiere_after_discard(
+pub fn get_all_ukiere_after_discard<T: Into<MahjongTileId> + Clone>(
     tile_count_array: [u8; 34],
     best_shanten: i8,
     shanten_function: &dyn Fn([u8; 34]) -> i8,
     ukiere_function: &dyn Fn([u8; 34]) -> Vec<MahjongTileId>,
-    other_visible_tiles: &Vec<u8>,
-) -> Vec<(u8, Vec<u8>, u16)> {
+    other_visible_tiles: &Vec<T>,
+) -> Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> {
     if get_total_tiles_from_count_array(tile_count_array) != 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
@@ -1156,12 +1157,12 @@ pub fn get_all_ukiere_after_discard(
     ukiere_discard_options
 }
 
-pub fn get_shanten_ukiere_after_each_discard(
+pub fn get_shanten_ukiere_after_each_discard<T: Into<MahjongTileId> + Clone>(
     tile_count_array: [u8; 34],
     shanten_function: &dyn Fn([u8; 34]) -> i8,
     ukiere_function: &dyn Fn([u8; 34]) -> Vec<MahjongTileId>,
-    other_visible_tiles: &Vec<u8>,
-) -> Vec<(u8, i8, Vec<u8>, u16)> {
+    other_visible_tiles: &Vec<T>,
+) -> Vec<(MahjongTileId, i8, Vec<MahjongTileId>, u16)> {
     if get_total_tiles_from_count_array(tile_count_array) != 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
@@ -1197,23 +1198,23 @@ pub fn get_shanten_ukiere_after_each_discard(
 }
 
 /// utility function: useful for combining tile ids from a hand (in the form of a tile count array) and a vector of other visible tile ids (e.g. discard pools, dora indicator, visible melds from opponents, etc.)
-pub fn combine_tile_ids_from_count_array_and_vec(
+pub fn combine_tile_ids_from_count_array_and_vec<T: Into<MahjongTileId> + Clone>(
     tile_count_array: [u8; 34],
-    tile_ids: &Vec<u8>,
+    tile_ids: &Vec<T>,
 ) -> Vec<MahjongTileId> {
-    let mut new_tile_ids = tile_ids.clone();
+    let mut new_tile_ids: Vec<MahjongTileId> = tile_ids.iter().cloned().map(|t| t.into()).collect();
     let mut hand_tile_ids = tile_count_array_to_tile_ids(tile_count_array);
     new_tile_ids.append(&mut hand_tile_ids);
     new_tile_ids
 }
 
 /// returns a map of (upgrade tile to draw -> map of (tile to discard, resulting ukiere tile ids))
-pub fn get_upgrade_tiles(
+pub fn get_upgrade_tiles<T: Into<MahjongTileId> + Clone>(
     tile_count_array: [u8; 34],
     shanten_function: &dyn Fn([u8; 34]) -> i8,
     ukiere_function: &dyn Fn([u8; 34]) -> Vec<MahjongTileId>,
-    other_visible_tiles: &Vec<u8>,
-) -> HashMap<u8, HashMap<u8, (Vec<u8>, u16)>> {
+    other_visible_tiles: &Vec<T>,
+) -> HashMap<MahjongTileId, HashMap<MahjongTileId, (Vec<MahjongTileId>, u16)>> {
     if get_total_tiles_from_count_array(tile_count_array) != 13 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
@@ -1226,8 +1227,8 @@ pub fn get_upgrade_tiles(
     let starting_num_ukiere_tiles =
         get_num_tiles_remaining(&starting_ukiere_tiles, &visible_tile_ids);
 
-    for draw_tile_id in 0..34u8 {
-        if starting_ukiere_tiles.contains(&draw_tile_id) {
+    for draw_tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
+        if starting_ukiere_tiles.contains(&Into::<MahjongTileId>::into(draw_tile_id)) {
             // drawing a ukiere tile is not an upgrade (upgrade = same shanten, but)
             continue;
         }
@@ -1261,7 +1262,7 @@ pub fn get_upgrade_tiles(
             }
         }
         if !discard_to_ukiere.is_empty() {
-            upgrades.insert(draw_tile_id, discard_to_ukiere);
+            upgrades.insert(MahjongTileId(draw_tile_id), discard_to_ukiere);
         }
     }
     upgrades
@@ -1281,10 +1282,11 @@ pub fn add_tile_id_to_count_array(tile_count_array: [u8; 34], new_tile_id: u8) -
     new_count_array
 }
 
-pub fn remove_tile_id_from_count_array(
+pub fn remove_tile_id_from_count_array<T: Into<MahjongTileId>>(
     tile_count_array: [u8; 34],
-    discard_tile_id: u8,
+    discard_tile_id: T,
 ) -> [u8; 34] {
+    let discard_tile_id: MahjongTileId = discard_tile_id.into();
     assert!(
         usize::from(discard_tile_id) < tile_count_array.len(),
         "invalid tile id"
@@ -1300,9 +1302,9 @@ pub fn remove_tile_id_from_count_array(
     new_count_array
 }
 
-pub fn get_ukiere_after_discard(
+pub fn get_ukiere_after_discard<T: Into<MahjongTileId>>(
     tile_count_array: [u8; 34],
-    discard_tile_id: u8,
+    discard_tile_id: T,
     ukiere_function: &dyn Fn([u8; 34]) -> Vec<MahjongTileId>,
 ) -> Vec<MahjongTileId> {
     if get_total_tiles_from_count_array(tile_count_array) != 14 {
@@ -1313,22 +1315,26 @@ pub fn get_ukiere_after_discard(
     ukiere_function(new_count_array)
 }
 
-pub fn get_num_tiles_remaining(target_tile_ids: &Vec<u8>, visible_tile_ids: &Vec<u8>) -> u16 {
+pub fn get_num_tiles_remaining<T>(target_tile_ids: &Vec<T>, visible_tile_ids: &Vec<T>) -> u16
+where
+    T: Into<MahjongTileId> + Clone + PartialEq,
+{
     let mut base_tile_count = [4u16; 34];
     let mut remaining_tile_count: u16 = (4 * target_tile_ids.len()).try_into().unwrap();
     for tile_id in visible_tile_ids {
         if !target_tile_ids.contains(tile_id) {
             continue;
         }
-        let tile_idx = usize::from(*tile_id);
+        let mahjong_tile_id: MahjongTileId = tile_id.clone().into();
+        let tile_idx = usize::from(mahjong_tile_id);
         if base_tile_count[tile_idx] > 0 && remaining_tile_count > 0 {
             base_tile_count[tile_idx] -= 1;
             remaining_tile_count -= 1;
         } else {
             panic!(
                 "tried to remove too many copies of tile {} (tile_id {})",
-                mahjong_tile::get_tile_text_from_id(*tile_id).unwrap(),
-                *tile_id
+                mahjong_tile::get_tile_text_from_id(mahjong_tile_id).unwrap(),
+                mahjong_tile_id
             );
         }
     }
@@ -1458,7 +1464,7 @@ pub fn get_chiitoi_ukiere(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
     while usize::from(tile_id) < tile_count_array.len() {
         let tile_idx = usize::from(tile_id);
         if tile_count_array[tile_idx] == 1 {
-            ukiere_tile_ids.push(tile_id);
+            ukiere_tile_ids.push(MahjongTileId(tile_id));
         }
         tile_id += 1;
     }
@@ -1534,28 +1540,29 @@ pub fn tiles_to_count_array(tiles_string: &str) -> [u8; 34] {
 
 fn tile_count_array_to_tile_ids(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
     let mut tile_ids = Vec::new();
-    for tile_id in 0..34u8 {
+    for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
         let tile_idx = usize::from(tile_id);
         if tile_count_array[tile_idx] == 0 {
             continue;
         }
         for _i in 0..tile_count_array[tile_idx] {
-            tile_ids.push(tile_id);
+            tile_ids.push(MahjongTileId(tile_id));
         }
     }
     tile_ids
 }
 
-pub fn tile_ids_to_string(tile_ids: &Vec<u8>) -> String {
+pub fn tile_ids_to_string<T: Into<MahjongTileId> + Clone>(tile_ids: &Vec<T>) -> String {
     let mut tiles_string = String::new();
     for tile_id in tile_ids.iter() {
-        let tile_string = mahjong_tile::get_tile_text_from_id(*tile_id).unwrap();
+        let tile_id: MahjongTileId = tile_id.clone().into();
+        let tile_string = mahjong_tile::get_tile_text_from_id(tile_id).unwrap();
         tiles_string.push_str(&tile_string);
     }
     tiles_string
 }
 
-pub fn print_ukiere_after_discard(options_after_discard: &Vec<(u8, Vec<u8>, u16)>) {
+pub fn print_ukiere_after_discard<T: Into<MahjongTileId> + Clone>(options_after_discard: &Vec<(T, Vec<T>, u16)>) {
     let mut options = options_after_discard.clone();
     options
         .iter_mut()
@@ -1577,7 +1584,7 @@ pub fn print_ukiere_after_discard(options_after_discard: &Vec<(u8, Vec<u8>, u16)
             |(discard_tile_id, ukiere_tile_ids_after_discard, num_ukiere_tiles_after_discard)| {
                 format!(
                     "cut {} => {} ukiere: {}",
-                    mahjong_tile::get_tile_text_from_id(discard_tile_id).unwrap(),
+                    mahjong_tile::get_tile_text_from_id(discard_tile_id.clone()).unwrap(),
                     num_ukiere_tiles_after_discard,
                     tile_ids_to_string(&ukiere_tile_ids_after_discard)
                 )
