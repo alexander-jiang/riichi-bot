@@ -54,34 +54,6 @@ pub enum MahjongTileValue {
     Dragon(u8),
 }
 
-/// An integer representation of a `MahjongTileValue` (maps 1-to-1 for more compact storage)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct MahjongTileId(pub u8);
-
-// implement From trait -> Into trait will be defined automatically
-impl From<u8> for MahjongTileId {
-    fn from(id: u8) -> Self {
-        MahjongTileId(id)
-    }
-}
-impl From<MahjongTileId> for u8 {
-    fn from(id: MahjongTileId) -> Self {
-        id.0
-    }
-}
-impl From<MahjongTileId> for usize {
-    fn from(id: MahjongTileId) -> Self {
-        usize::from(id.0)
-    }
-}
-
-impl fmt::Display for MahjongTileId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // write out with the MSPZ notation (use Debug for the raw tile_id value)
-        write!(f, "{}", MahjongTileValue::from_id(*self).and_then(|id| Ok(id.to_text())).unwrap_or(format!("Invalid tile id: {}", self.0)))
-    }
-}
-
 pub const NUM_DISTINCT_TILE_VALUES: u8 = 34;
 pub const FIRST_PINZU_ID: u8 = 9;
 pub const FIRST_SOUZU_ID: u8 = 18;
@@ -187,6 +159,34 @@ impl MahjongTileValue {
                 tile_string
             }
         }
+    }
+}
+
+/// An integer representation of a `MahjongTileValue` (maps 1-to-1 for more compact storage)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct MahjongTileId(pub u8);
+
+// implement From trait -> Into trait will be defined automatically
+impl From<u8> for MahjongTileId {
+    fn from(id: u8) -> Self {
+        MahjongTileId(id)
+    }
+}
+impl From<MahjongTileId> for u8 {
+    fn from(id: MahjongTileId) -> Self {
+        id.0
+    }
+}
+impl From<MahjongTileId> for usize {
+    fn from(id: MahjongTileId) -> Self {
+        usize::from(id.0)
+    }
+}
+
+impl fmt::Display for MahjongTileId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // write out with the MSPZ notation (use Debug for the raw tile_id value)
+        write!(f, "{}", MahjongTileValue::from_id(*self).and_then(|id| Ok(id.to_text())).unwrap_or(format!("Invalid tile id: {}", self.0)))
     }
 }
 
@@ -400,6 +400,55 @@ pub fn tile_ids_to_strings<T: Into<MahjongTileId> + Copy>(tile_ids: &Vec<T>) -> 
         .map(|tile_id| get_tile_text_from_id(*tile_id).unwrap())
         .collect()
 }
+
+/// A compact representation of a set of tiles: stored as a fixed-length array of 34 elements, where
+/// the value at index i corresponds to how many tiles of tile_id = i are in the set.
+/// For example: [1, 0, 2, 0, 0, ..., 0] represents [1m, 3m, 3m]
+/// Note that representation does not distinguish between red tiles and non-red-tiles
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct MahjongTileCountArray(pub [u8; 34]);
+
+impl Default for MahjongTileCountArray {
+    fn default() -> Self {
+        MahjongTileCountArray([0; 34])
+    }
+}
+
+// what are some common functions e.g. add tile id X to the count array, check if N copies of tile id X are in the count array, etc.
+// see shanten.rs - can likely move some of those functions over to this file
+
+pub fn get_total_tiles_from_count_array(tile_count_array: [u8; 34]) -> usize {
+    let mut total_tiles: usize = 0;
+    for tile_idx in 0..tile_count_array.len() {
+        total_tiles += usize::from(tile_count_array[tile_idx]);
+    }
+    total_tiles
+}
+
+pub fn get_tile_ids_from_count_array(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
+    let mut tile_ids = vec![];
+    for tile_id in 0..NUM_DISTINCT_TILE_VALUES {
+        let tile_idx = usize::from(tile_id);
+        if tile_count_array[tile_idx] > 0 {
+            for _i in 0..tile_count_array[tile_idx] {
+                tile_ids.push(MahjongTileId(tile_id));
+            }
+        }
+    }
+    tile_ids
+}
+
+pub fn get_distinct_tile_ids_from_count_array(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
+    let mut distinct_tile_ids = vec![];
+    for tile_id in 0..NUM_DISTINCT_TILE_VALUES {
+        let tile_idx = usize::from(tile_id);
+        if tile_count_array[tile_idx] > 0 {
+            distinct_tile_ids.push(MahjongTileId(tile_id));
+        }
+    }
+    distinct_tile_ids
+}
+
 
 #[cfg(test)]
 mod tests {

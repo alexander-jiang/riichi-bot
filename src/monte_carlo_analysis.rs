@@ -21,7 +21,7 @@ use std::collections::HashMap;
 /// generates a random tile id from the pool of tiles remaining (panics if there are no tiles left),
 /// weighted by the number of copies of tiles remaining
 fn generate_random_tile_id_rng(remaining_tile_count: [u8; 34]) -> MahjongTileId {
-    let tiles_remaining = shanten::get_tile_ids_from_count_array(remaining_tile_count);
+    let tiles_remaining = mahjong_tile::get_tile_ids_from_count_array(remaining_tile_count);
     if tiles_remaining.len() == 0 {
         panic!("no tiles remaining");
     }
@@ -33,7 +33,7 @@ fn generate_random_tile_id_rng(remaining_tile_count: [u8; 34]) -> MahjongTileId 
 /// generates a random tile id from the pool of tiles remaining (panics if there are no tiles left),
 /// weighted by the number of copies of tiles remaining
 fn generate_random_tile_id(remaining_tile_count: [u8; 34], rng: &mut ThreadRng) -> MahjongTileId {
-    let tiles_remaining = shanten::get_tile_ids_from_count_array(remaining_tile_count);
+    let tiles_remaining = mahjong_tile::get_tile_ids_from_count_array(remaining_tile_count);
     if tiles_remaining.len() == 0 {
         panic!("no tiles remaining");
     }
@@ -72,9 +72,9 @@ fn run_basic_analysis<T: Into<MahjongTileId> + Clone>(
         todo!("only implemented for 1-shanten hands so far");
     }
     let starting_ukiere_tile_ids = shanten::get_ukiere_optimized(starting_hand);
-    let starting_hand_tile_ids = shanten::get_tile_ids_from_count_array(starting_hand);
+    let starting_hand_tile_ids = mahjong_tile::get_tile_ids_from_count_array(starting_hand);
     let total_num_visible_tiles =
-        visible_tile_ids.len() + shanten::get_total_tiles_from_count_array(starting_hand);
+        visible_tile_ids.len() + mahjong_tile::get_total_tiles_from_count_array(starting_hand);
     println!(
         "initial hand: {}",
         shanten::tile_ids_to_string(&starting_hand_tile_ids)
@@ -141,7 +141,7 @@ fn run_basic_analysis<T: Into<MahjongTileId> + Clone>(
         // draw a tile
         for draw_number in 1..=max_allowed_draws {
             let drawn_tile_id = generate_random_tile_id_rng(remaining_tile_count);
-            // let hand_tile_ids = shanten::get_tile_ids_from_count_array(hand);
+            // let hand_tile_ids = mahjong_tile::get_tile_ids_from_count_array(hand);
             // println!(
             //     "draw {}, hand = {}",
             //     mahjong_tile::get_tile_text_from_id(drawn_tile_id).unwrap(),

@@ -2,7 +2,7 @@ extern crate test;
 
 pub use crate::mahjong_hand;
 pub use crate::mahjong_tile;
-use crate::mahjong_tile::MahjongTileId;
+use crate::mahjong_tile::{MahjongTileId, get_distinct_tile_ids_from_count_array, get_total_tiles_from_count_array};
 use std::cmp::min;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
@@ -299,37 +299,7 @@ fn get_pair_tile_ids(groups: &Vec<TileMeld>) -> Vec<MahjongTileId> {
     pair_tile_ids
 }
 
-pub fn get_total_tiles_from_count_array(tile_count_array: [u8; 34]) -> usize {
-    let mut total_tiles: usize = 0;
-    for tile_idx in 0..tile_count_array.len() {
-        total_tiles += usize::from(tile_count_array[tile_idx]);
-    }
-    total_tiles
-}
 
-pub fn get_tile_ids_from_count_array(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
-    let mut tile_ids = vec![];
-    for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
-        let tile_idx = usize::from(tile_id);
-        if tile_count_array[tile_idx] > 0 {
-            for _i in 0..tile_count_array[tile_idx] {
-                tile_ids.push(MahjongTileId(tile_id));
-            }
-        }
-    }
-    tile_ids
-}
-
-fn get_distinct_tile_ids_from_count_array(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
-    let mut distinct_tile_ids = vec![];
-    for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
-        let tile_idx = usize::from(tile_id);
-        if tile_count_array[tile_idx] > 0 {
-            distinct_tile_ids.push(MahjongTileId(tile_id));
-        }
-    }
-    distinct_tile_ids
-}
 
 fn standard_shanten_formula(
     num_complete_groups: i8,
