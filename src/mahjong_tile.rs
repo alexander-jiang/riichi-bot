@@ -417,20 +417,20 @@ impl Default for MahjongTileCountArray {
 // what are some common functions e.g. add tile id X to the count array, check if N copies of tile id X are in the count array, etc.
 // see shanten.rs - can likely move some of those functions over to this file
 
-pub fn get_total_tiles_from_count_array(tile_count_array: [u8; 34]) -> usize {
+pub fn get_total_tiles_from_count_array(tile_count_array: MahjongTileCountArray) -> usize {
     let mut total_tiles: usize = 0;
-    for tile_idx in 0..tile_count_array.len() {
-        total_tiles += usize::from(tile_count_array[tile_idx]);
+    for tile_idx in 0..tile_count_array.0.len() {
+        total_tiles += usize::from(tile_count_array.0[tile_idx]);
     }
     total_tiles
 }
 
-pub fn get_tile_ids_from_count_array(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
+pub fn get_tile_ids_from_count_array(tile_count_array: MahjongTileCountArray) -> Vec<MahjongTileId> {
     let mut tile_ids = vec![];
     for tile_id in 0..NUM_DISTINCT_TILE_VALUES {
         let tile_idx = usize::from(tile_id);
-        if tile_count_array[tile_idx] > 0 {
-            for _i in 0..tile_count_array[tile_idx] {
+        if tile_count_array.0[tile_idx] > 0 {
+            for _i in 0..tile_count_array.0[tile_idx] {
                 tile_ids.push(MahjongTileId(tile_id));
             }
         }
@@ -438,11 +438,11 @@ pub fn get_tile_ids_from_count_array(tile_count_array: [u8; 34]) -> Vec<MahjongT
     tile_ids
 }
 
-pub fn get_distinct_tile_ids_from_count_array(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
+pub fn get_distinct_tile_ids_from_count_array(tile_count_array: MahjongTileCountArray) -> Vec<MahjongTileId> {
     let mut distinct_tile_ids = vec![];
     for tile_id in 0..NUM_DISTINCT_TILE_VALUES {
         let tile_idx = usize::from(tile_id);
-        if tile_count_array[tile_idx] > 0 {
+        if tile_count_array.0[tile_idx] > 0 {
             distinct_tile_ids.push(MahjongTileId(tile_id));
         }
     }

@@ -1,12 +1,12 @@
 pub use crate::mahjong_tile;
-use crate::mahjong_tile::MahjongTileId;
+use crate::mahjong_tile::{MahjongTileCountArray, MahjongTileId};
 use std::collections::VecDeque;
 use std::fmt;
 
 // TODO does it matter if the array size is defined statically or via a constant?
 pub struct MahjongHand {
     tiles: Vec<mahjong_tile::MahjongTile>, // only tiles in hand (i.e. tiles that can be discarded)
-    tile_count_array: Option<[u8; 34]>,    // none if not computed yet
+    tile_count_array: Option<MahjongTileCountArray>,    // none if not computed yet
     _shanten: Option<i8>,                  // none if not computed yet TODO update this eventually
                                            // TODO track fixed/declared melds (open melds or closed kans)
 }
@@ -23,15 +23,15 @@ impl Default for MahjongHand {
 
 /// private struct for winning hand computation (in iterative fashion)
 struct PartialState {
-    tile_count_array: [u8; 34],
+    tile_count_array: MahjongTileCountArray,
     num_melds_left: u8,
     num_pairs_left: u8,
 }
 
 #[derive(Clone, Debug)]
 pub struct PartialHandGroupingState {
-    tile_count_array: [u8; 34],
-    groups_tile_counts: Vec<[u8; 34]>,
+    tile_count_array: MahjongTileCountArray,
+    groups_tile_counts: Vec<MahjongTileCountArray>,
     num_complete_groups: u8,
     num_incomplete_groups: u8,
     num_pairs: u8,
@@ -54,10 +54,10 @@ impl fmt::Display for PartialHandGroupingState {
     }
 }
 
-fn tile_id_is_isolated<T: Into<MahjongTileId>>(tile_count_array: &[u8; 34], tile_id: T) -> bool {
+fn tile_id_is_isolated<T: Into<MahjongTileId>>(tile_count_array: &MahjongTileCountArray, tile_id: T) -> bool {
     let tile_id: MahjongTileId = tile_id.into();
     let tile_idx = usize::from(tile_id);
-    if tile_count_array[tile_idx] != 1 {
+    if tile_count_array.0[tile_idx] != 1 {
         // multiple copies of a tile -> not isolated (could form a pair or triplet)
         // and zero copies of a tile -> not isolated by definition
         return false;
@@ -70,21 +70,21 @@ fn tile_id_is_isolated<T: Into<MahjongTileId>>(tile_count_array: &[u8; 34], tile
     let tile_rank = mahjong_tile::get_num_tile_rank(tile_id).unwrap(); // from 1-9
     if tile_rank == 1 {
         // single copy of 1 tile is isolated if there is no 2 tile in that suit
-        return tile_count_array[tile_idx + 1] == 0;
+        return tile_count_array.0[tile_idx + 1] == 0;
     } else if tile_rank == 9 {
         // single copy of 9 tile is isolated if there is no 8 tile in that suit
-        return tile_count_array[tile_idx - 1] == 0;
+        return tile_count_array.0[tile_idx - 1] == 0;
     } else {
         // single copy of n-tile isolated if there is no (n-1) tile and no (n+1) tile in that suit
-        return tile_count_array[tile_idx + 1] == 0 && tile_count_array[tile_idx - 1] == 0;
+        return tile_count_array.0[tile_idx + 1] == 0 && tile_count_array.0[tile_idx - 1] == 0;
     }
 }
 
-pub fn tile_count_array_to_string(tile_count_array: &[u8; 34]) -> String {
+pub fn tile_count_array_to_string(tile_count_array: &MahjongTileCountArray) -> String {
     let mut output = String::new();
     // hardcode array len so that the tile_id var is a u8 type
     for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
-        let tile_count = tile_count_array[usize::from(tile_id)];
+        let tile_count = tile_count_array.0[usize::from(tile_id)];
         let tile_string = mahjong_tile::get_tile_text_from_id(tile_id).unwrap();
         for _i in 0..tile_count {
             output.push_str(&tile_string);
@@ -94,40 +94,40 @@ pub fn tile_count_array_to_string(tile_count_array: &[u8; 34]) -> String {
 }
 
 /// sequence = three consecutive tiles (e.g. 123 or 678)
-pub fn can_make_sequence<T: Into<MahjongTileId>>(tile_count_array: &[u8; 34], tile_id: T) -> bool {
+pub fn can_make_sequence<T: Into<MahjongTileId>>(tile_count_array: &MahjongTileCountArray, tile_id: T) -> bool {
     let tile_id: MahjongTileId = tile_id.into();
     let tile_idx = usize::from(tile_id);
     let tile_num_rank = mahjong_tile::get_num_tile_rank(tile_id);
-    tile_count_array[tile_idx] >= 1
+    tile_count_array.0[tile_idx] >= 1
         && (match tile_num_rank {
             Some(r) if r == 1 => {
-                tile_count_array[usize::from(tile_id) + 1] >= 1
-                    && tile_count_array[usize::from(tile_id) + 2] >= 1
+                tile_count_array.0[usize::from(tile_id) + 1] >= 1
+                    && tile_count_array.0[usize::from(tile_id) + 2] >= 1
             }
             Some(r) if r == 2 => {
-                (tile_count_array[usize::from(tile_id) + 1] >= 1
-                    && tile_count_array[usize::from(tile_id) + 2] >= 1)
-                    || (tile_count_array[usize::from(tile_id) - 1] >= 1
-                        && tile_count_array[usize::from(tile_id) + 1] >= 1)
+                (tile_count_array.0[usize::from(tile_id) + 1] >= 1
+                    && tile_count_array.0[usize::from(tile_id) + 2] >= 1)
+                    || (tile_count_array.0[usize::from(tile_id) - 1] >= 1
+                        && tile_count_array.0[usize::from(tile_id) + 1] >= 1)
             }
             Some(r) if r >= 3 && r <= 7 => {
-                (tile_count_array[usize::from(tile_id) + 1] >= 1
-                    && tile_count_array[usize::from(tile_id) + 2] >= 1)
-                    || (tile_count_array[usize::from(tile_id) - 1] >= 1
-                        && tile_count_array[usize::from(tile_id) + 1] >= 1)
-                    || (tile_count_array[usize::from(tile_id) - 2] >= 1
-                        && tile_count_array[usize::from(tile_id) - 1] >= 1)
+                (tile_count_array.0[usize::from(tile_id) + 1] >= 1
+                    && tile_count_array.0[usize::from(tile_id) + 2] >= 1)
+                    || (tile_count_array.0[usize::from(tile_id) - 1] >= 1
+                        && tile_count_array.0[usize::from(tile_id) + 1] >= 1)
+                    || (tile_count_array.0[usize::from(tile_id) - 2] >= 1
+                        && tile_count_array.0[usize::from(tile_id) - 1] >= 1)
             }
             // sequences cannot wrap around
             Some(r) if r == 8 => {
-                (tile_count_array[usize::from(tile_id) - 1] >= 1
-                    && tile_count_array[usize::from(tile_id) + 1] >= 1)
-                    || (tile_count_array[usize::from(tile_id) - 2] >= 1
-                        && tile_count_array[usize::from(tile_id) - 1] >= 1)
+                (tile_count_array.0[usize::from(tile_id) - 1] >= 1
+                    && tile_count_array.0[usize::from(tile_id) + 1] >= 1)
+                    || (tile_count_array.0[usize::from(tile_id) - 2] >= 1
+                        && tile_count_array.0[usize::from(tile_id) - 1] >= 1)
             }
             Some(r) if r == 9 => {
-                tile_count_array[usize::from(tile_id) - 2] >= 1
-                    && tile_count_array[usize::from(tile_id) - 1] >= 1
+                tile_count_array.0[usize::from(tile_id) - 2] >= 1
+                    && tile_count_array.0[usize::from(tile_id) - 1] >= 1
             }
             Some(_) => false,
             // the tile is an honor tile (cannot form sequence),
@@ -136,18 +136,18 @@ pub fn can_make_sequence<T: Into<MahjongTileId>>(tile_count_array: &[u8; 34], ti
 }
 
 /// ryanmen = two-sided wait (e.g. 23 or 78)
-pub fn can_make_ryanmen<T: Into<MahjongTileId>>(tile_count_array: &[u8; 34], tile_id: T) -> bool {
+pub fn can_make_ryanmen<T: Into<MahjongTileId>>(tile_count_array: &MahjongTileCountArray, tile_id: T) -> bool {
     let tile_id: MahjongTileId = tile_id.into();
     let tile_idx = usize::from(tile_id);
     let tile_num_rank = mahjong_tile::get_num_tile_rank(tile_id);
-    tile_count_array[tile_idx] >= 1
+    tile_count_array.0[tile_idx] >= 1
         && (match tile_num_rank {
-            Some(r) if r == 2 => tile_count_array[usize::from(tile_id) + 1] >= 1,
+            Some(r) if r == 2 => tile_count_array.0[usize::from(tile_id) + 1] >= 1,
             Some(r) if r >= 3 && r <= 7 => {
-                tile_count_array[usize::from(tile_id) + 1] >= 1
-                    || tile_count_array[usize::from(tile_id) - 1] >= 1
+                tile_count_array.0[usize::from(tile_id) + 1] >= 1
+                    || tile_count_array.0[usize::from(tile_id) - 1] >= 1
             }
-            Some(r) if r == 8 => tile_count_array[usize::from(tile_id) - 1] >= 1,
+            Some(r) if r == 8 => tile_count_array.0[usize::from(tile_id) - 1] >= 1,
             // cannot form ryanmen with a terminal (1 or 9)
             Some(_) => false,
             // the tile is an honor tile (cannot form sequence)
@@ -156,15 +156,15 @@ pub fn can_make_ryanmen<T: Into<MahjongTileId>>(tile_count_array: &[u8; 34], til
 }
 
 /// penchan = one-sided wait (only 12 or 89)
-pub fn can_make_penchan<T: Into<MahjongTileId>>(tile_count_array: &[u8; 34], tile_id: T) -> bool {
+pub fn can_make_penchan<T: Into<MahjongTileId>>(tile_count_array: &MahjongTileCountArray, tile_id: T) -> bool {
     let tile_id: MahjongTileId = tile_id.into();
     let tile_idx = usize::from(tile_id);
     let tile_num_rank = mahjong_tile::get_num_tile_rank(tile_id);
-    tile_count_array[tile_idx] >= 1
+    tile_count_array.0[tile_idx] >= 1
         && (match tile_num_rank {
             // must form a penchan with a terminal (12 or 89)
-            Some(r) if r == 1 || r == 8 => tile_count_array[usize::from(tile_id) + 1] >= 1,
-            Some(r) if r == 2 || r == 9 => tile_count_array[usize::from(tile_id) - 1] >= 1,
+            Some(r) if r == 1 || r == 8 => tile_count_array.0[usize::from(tile_id) + 1] >= 1,
+            Some(r) if r == 2 || r == 9 => tile_count_array.0[usize::from(tile_id) - 1] >= 1,
             Some(_) => false,
             // the tile is an honor tile (cannot form sequence)
             None => false,
@@ -172,18 +172,18 @@ pub fn can_make_penchan<T: Into<MahjongTileId>>(tile_count_array: &[u8; 34], til
 }
 
 // kanchan = inner wait (e.g. 13 or 79)
-pub fn can_make_kanchan<T: Into<MahjongTileId>>(tile_count_array: &[u8; 34], tile_id: T) -> bool {
+pub fn can_make_kanchan<T: Into<MahjongTileId>>(tile_count_array: &MahjongTileCountArray, tile_id: T) -> bool {
     let tile_id: MahjongTileId = tile_id.into();
     let tile_idx = usize::from(tile_id);
     let tile_num_rank = mahjong_tile::get_num_tile_rank(tile_id);
-    tile_count_array[tile_idx] >= 1
+    tile_count_array.0[tile_idx] >= 1
         && (match tile_num_rank {
-            Some(r) if r == 1 || r == 2 => tile_count_array[usize::from(tile_id) + 2] >= 1,
+            Some(r) if r == 1 || r == 2 => tile_count_array.0[usize::from(tile_id) + 2] >= 1,
             Some(r) if r >= 3 && r <= 7 => {
-                tile_count_array[usize::from(tile_id) + 2] >= 1
-                    || tile_count_array[usize::from(tile_id) - 2] >= 1
+                tile_count_array.0[usize::from(tile_id) + 2] >= 1
+                    || tile_count_array.0[usize::from(tile_id) - 2] >= 1
             }
-            Some(r) if r == 8 || r == 9 => tile_count_array[usize::from(tile_id) - 2] >= 1,
+            Some(r) if r == 8 || r == 9 => tile_count_array.0[usize::from(tile_id) - 2] >= 1,
             Some(_) => false,
             // the tile is an honor tile (cannot form sequence)
             None => false,
@@ -192,64 +192,64 @@ pub fn can_make_kanchan<T: Into<MahjongTileId>>(tile_count_array: &[u8; 34], til
 
 // TODO test
 // TODO check total number of tiles
-fn is_incomplete_group(tile_count_array: &[u8; 34]) -> bool {
+fn is_incomplete_group(tile_count_array: &MahjongTileCountArray) -> bool {
     if get_total_num_tiles(tile_count_array) > 2 {
         return false;
     }
     for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
         let tile_idx = usize::from(tile_id);
-        if tile_count_array[tile_idx] == 0 {
+        if tile_count_array.0[tile_idx] == 0 {
             continue;
         }
 
         // pair does not count as complete group
         let is_complete =
-            can_make_sequence(tile_count_array, tile_id) || tile_count_array[tile_idx] >= 3;
+            can_make_sequence(tile_count_array, tile_id) || tile_count_array.0[tile_idx] >= 3;
         return !is_complete;
     }
     return false;
 }
 
-fn get_total_num_tiles(tile_count_array: &[u8; 34]) -> u16 {
+fn get_total_num_tiles(tile_count_array: &MahjongTileCountArray) -> u16 {
     let mut total_num_tiles: u16 = 0;
     for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
         let tile_idx = usize::from(tile_id);
-        total_num_tiles = total_num_tiles.saturating_add(tile_count_array[tile_idx].into());
+        total_num_tiles = total_num_tiles.saturating_add(tile_count_array.0[tile_idx].into());
     }
     total_num_tiles
 }
 
-fn is_pair(tile_count_array: &[u8; 34]) -> bool {
+fn is_pair(tile_count_array: &MahjongTileCountArray) -> bool {
     if get_total_num_tiles(tile_count_array) != 2 {
         return false;
     }
     for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
         let tile_idx = usize::from(tile_id);
-        if tile_count_array[tile_idx] == 0 {
+        if tile_count_array.0[tile_idx] == 0 {
             continue;
         }
 
-        return tile_count_array[tile_idx] == 2;
+        return tile_count_array.0[tile_idx] == 2;
     }
     return false;
 }
 
 // TODO test
 // TODO should we refactor this? the tile_count_array is no longer useful - would be better to know the meld type and tiles
-fn tile_ids_to_complete_group(tile_count_array: &[u8; 34]) -> Option<Vec<MahjongTileId>> {
+fn tile_ids_to_complete_group(tile_count_array: &MahjongTileCountArray) -> Option<Vec<MahjongTileId>> {
     for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
         let tile_idx = usize::from(tile_id);
-        if tile_count_array[tile_idx] == 0 {
+        if tile_count_array.0[tile_idx] == 0 {
             continue;
         }
 
         let is_complete =
-            can_make_sequence(tile_count_array, tile_id) || tile_count_array[tile_idx] >= 3;
+            can_make_sequence(tile_count_array, tile_id) || tile_count_array.0[tile_idx] >= 3;
         if is_complete {
             return None;
         }
         if can_make_ryanmen(tile_count_array, tile_id) {
-            if tile_idx + 1 < tile_count_array.len() && tile_count_array[tile_idx + 1] > 0 {
+            if tile_idx + 1 < tile_count_array.len() && tile_count_array.0[tile_idx + 1] > 0 {
                 return Some(vec![MahjongTileId(tile_id - 1), MahjongTileId(tile_id + 2)]);
             } else {
                 return Some(vec![MahjongTileId(tile_id - 2), MahjongTileId(tile_id + 1)]);
@@ -273,7 +273,7 @@ fn tile_ids_to_complete_group(tile_count_array: &[u8; 34]) -> Option<Vec<Mahjong
                 panic!("invalid penchan");
             }
         } else if can_make_kanchan(tile_count_array, tile_id) {
-            if tile_idx + 2 < tile_count_array.len() && tile_count_array[tile_idx + 2] > 0 {
+            if tile_idx + 2 < tile_count_array.len() && tile_count_array.0[tile_idx + 2] > 0 {
                 return Some(vec![MahjongTileId(tile_id + 1)]);
             } else {
                 return Some(vec![MahjongTileId(tile_id - 1)]);
@@ -287,7 +287,7 @@ fn tile_ids_to_complete_group(tile_count_array: &[u8; 34]) -> Option<Vec<Mahjong
 
 impl MahjongHand {
     /// Converts our tiles vector to an array of counts per tile type (34 elements, since riichi has 34 different tiles).
-    pub fn get_tile_count_array(&self) -> [u8; 34] {
+    pub fn get_tile_count_array(&self) -> MahjongTileCountArray {
         if self.tile_count_array.is_some() {
             return self.tile_count_array.unwrap();
         }
@@ -300,7 +300,7 @@ impl MahjongHand {
     }
 
     /// Updates the tile_count_array in-place, and returns the updated array.
-    pub fn update_tile_count_array(&mut self) -> [u8; 34] {
+    pub fn update_tile_count_array(&mut self) -> MahjongTileCountArray {
         let mut new_tile_count_array = [0; 34];
         for tile in self.tiles.iter() {
             new_tile_count_array[usize::from(tile.get_id().unwrap())] += 1;
@@ -397,7 +397,7 @@ impl MahjongHand {
 
             if can_make_sequence && current_melds_left > 0 {
                 // copy and update count array
-                let mut new_tile_count_array: [u8; 34] = current_count_array;
+                let mut new_tile_count_array: MahjongTileCountArray = current_count_array;
                 new_tile_count_array[usize::from(tile_id)] -= 1;
                 new_tile_count_array[usize::from(tile_id) + 1] -= 1;
                 new_tile_count_array[usize::from(tile_id) + 2] -= 1;
@@ -413,7 +413,7 @@ impl MahjongHand {
             }
             if can_make_pair && current_pairs_left > 0 {
                 // copy and update count array
-                let mut new_tile_count_array: [u8; 34] = current_count_array;
+                let mut new_tile_count_array: MahjongTileCountArray = current_count_array;
                 new_tile_count_array[usize::from(tile_id)] -= 2;
                 println!(
                     "can form a pair with id={}, new tile counts: {:?}",
@@ -427,7 +427,7 @@ impl MahjongHand {
             }
             if can_make_triplet && current_melds_left > 0 {
                 // copy and update count array
-                let mut new_tile_count_array: [u8; 34] = current_count_array;
+                let mut new_tile_count_array: MahjongTileCountArray = current_count_array;
                 new_tile_count_array[usize::from(tile_id)] -= 3;
                 println!(
                     "can form a triplet with id={}, new tile counts: {:?}",
@@ -447,7 +447,7 @@ impl MahjongHand {
 
     fn is_winning_shape_recursive_helper(
         &self,
-        tile_count_array: [u8; 34],
+        tile_count_array: MahjongTileCountArray,
         num_melds_left: u8,
         num_pairs_left: u8,
     ) -> bool {
@@ -459,7 +459,7 @@ impl MahjongHand {
         let mut tile_id: u8 = 0;
         // get to first tile value in the hand
         while usize::from(tile_id) < tile_count_array.len()
-            && tile_count_array[usize::from(tile_id)] == 0
+            && tile_count_array.0[usize::from(tile_id)] == 0
         {
             tile_id += 1;
         }
@@ -474,12 +474,12 @@ impl MahjongHand {
             }
         }
 
-        let can_make_sequence = tile_count_array[usize::from(tile_id)] >= 1
+        let can_make_sequence = tile_count_array.0[usize::from(tile_id)] >= 1
             && (if tile_id < mahjong_tile::FIRST_HONOR_ID {
                 if tile_id % 9 <= 6 {
                     // sequence valid if starting at 1-7 (assume sequences starting from lower rank tiles are already found)
-                    tile_count_array[usize::from(tile_id) + 1] >= 1
-                        && tile_count_array[usize::from(tile_id) + 2] >= 1
+                    tile_count_array.0[usize::from(tile_id) + 1] >= 1
+                        && tile_count_array.0[usize::from(tile_id) + 2] >= 1
                 } else {
                     // sequence cannot wrap around
                     false
@@ -489,8 +489,8 @@ impl MahjongHand {
                 false
             });
 
-        let can_make_pair = tile_count_array[usize::from(tile_id)] >= 2;
-        let can_make_triplet = tile_count_array[usize::from(tile_id)] >= 3;
+        let can_make_pair = tile_count_array.0[usize::from(tile_id)] >= 2;
+        let can_make_triplet = tile_count_array.0[usize::from(tile_id)] >= 3;
         // TODO do we need to check quads?
 
         // if we can't make a sequence, pair, or triplet, then this cannot be a possible winning hand
@@ -504,7 +504,7 @@ impl MahjongHand {
 
         if can_make_sequence && num_melds_left > 0 {
             // copy and update count array
-            let mut new_tile_count_array: [u8; 34] = tile_count_array;
+            let mut new_tile_count_array: MahjongTileCountArray = tile_count_array;
             new_tile_count_array[usize::from(tile_id)] -= 1;
             new_tile_count_array[usize::from(tile_id) + 1] -= 1;
             new_tile_count_array[usize::from(tile_id) + 2] -= 1;
@@ -523,7 +523,7 @@ impl MahjongHand {
         }
         if can_make_pair && num_pairs_left > 0 {
             // copy and update count array
-            let mut new_tile_count_array: [u8; 34] = tile_count_array;
+            let mut new_tile_count_array: MahjongTileCountArray = tile_count_array;
             new_tile_count_array[usize::from(tile_id)] -= 2;
             println!(
                 "can form a pair with id={}, new tile counts: {:?}",
@@ -540,7 +540,7 @@ impl MahjongHand {
         }
         if can_make_triplet && num_melds_left > 0 {
             // copy and update count array
-            let mut new_tile_count_array: [u8; 34] = tile_count_array;
+            let mut new_tile_count_array: MahjongTileCountArray = tile_count_array;
             new_tile_count_array[usize::from(tile_id)] -= 3;
             println!(
                 "can form a triplet with id={}, new tile counts: {:?}",
@@ -573,7 +573,7 @@ impl MahjongHand {
 
     fn is_winning_shape_recursive_heuristic_helper(
         &self,
-        tile_count_array: [u8; 34],
+        tile_count_array: MahjongTileCountArray,
         num_melds_left: u8,
         num_pairs_left: u8,
     ) -> bool {
@@ -595,7 +595,7 @@ impl MahjongHand {
         // get to first tile value in the hand
         tile_id = 0;
         while usize::from(tile_id) < tile_count_array.len()
-            && tile_count_array[usize::from(tile_id)] == 0
+            && tile_count_array.0[usize::from(tile_id)] == 0
         {
             tile_id += 1;
         }
@@ -611,20 +611,20 @@ impl MahjongHand {
 
         let tile_idx = usize::from(tile_id);
         let tile_num_rank = mahjong_tile::get_num_tile_rank(tile_id);
-        let can_make_sequence = tile_count_array[tile_idx] >= 1
+        let can_make_sequence = tile_count_array.0[tile_idx] >= 1
             && (if tile_num_rank.map_or(false, |r| r <= 7) {
                 // sequence valid if starting at 1-7 (assume sequences starting from lower rank tiles are already found)
-                tile_count_array[usize::from(tile_id) + 1] >= 1
-                    && tile_count_array[usize::from(tile_id) + 2] >= 1
+                tile_count_array.0[usize::from(tile_id) + 1] >= 1
+                    && tile_count_array.0[usize::from(tile_id) + 2] >= 1
             } else {
                 // either the tile is an honor tile (cannot form sequence),
                 // or the tile is a 8 or 9 in a numbered suit, and sequences cannot wrap around
                 false
             });
 
-        let can_make_pair = tile_count_array[tile_idx] >= 2;
-        let can_make_triplet = tile_count_array[tile_idx] >= 3;
-        let can_make_quad = tile_count_array[tile_idx] >= 4;
+        let can_make_pair = tile_count_array.0[tile_idx] >= 2;
+        let can_make_triplet = tile_count_array.0[tile_idx] >= 3;
+        let can_make_quad = tile_count_array.0[tile_idx] >= 4;
 
         // if we can't make a sequence, pair, or triplet, then this cannot be a possible winning hand
         // (this tile is isolated)
@@ -637,7 +637,7 @@ impl MahjongHand {
         }
 
         if can_make_quad && num_melds_left > 0 {
-            let mut new_tile_count_array: [u8; 34] = tile_count_array;
+            let mut new_tile_count_array: MahjongTileCountArray = tile_count_array;
             new_tile_count_array[tile_idx] -= 4;
             // println!("can form a quad with id={}", tile_id);
             let recursive_result = self.is_winning_shape_recursive_heuristic_helper(
@@ -651,7 +651,7 @@ impl MahjongHand {
         }
 
         if can_make_triplet && num_melds_left > 0 {
-            let mut new_tile_count_array: [u8; 34] = tile_count_array;
+            let mut new_tile_count_array: MahjongTileCountArray = tile_count_array;
             new_tile_count_array[tile_idx] -= 3;
             // println!("can form a triplet with id={}", tile_id);
             let recursive_result = self.is_winning_shape_recursive_heuristic_helper(
@@ -665,7 +665,7 @@ impl MahjongHand {
         }
 
         if can_make_pair && num_pairs_left > 0 {
-            let mut new_tile_count_array: [u8; 34] = tile_count_array;
+            let mut new_tile_count_array: MahjongTileCountArray = tile_count_array;
             new_tile_count_array[tile_idx] -= 2;
             // println!("can form a pair with id={}", tile_id);
             let recursive_result = self.is_winning_shape_recursive_heuristic_helper(
@@ -681,10 +681,10 @@ impl MahjongHand {
         // if we reached this point, we can't form a quad, pair, or triplet, so the only choice is to
         // use up all copies of this tile to make sequences (because we already ruled out pairs/triplets/quads)
         if can_make_sequence && num_melds_left > 0 {
-            let num_copies = tile_count_array[tile_idx];
+            let num_copies = tile_count_array.0[tile_idx];
             // do we have enough tiles to make multiple sequence melds
-            if tile_count_array[tile_idx + 1] < num_copies
-                || tile_count_array[tile_idx + 2] < num_copies
+            if tile_count_array.0[tile_idx + 1] < num_copies
+                || tile_count_array.0[tile_idx + 2] < num_copies
             {
                 // println!(
                 //     "cannot form {} sequences starting from id={}",
@@ -698,7 +698,7 @@ impl MahjongHand {
                 // copies of the tile that cannot be used
                 return false;
             }
-            let mut new_tile_count_array: [u8; 34] = tile_count_array;
+            let mut new_tile_count_array: MahjongTileCountArray = tile_count_array;
             new_tile_count_array[tile_idx] -= num_copies;
             new_tile_count_array[tile_idx + 1] -= num_copies;
             new_tile_count_array[tile_idx + 2] -= num_copies;
@@ -742,7 +742,7 @@ impl MahjongHand {
         tile_id = mahjong_tile::FIRST_HONOR_ID;
         while usize::from(tile_id) < tile_count_array.len() {
             let tile_idx = usize::from(tile_id);
-            let honor_tile_count = tile_count_array[tile_idx];
+            let honor_tile_count = tile_count_array.0[tile_idx];
             if honor_tile_count == 0 {
                 tile_id += 1;
                 continue;
@@ -764,7 +764,7 @@ impl MahjongHand {
                 return false;
             }
             // for honor tiles, we have to use all the tiles (as honor tiles can only form sets: triplets or quads)
-            tile_count_array[tile_idx] = 0;
+            tile_count_array.0[tile_idx] = 0;
 
             tile_id += 1;
         }
@@ -885,7 +885,7 @@ impl MahjongHand {
         let mut tile_id = mahjong_tile::FIRST_HONOR_ID;
         while usize::from(tile_id) < partial_state.tile_count_array.len() {
             let tile_idx: usize = usize::from(tile_id);
-            let honor_tile_count = partial_state.tile_count_array[tile_idx];
+            let honor_tile_count = partial_state.tile_count_array.0[tile_idx];
             // println!(
             //     "considering honor tile {}",
             //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
@@ -904,7 +904,7 @@ impl MahjongHand {
                 panic!("invalid number of honor tiles");
             }
             // for honor tiles, we have to use all the tiles (as honor tiles can only form sets: triplets or quads)
-            partial_state.tile_count_array[tile_idx] = 0;
+            partial_state.tile_count_array.0[tile_idx] = 0;
             let mut group_tile_count = [0; 34];
             group_tile_count[tile_idx] = honor_tile_count;
             partial_state.groups_tile_counts.push(group_tile_count);
@@ -954,7 +954,7 @@ impl MahjongHand {
                 let mut new_state_after_triplet = current_state.clone();
                 let mut group_tile_count = [0; 34];
                 group_tile_count[tile_idx] = 3;
-                new_state_after_triplet.tile_count_array[tile_idx] = num_tile_count - 3;
+                new_state_after_triplet.tile_count_array.0[tile_idx] = num_tile_count - 3;
                 new_state_after_triplet
                     .groups_tile_counts
                     .push(group_tile_count);
@@ -968,7 +968,7 @@ impl MahjongHand {
                 let mut new_state_after_pair = current_state.clone();
                 let mut group_tile_count = [0; 34];
                 group_tile_count[tile_idx] = 2;
-                new_state_after_pair.tile_count_array[tile_idx] = num_tile_count - 2;
+                new_state_after_pair.tile_count_array.0[tile_idx] = num_tile_count - 2;
                 new_state_after_pair
                     .groups_tile_counts
                     .push(group_tile_count);
@@ -993,7 +993,7 @@ impl MahjongHand {
                 let mut new_state_after_pair = current_state.clone();
                 let mut group_tile_count = [0; 34];
                 group_tile_count[tile_idx] = 2;
-                new_state_after_pair.tile_count_array[tile_idx] = num_tile_count - 2;
+                new_state_after_pair.tile_count_array.0[tile_idx] = num_tile_count - 2;
                 new_state_after_pair
                     .groups_tile_counts
                     .push(group_tile_count);
@@ -1024,11 +1024,11 @@ impl MahjongHand {
                 group_tile_count[tile_idx] = 1;
                 group_tile_count[tile_idx + 1] = 1;
                 group_tile_count[tile_idx + 2] = 1;
-                new_state_after_sequence.tile_count_array[tile_idx] =
+                new_state_after_sequence.tile_count_array.0[tile_idx] =
                     current_count_array[tile_idx] - 1;
-                new_state_after_sequence.tile_count_array[tile_idx + 1] =
+                new_state_after_sequence.tile_count_array.0[tile_idx + 1] =
                     current_count_array[tile_idx + 1] - 1;
-                new_state_after_sequence.tile_count_array[tile_idx + 2] =
+                new_state_after_sequence.tile_count_array.0[tile_idx + 2] =
                     current_count_array[tile_idx + 2] - 1;
                 new_state_after_sequence
                     .groups_tile_counts
@@ -1046,9 +1046,9 @@ impl MahjongHand {
                 let mut group_tile_count = [0; 34];
                 group_tile_count[tile_idx] = 1;
                 group_tile_count[tile_idx + 1] = 1;
-                new_state_after_ryanmen.tile_count_array[tile_idx] =
+                new_state_after_ryanmen.tile_count_array.0[tile_idx] =
                     current_count_array[tile_idx] - 1;
-                new_state_after_ryanmen.tile_count_array[tile_idx + 1] =
+                new_state_after_ryanmen.tile_count_array.0[tile_idx + 1] =
                     current_count_array[tile_idx + 1] - 1;
                 new_state_after_ryanmen
                     .groups_tile_counts
@@ -1066,9 +1066,9 @@ impl MahjongHand {
                 let mut group_tile_count = [0; 34];
                 group_tile_count[tile_idx] = 1;
                 group_tile_count[tile_idx + 1] = 1;
-                new_state_after_penchan.tile_count_array[tile_idx] =
+                new_state_after_penchan.tile_count_array.0[tile_idx] =
                     current_count_array[tile_idx] - 1;
-                new_state_after_penchan.tile_count_array[tile_idx + 1] =
+                new_state_after_penchan.tile_count_array.0[tile_idx + 1] =
                     current_count_array[tile_idx + 1] - 1;
                 new_state_after_penchan
                     .groups_tile_counts
@@ -1091,9 +1091,9 @@ impl MahjongHand {
                 let mut group_tile_count = [0; 34];
                 group_tile_count[tile_idx] = 1;
                 group_tile_count[tile_idx + 2] = 1;
-                new_state_after_kanchan.tile_count_array[tile_idx] =
+                new_state_after_kanchan.tile_count_array.0[tile_idx] =
                     current_count_array[tile_idx] - 1;
-                new_state_after_kanchan.tile_count_array[tile_idx + 2] =
+                new_state_after_kanchan.tile_count_array.0[tile_idx + 2] =
                     current_count_array[tile_idx + 2] - 1;
                 new_state_after_kanchan
                     .groups_tile_counts
@@ -1111,7 +1111,7 @@ impl MahjongHand {
                 let mut new_state_after_isolated = current_state.clone();
                 let mut group_tile_count = [0; 34];
                 group_tile_count[tile_idx] = 1;
-                new_state_after_isolated.tile_count_array[tile_idx] =
+                new_state_after_isolated.tile_count_array.0[tile_idx] =
                     current_count_array[tile_idx] - 1;
                 new_state_after_isolated
                     .groups_tile_counts
@@ -1628,7 +1628,7 @@ mod tests {
     #[test]
     fn test_can_make_sequence() {
         // valid sequence 1m-2m-3m
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_1m = mahjong_tile::get_id_from_tile_text("1m").unwrap();
         tile_counts[usize::from(tile_id_1m)] = 1;
         let tile_id_2m = mahjong_tile::get_id_from_tile_text("2m").unwrap();
@@ -1643,7 +1643,7 @@ mod tests {
         assert!(!can_make_sequence(&tile_counts, tile_id_4m));
 
         // valid sequence 4s-5s-6s
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_4s = mahjong_tile::get_id_from_tile_text("4s").unwrap();
         tile_counts[usize::from(tile_id_4s)] = 1;
         let tile_id_5s = mahjong_tile::get_id_from_tile_text("5s").unwrap();
@@ -1658,7 +1658,7 @@ mod tests {
         assert!(!can_make_sequence(&tile_counts, tile_id_7s));
 
         // sequence cannot wrap around (9m-1m-2m is not a sequence)
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_9m = mahjong_tile::get_id_from_tile_text("9m").unwrap();
         tile_counts[usize::from(tile_id_9m)] = 1;
         let tile_id_1m = mahjong_tile::get_id_from_tile_text("1m").unwrap();
@@ -1671,7 +1671,7 @@ mod tests {
         assert!(!can_make_sequence(&tile_counts, tile_id_2m));
 
         // sequence cannot wrap in tile_id (9m-1p-2p is not a sequence)
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_9m = mahjong_tile::get_id_from_tile_text("9m").unwrap();
         tile_counts[usize::from(tile_id_9m)] = 1;
         let tile_id_1p = MahjongTileId(tile_id_9m.0 + 1);
@@ -1684,7 +1684,7 @@ mod tests {
         assert!(!can_make_sequence(&tile_counts, tile_id_2p));
 
         // sequence must be in the same suit
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_7m = mahjong_tile::get_id_from_tile_text("7m").unwrap();
         tile_counts[usize::from(tile_id_7m)] = 1;
         let tile_id_8p = mahjong_tile::get_id_from_tile_text("8p").unwrap();
@@ -1697,7 +1697,7 @@ mod tests {
         assert!(!can_make_sequence(&tile_counts, tile_id_9p));
 
         // honor tiles cannot form a sequence
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_1z = mahjong_tile::get_id_from_tile_text("1z").unwrap();
         tile_counts[usize::from(tile_id_1z)] = 1;
         let tile_id_2z = mahjong_tile::get_id_from_tile_text("2z").unwrap();
@@ -1712,7 +1712,7 @@ mod tests {
     #[test]
     fn test_can_make_ryanmen() {
         // valid ryanmen 2m-3m
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_1m = mahjong_tile::get_id_from_tile_text("1m").unwrap();
         let tile_id_2m = mahjong_tile::get_id_from_tile_text("2m").unwrap();
         tile_counts[usize::from(tile_id_2m)] = 1;
@@ -1726,7 +1726,7 @@ mod tests {
         assert!(!can_make_ryanmen(&tile_counts, tile_id_4m));
 
         // valid ryanmen 5s-6s
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_4s = mahjong_tile::get_id_from_tile_text("4s").unwrap();
         let tile_id_5s = mahjong_tile::get_id_from_tile_text("5s").unwrap();
         tile_counts[usize::from(tile_id_5s)] = 1;
@@ -1740,7 +1740,7 @@ mod tests {
         assert!(!can_make_ryanmen(&tile_counts, tile_id_7s));
 
         // ryanmen cannot include terminal (8m-9m is not a ryanmen)
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_8m = mahjong_tile::get_id_from_tile_text("8m").unwrap();
         tile_counts[usize::from(tile_id_8m)] = 1;
         let tile_id_9m = mahjong_tile::get_id_from_tile_text("9m").unwrap();
@@ -1750,7 +1750,7 @@ mod tests {
         assert!(!can_make_ryanmen(&tile_counts, tile_id_9m));
 
         // ryanmen cannot wrap in tile_id (9p-1s is not a ryanmen)
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_9p = mahjong_tile::get_id_from_tile_text("9p").unwrap();
         tile_counts[usize::from(tile_id_9p)] = 1;
         let tile_id_1s = MahjongTileId(tile_id_9p.0 + 1);
@@ -1760,7 +1760,7 @@ mod tests {
         assert!(!can_make_ryanmen(&tile_counts, tile_id_1s));
 
         // ryanmen must be in the same suit (7m-8p is not a ryanmen)
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_7m = mahjong_tile::get_id_from_tile_text("7m").unwrap();
         tile_counts[usize::from(tile_id_7m)] = 1;
         let tile_id_8p = mahjong_tile::get_id_from_tile_text("8p").unwrap();
@@ -1770,7 +1770,7 @@ mod tests {
         assert!(!can_make_ryanmen(&tile_counts, tile_id_8p));
 
         // honor tiles cannot form a ryanmen
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_2z = mahjong_tile::get_id_from_tile_text("2z").unwrap();
         tile_counts[usize::from(tile_id_2z)] = 1;
         let tile_id_3z = mahjong_tile::get_id_from_tile_text("3z").unwrap();
@@ -1782,7 +1782,7 @@ mod tests {
     #[test]
     fn test_can_make_penchan() {
         // valid penchan 1m-2m
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_1m = mahjong_tile::get_id_from_tile_text("1m").unwrap();
         tile_counts[usize::from(tile_id_1m)] = 1;
         let tile_id_2m = mahjong_tile::get_id_from_tile_text("2m").unwrap();
@@ -1794,7 +1794,7 @@ mod tests {
         assert!(!can_make_penchan(&tile_counts, tile_id_3m));
 
         // valid penchan 8s-9s
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_8s = mahjong_tile::get_id_from_tile_text("8s").unwrap();
         tile_counts[usize::from(tile_id_8s)] = 1;
         let tile_id_9s = mahjong_tile::get_id_from_tile_text("9s").unwrap();
@@ -1806,7 +1806,7 @@ mod tests {
         assert!(can_make_penchan(&tile_counts, tile_id_9s));
 
         // 7p-8p is not a penchan
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_8p = mahjong_tile::get_id_from_tile_text("8p").unwrap();
         tile_counts[usize::from(tile_id_8p)] = 1;
         let tile_id_7p = mahjong_tile::get_id_from_tile_text("7p").unwrap();
@@ -1816,7 +1816,7 @@ mod tests {
         assert!(!can_make_penchan(&tile_counts, tile_id_8p));
 
         // penchan cannot wrap in tile_id (9p-1s is not a penchan)
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_9p = mahjong_tile::get_id_from_tile_text("9p").unwrap();
         tile_counts[usize::from(tile_id_9p)] = 1;
         let tile_id_1s = MahjongTileId(tile_id_9p.0 + 1);
@@ -1826,7 +1826,7 @@ mod tests {
         assert!(!can_make_penchan(&tile_counts, tile_id_1s));
 
         // penchan must be in the same suit (8p-9m is not a penchan)
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_8p = mahjong_tile::get_id_from_tile_text("8p").unwrap();
         tile_counts[usize::from(tile_id_8p)] = 1;
         let tile_id_9m = mahjong_tile::get_id_from_tile_text("9m").unwrap();
@@ -1836,7 +1836,7 @@ mod tests {
         assert!(!can_make_penchan(&tile_counts, tile_id_9m));
 
         // honor tiles cannot form a penchan
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_6z = mahjong_tile::get_id_from_tile_text("6z").unwrap();
         tile_counts[usize::from(tile_id_6z)] = 1;
         let tile_id_7z = mahjong_tile::get_id_from_tile_text("7z").unwrap();
@@ -1848,7 +1848,7 @@ mod tests {
     #[test]
     fn test_can_make_kanchan() {
         // valid kanchan 1m-3m
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_1m = mahjong_tile::get_id_from_tile_text("1m").unwrap();
         tile_counts[usize::from(tile_id_1m)] = 1;
         let tile_id_2m = mahjong_tile::get_id_from_tile_text("2m").unwrap();
@@ -1862,7 +1862,7 @@ mod tests {
         assert!(!can_make_kanchan(&tile_counts, tile_id_4m));
 
         // valid kanchan 4s-6s (from 4s-5s-6s)
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_4s = mahjong_tile::get_id_from_tile_text("4s").unwrap();
         tile_counts[usize::from(tile_id_4s)] = 1;
         let tile_id_5s = mahjong_tile::get_id_from_tile_text("5s").unwrap();
@@ -1877,7 +1877,7 @@ mod tests {
         assert!(!can_make_kanchan(&tile_counts, tile_id_7s));
 
         // kanchan cannot wrap around (8m-1m is not a kanchan)
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_8m = mahjong_tile::get_id_from_tile_text("8m").unwrap();
         tile_counts[usize::from(tile_id_8m)] = 1;
         let tile_id_1m = mahjong_tile::get_id_from_tile_text("1m").unwrap();
@@ -1887,7 +1887,7 @@ mod tests {
         assert!(!can_make_kanchan(&tile_counts, tile_id_1m));
 
         // kanchan cannot wrap in tile_id (9m-2p is not a kanchan)
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_9m = mahjong_tile::get_id_from_tile_text("9m").unwrap();
         tile_counts[usize::from(tile_id_9m)] = 1;
         let tile_id_2p = MahjongTileId(tile_id_9m.0 + 2);
@@ -1897,7 +1897,7 @@ mod tests {
         assert!(!can_make_kanchan(&tile_counts, tile_id_2p));
 
         // kanchan must be in the same suit (7m-9p is not kanchan)
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_7m = mahjong_tile::get_id_from_tile_text("7m").unwrap();
         tile_counts[usize::from(tile_id_7m)] = 1;
         let tile_id_9p = mahjong_tile::get_id_from_tile_text("9p").unwrap();
@@ -1907,7 +1907,7 @@ mod tests {
         assert!(!can_make_kanchan(&tile_counts, tile_id_9p));
 
         // honor tiles cannot form a kanchan
-        let mut tile_counts: [u8; 34] = [0; 34];
+        let mut tile_counts: MahjongTileCountArray = [0; 34];
         let tile_id_1z = mahjong_tile::get_id_from_tile_text("1z").unwrap();
         tile_counts[usize::from(tile_id_1z)] = 1;
         let tile_id_3z = mahjong_tile::get_id_from_tile_text("3z").unwrap();

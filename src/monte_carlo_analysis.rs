@@ -1,7 +1,7 @@
 extern crate test;
 
 pub use crate::mahjong_tile;
-use crate::mahjong_tile::MahjongTileId;
+use crate::mahjong_tile::{MahjongTileCountArray, MahjongTileId};
 pub use crate::shanten;
 use rand::rngs::ThreadRng;
 use rand::Rng;
@@ -20,7 +20,7 @@ use std::collections::HashMap;
 
 /// generates a random tile id from the pool of tiles remaining (panics if there are no tiles left),
 /// weighted by the number of copies of tiles remaining
-fn generate_random_tile_id_rng(remaining_tile_count: [u8; 34]) -> MahjongTileId {
+fn generate_random_tile_id_rng(remaining_tile_count: MahjongTileCountArray) -> MahjongTileId {
     let tiles_remaining = mahjong_tile::get_tile_ids_from_count_array(remaining_tile_count);
     if tiles_remaining.len() == 0 {
         panic!("no tiles remaining");
@@ -32,7 +32,7 @@ fn generate_random_tile_id_rng(remaining_tile_count: [u8; 34]) -> MahjongTileId 
 
 /// generates a random tile id from the pool of tiles remaining (panics if there are no tiles left),
 /// weighted by the number of copies of tiles remaining
-fn generate_random_tile_id(remaining_tile_count: [u8; 34], rng: &mut ThreadRng) -> MahjongTileId {
+fn generate_random_tile_id(remaining_tile_count: MahjongTileCountArray, rng: &mut ThreadRng) -> MahjongTileId {
     let tiles_remaining = mahjong_tile::get_tile_ids_from_count_array(remaining_tile_count);
     if tiles_remaining.len() == 0 {
         panic!("no tiles remaining");
@@ -42,9 +42,9 @@ fn generate_random_tile_id(remaining_tile_count: [u8; 34], rng: &mut ThreadRng) 
 }
 
 fn remove_tile_ids_from_count_array<T: Into<MahjongTileId> + Clone>(
-    tile_count_array: [u8; 34],
+    tile_count_array: MahjongTileCountArray,
     tile_ids_to_remove: &Vec<T>,
-) -> [u8; 34] {
+) -> MahjongTileCountArray {
     let mut tiles_after_remove = [0u8; 34];
     for i in 0..tiles_after_remove.len() {
         tiles_after_remove[i] = tile_count_array[i];
@@ -62,7 +62,7 @@ fn remove_tile_ids_from_count_array<T: Into<MahjongTileId> + Clone>(
 /// takes a starting hand (after discard), any visible tiles outside of the starting hand, and the parameters for the simulation:
 /// number of trials and maximum allowed draws per trial
 fn run_basic_analysis<T: Into<MahjongTileId> + Clone>(
-    starting_hand: [u8; 34],
+    starting_hand: MahjongTileCountArray,
     visible_tile_ids: &Vec<T>,
     num_trials: u32,
     max_allowed_draws: u16,
@@ -302,7 +302,7 @@ mod tests {
 
         let remaining_tile_count = remove_tile_ids_from_count_array([4u8; 34], &visible_tile_ids);
         println!("actual remaining tile count:\n{:?}", remaining_tile_count);
-        let expected_remaining_tile_count: [u8; 34] = [
+        let expected_remaining_tile_count: MahjongTileCountArray = [
             4, 4, 3, 2, 3, 3, 4, 4, 2, // manzu
             2, 3, 2, 4, 3, 3, 4, 3, 3, // pinzu
             2, 4, 4, 3, 4, 1, 2, 3, 3, // souzu

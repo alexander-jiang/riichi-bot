@@ -2,7 +2,10 @@ extern crate test;
 
 pub use crate::mahjong_hand;
 pub use crate::mahjong_tile;
-use crate::mahjong_tile::{MahjongTileId, get_distinct_tile_ids_from_count_array, get_total_tiles_from_count_array};
+use crate::mahjong_tile::{
+    MahjongTileCountArray, MahjongTileId,
+    get_distinct_tile_ids_from_count_array, get_total_tiles_from_count_array
+};
 use std::cmp::min;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
@@ -233,7 +236,7 @@ impl TileMeld {
 
 #[derive(Clone)]
 pub struct HandInterpretation {
-    total_tile_count_array: [u8; 34],
+    total_tile_count_array: MahjongTileCountArray,
     groups: Vec<TileMeld>,
 }
 
@@ -436,8 +439,8 @@ impl HandInterpretation {
 }
 
 /// takes ownership of tile_count_array (to mutate it)
-pub fn get_hand_interpretations(tile_count_array: [u8; 34]) -> Vec<HandInterpretation> {
-    let mut original_tile_count_array: [u8; 34] = [0; 34];
+pub fn get_hand_interpretations(tile_count_array: MahjongTileCountArray) -> Vec<HandInterpretation> {
+    let mut original_tile_count_array: MahjongTileCountArray = [0; 34];
     original_tile_count_array.copy_from_slice(&tile_count_array);
 
     // TODO handle declared melds (which are locked)
@@ -486,7 +489,7 @@ pub fn get_hand_interpretations(tile_count_array: [u8; 34]) -> Vec<HandInterpret
 
 #[derive(Clone)]
 pub struct PartialMeldInterpretation {
-    remaining_tile_count_array: [u8; 34],
+    remaining_tile_count_array: MahjongTileCountArray,
     groups: Vec<TileMeld>,
 }
 
@@ -531,7 +534,7 @@ impl PartialMeldInterpretation {
     }
 }
 
-pub fn get_suit_melds(suit_tile_count_array: [u8; 34]) -> Vec<Vec<TileMeld>> {
+pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<TileMeld>> {
     let mut meld_interpretations = Vec::new();
     let mut queue: VecDeque<PartialMeldInterpretation> = VecDeque::new();
     queue.push_front(PartialMeldInterpretation {
@@ -688,10 +691,10 @@ pub fn get_suit_melds(suit_tile_count_array: [u8; 34]) -> Vec<Vec<TileMeld>> {
 }
 
 pub fn get_hand_interpretations_min_shanten(
-    tile_count_array: [u8; 34],
+    tile_count_array: MahjongTileCountArray,
     shanten_cutoff: i8,
 ) -> Vec<HandInterpretation> {
-    let mut original_tile_count_array: [u8; 34] = [0; 34];
+    let mut original_tile_count_array: MahjongTileCountArray = [0; 34];
     original_tile_count_array.copy_from_slice(&tile_count_array);
 
     // TODO handle declared melds (which are locked)
@@ -757,7 +760,7 @@ fn print_queue(queue: &VecDeque<PartialMeldInterpretation>) {
 }
 
 pub fn get_suit_melds_min_shanten(
-    original_tile_count_array: [u8; 34],
+    original_tile_count_array: MahjongTileCountArray,
     initial_partial_interpretation: PartialMeldInterpretation,
     shanten_cutoff: i8,
 ) -> Vec<HandInterpretation> {
@@ -960,7 +963,7 @@ pub fn get_suit_melds_min_shanten(
     }
 }
 
-pub fn get_shanten(tile_count_array: [u8; 34]) -> i8 {
+pub fn get_shanten(tile_count_array: MahjongTileCountArray) -> i8 {
     let chiitoi_shanten = get_chiitoi_shanten(tile_count_array);
     let kokushi_shanten = get_kokushi_shanten(tile_count_array);
     let mut shanten = min(chiitoi_shanten, kokushi_shanten);
@@ -973,7 +976,7 @@ pub fn get_shanten(tile_count_array: [u8; 34]) -> i8 {
     shanten
 }
 
-pub fn get_shanten_optimized(tile_count_array: [u8; 34]) -> i8 {
+pub fn get_shanten_optimized(tile_count_array: MahjongTileCountArray) -> i8 {
     let chiitoi_shanten = get_chiitoi_shanten(tile_count_array);
     let kokushi_shanten = get_kokushi_shanten(tile_count_array);
     let mut shanten = min(chiitoi_shanten, kokushi_shanten);
@@ -992,8 +995,8 @@ pub fn get_shanten_optimized(tile_count_array: [u8; 34]) -> i8 {
 
 /// Gets the possible shanten for each possible discard from the given set of tiles
 pub fn get_shanten_after_each_discard(
-    tile_count_array: [u8; 34],
-    shanten_function: &dyn Fn([u8; 34]) -> i8,
+    tile_count_array: MahjongTileCountArray,
+    shanten_function: &dyn Fn(MahjongTileCountArray) -> i8,
 ) -> HashMap<i8, Vec<MahjongTileId>> {
     if get_total_tiles_from_count_array(tile_count_array) != 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
@@ -1032,8 +1035,8 @@ pub fn get_shanten_after_each_discard(
 
 /// Gets the possible shanten after discarding any tile from the given set of tiles
 pub fn get_best_shanten_after_discard(
-    tile_count_array: [u8; 34],
-    shanten_function: &dyn Fn([u8; 34]) -> i8,
+    tile_count_array: MahjongTileCountArray,
+    shanten_function: &dyn Fn(MahjongTileCountArray) -> i8,
 ) -> i8 {
     if get_total_tiles_from_count_array(tile_count_array) != 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
@@ -1053,10 +1056,10 @@ pub fn get_best_shanten_after_discard(
 /// returns all discard options (discard tile id, ukiere tile ids, number of ukiere tiles) with the best shanten
 /// and that maximizes the count of ukiere
 pub fn get_most_ukiere_after_discard<T: Into<MahjongTileId> + Clone>(
-    tile_count_array: [u8; 34],
+    tile_count_array: MahjongTileCountArray,
     best_shanten: i8,
-    shanten_function: &dyn Fn([u8; 34]) -> i8,
-    ukiere_function: &dyn Fn([u8; 34]) -> Vec<MahjongTileId>,
+    shanten_function: &dyn Fn(MahjongTileCountArray) -> i8,
+    ukiere_function: &dyn Fn(MahjongTileCountArray) -> Vec<MahjongTileId>,
     other_visible_tiles: &Vec<T>,
 ) -> Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> {
     if get_total_tiles_from_count_array(tile_count_array) != 14 {
@@ -1095,10 +1098,10 @@ pub fn get_most_ukiere_after_discard<T: Into<MahjongTileId> + Clone>(
 /// returns all discard options (discard tile id, ukiere tile ids, number of ukiere tiles) with the best shanten
 /// regardless of the ukiere
 pub fn get_all_ukiere_after_discard<T: Into<MahjongTileId> + Clone>(
-    tile_count_array: [u8; 34],
+    tile_count_array: MahjongTileCountArray,
     best_shanten: i8,
-    shanten_function: &dyn Fn([u8; 34]) -> i8,
-    ukiere_function: &dyn Fn([u8; 34]) -> Vec<MahjongTileId>,
+    shanten_function: &dyn Fn(MahjongTileCountArray) -> i8,
+    ukiere_function: &dyn Fn(MahjongTileCountArray) -> Vec<MahjongTileId>,
     other_visible_tiles: &Vec<T>,
 ) -> Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> {
     if get_total_tiles_from_count_array(tile_count_array) != 14 {
@@ -1128,9 +1131,9 @@ pub fn get_all_ukiere_after_discard<T: Into<MahjongTileId> + Clone>(
 }
 
 pub fn get_shanten_ukiere_after_each_discard<T: Into<MahjongTileId> + Clone>(
-    tile_count_array: [u8; 34],
-    shanten_function: &dyn Fn([u8; 34]) -> i8,
-    ukiere_function: &dyn Fn([u8; 34]) -> Vec<MahjongTileId>,
+    tile_count_array: MahjongTileCountArray,
+    shanten_function: &dyn Fn(MahjongTileCountArray) -> i8,
+    ukiere_function: &dyn Fn(MahjongTileCountArray) -> Vec<MahjongTileId>,
     other_visible_tiles: &Vec<T>,
 ) -> Vec<(MahjongTileId, i8, Vec<MahjongTileId>, u16)> {
     if get_total_tiles_from_count_array(tile_count_array) != 14 {
@@ -1169,7 +1172,7 @@ pub fn get_shanten_ukiere_after_each_discard<T: Into<MahjongTileId> + Clone>(
 
 /// utility function: useful for combining tile ids from a hand (in the form of a tile count array) and a vector of other visible tile ids (e.g. discard pools, dora indicator, visible melds from opponents, etc.)
 pub fn combine_tile_ids_from_count_array_and_vec<T: Into<MahjongTileId> + Clone>(
-    tile_count_array: [u8; 34],
+    tile_count_array: MahjongTileCountArray,
     tile_ids: &Vec<T>,
 ) -> Vec<MahjongTileId> {
     let mut new_tile_ids: Vec<MahjongTileId> = tile_ids.iter().cloned().map(|t| t.into()).collect();
@@ -1180,9 +1183,9 @@ pub fn combine_tile_ids_from_count_array_and_vec<T: Into<MahjongTileId> + Clone>
 
 /// returns a map of (upgrade tile to draw -> map of (tile to discard, resulting ukiere tile ids))
 pub fn get_upgrade_tiles<T: Into<MahjongTileId> + Clone>(
-    tile_count_array: [u8; 34],
-    shanten_function: &dyn Fn([u8; 34]) -> i8,
-    ukiere_function: &dyn Fn([u8; 34]) -> Vec<MahjongTileId>,
+    tile_count_array: MahjongTileCountArray,
+    shanten_function: &dyn Fn(MahjongTileCountArray) -> i8,
+    ukiere_function: &dyn Fn(MahjongTileCountArray) -> Vec<MahjongTileId>,
     other_visible_tiles: &Vec<T>,
 ) -> HashMap<MahjongTileId, HashMap<MahjongTileId, (Vec<MahjongTileId>, u16)>> {
     if get_total_tiles_from_count_array(tile_count_array) != 13 {
@@ -1238,7 +1241,7 @@ pub fn get_upgrade_tiles<T: Into<MahjongTileId> + Clone>(
     upgrades
 }
 
-pub fn add_tile_id_to_count_array<T: Into<MahjongTileId>>(tile_count_array: [u8; 34], new_tile_id: T) -> [u8; 34] {
+pub fn add_tile_id_to_count_array<T: Into<MahjongTileId>>(tile_count_array: MahjongTileCountArray, new_tile_id: T) -> MahjongTileCountArray {
     let new_tile_id: MahjongTileId = new_tile_id.into();
     assert!(
         usize::from(new_tile_id) < tile_count_array.len(),
@@ -1254,9 +1257,9 @@ pub fn add_tile_id_to_count_array<T: Into<MahjongTileId>>(tile_count_array: [u8;
 }
 
 pub fn remove_tile_id_from_count_array<T: Into<MahjongTileId>>(
-    tile_count_array: [u8; 34],
+    tile_count_array: MahjongTileCountArray,
     discard_tile_id: T,
-) -> [u8; 34] {
+) -> MahjongTileCountArray {
     let discard_tile_id: MahjongTileId = discard_tile_id.into();
     assert!(
         usize::from(discard_tile_id) < tile_count_array.len(),
@@ -1274,9 +1277,9 @@ pub fn remove_tile_id_from_count_array<T: Into<MahjongTileId>>(
 }
 
 pub fn get_ukiere_after_discard<T: Into<MahjongTileId>>(
-    tile_count_array: [u8; 34],
+    tile_count_array: MahjongTileCountArray,
     discard_tile_id: T,
-    ukiere_function: &dyn Fn([u8; 34]) -> Vec<MahjongTileId>,
+    ukiere_function: &dyn Fn(MahjongTileCountArray) -> Vec<MahjongTileId>,
 ) -> Vec<MahjongTileId> {
     if get_total_tiles_from_count_array(tile_count_array) != 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
@@ -1321,7 +1324,7 @@ pub fn get_shanten_helper(hand_interpretations: &Vec<HandInterpretation>) -> i8 
 }
 
 fn generate_ukiere_tiles(
-    tile_count_array: [u8; 34],
+    tile_count_array: MahjongTileCountArray,
     standard_shanten: i8,
     chiitoi_shanten: i8,
     kokushi_shanten: i8,
@@ -1358,7 +1361,7 @@ fn generate_ukiere_tiles(
     ukiere_tile_ids
 }
 
-pub fn get_ukiere(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
+pub fn get_ukiere(tile_count_array: MahjongTileCountArray) -> Vec<MahjongTileId> {
     let interpretations = get_hand_interpretations(tile_count_array);
     let standard_shanten = get_shanten_helper(&interpretations);
     let chiitoi_shanten = get_chiitoi_shanten(tile_count_array);
@@ -1373,7 +1376,7 @@ pub fn get_ukiere(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
     )
 }
 
-pub fn get_ukiere_optimized(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
+pub fn get_ukiere_optimized(tile_count_array: MahjongTileCountArray) -> Vec<MahjongTileId> {
     let chiitoi_shanten = get_chiitoi_shanten(tile_count_array);
     let kokushi_shanten = get_kokushi_shanten(tile_count_array);
     let special_shanten = min(chiitoi_shanten, kokushi_shanten);
@@ -1416,7 +1419,7 @@ pub fn get_ukiere_helper(hand_interpretations: &Vec<HandInterpretation>, shanten
     ukiere_tiles
 }
 
-pub fn get_chiitoi_shanten(tile_count_array: [u8; 34]) -> i8 {
+pub fn get_chiitoi_shanten(tile_count_array: MahjongTileCountArray) -> i8 {
     let mut tile_id = 0u8;
     let mut num_pairs = 0;
     while usize::from(tile_id) < tile_count_array.len() {
@@ -1429,7 +1432,7 @@ pub fn get_chiitoi_shanten(tile_count_array: [u8; 34]) -> i8 {
     6 - num_pairs
 }
 
-pub fn get_chiitoi_ukiere(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
+pub fn get_chiitoi_ukiere(tile_count_array: MahjongTileCountArray) -> Vec<MahjongTileId> {
     let mut tile_id = 0u8;
     let mut ukiere_tile_ids = Vec::new();
     while usize::from(tile_id) < tile_count_array.len() {
@@ -1442,7 +1445,7 @@ pub fn get_chiitoi_ukiere(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
     ukiere_tile_ids
 }
 
-pub fn get_kokushi_shanten(tile_count_array: [u8; 34]) -> i8 {
+pub fn get_kokushi_shanten(tile_count_array: MahjongTileCountArray) -> i8 {
     let kokushi_tile_ids = mahjong_tile::tiles_to_tile_ids("19m19p19s1234567z");
     let mut num_kokushi_tiles = 0;
     let mut has_kokushi_pair = false;
@@ -1463,7 +1466,7 @@ pub fn get_kokushi_shanten(tile_count_array: [u8; 34]) -> i8 {
     kokushi_shanten
 }
 
-pub fn get_kokushi_ukiere(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
+pub fn get_kokushi_ukiere(tile_count_array: MahjongTileCountArray) -> Vec<MahjongTileId> {
     let mut missing_kokushi_tiles = Vec::new();
     let kokushi_tile_ids = mahjong_tile::tiles_to_tile_ids("19m19p19s1234567z");
     let mut has_kokushi_pair = false;
@@ -1485,8 +1488,8 @@ pub fn get_kokushi_ukiere(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
     }
 }
 
-pub fn tiles_to_count_array(tiles_string: &str) -> [u8; 34] {
-    let mut tile_count_array: [u8; 34] = [0; 34];
+pub fn tiles_to_count_array(tiles_string: &str) -> MahjongTileCountArray {
+    let mut tile_count_array: MahjongTileCountArray = [0; 34];
     let mut rank_chars: Vec<char> = Vec::new();
     for char in tiles_string.chars() {
         if char == 'm' || char == 's' || char == 'p' || char == 'z' {
@@ -1509,7 +1512,7 @@ pub fn tiles_to_count_array(tiles_string: &str) -> [u8; 34] {
     tile_count_array
 }
 
-fn tile_count_array_to_tile_ids(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
+fn tile_count_array_to_tile_ids(tile_count_array: MahjongTileCountArray) -> Vec<MahjongTileId> {
     let mut tile_ids = Vec::new();
     for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
         let tile_idx = usize::from(tile_id);
@@ -1597,7 +1600,7 @@ mod tests {
     }
 
     fn assert_ukiere_tiles_after_discard_match<T: Into<MahjongTileId> + Clone>(
-        tile_count_array: [u8; 34],
+        tile_count_array: MahjongTileCountArray,
         expected_ukiere_after_discard: &HashMap<&'static str, Vec<T>>,
     ) {
         for (discard_tile_str, expected_ukiere_tiles) in expected_ukiere_after_discard {
@@ -1619,7 +1622,7 @@ mod tests {
     }
 
     fn assert_upgrade_tiles_match<T: Into<MahjongTileId> + Clone>(
-        tile_count_array: [u8; 34],
+        tile_count_array: MahjongTileCountArray,
         expected_upgrades: &HashMap<&'static str, HashMap<&'static str, Vec<T>>>,
         other_visible_tiles: &Vec<T>,
     ) {
@@ -2838,7 +2841,7 @@ mod tests {
     }
 
     fn print_shanten_ukiere_after_each_discard<T: Into<MahjongTileId> + Clone>(
-        tile_count_array: [u8; 34],
+        tile_count_array: MahjongTileCountArray,
         shanten_ukiere_after_each_discard: &Vec<(T, i8, Vec<T>, u16)>,
         other_visible_tiles: &Vec<T>,
     ) {
