@@ -1,13 +1,21 @@
 # Diary
 
+### Sep 29 2025
+
+- doing lots of refactoring: replacing `u8` with `MahjongTileId` where applicable, replacing the hardcoded/magic number 34 with `mahjong_tile::NUM_DISTINCT_TILE_VALUES`
+- next up: replace `[u8; 34]` with a custom type
+- fix up `shanten::tiles_to_tile_ids` to be consistent and accept shorthand MSPZ notation e.g. "123m" instead of just "1m2m3m"
+
+
 ### Sep 26 2025
 
 - Fixed bug with `mahjong_hand::MahjongHand::get_tenpai_tiles_build_shapes` function falsely saying that completing a pair into a triplet would be a winning tile (even if the hand has 3 complete groups and 1 pair and 1 non-pair incomplete group)
 - Fixed bug with tenpai `tile_grouping::get_all_tenpai_wait_tiles` function allowing to be tenpai on a tile when all four copies of that tile are in your hand
 
-TODO: cleanup old / unused code - start from the tile class, then work up to the tile groups
-TODO: consolidate the functions for converting between different representations for tiles (e.g. tile "id", which is a u8 from 0 to 33 inclusive, and a string) and for tile sets/lists (e.g. list of tile ids, list of tiles as strings, or a count-array: a 34-length array of counts for each tile type)
-TODO: make sure we have fully tested the tenpai check, as well as determining which tiles are the winning tiles, the potential groupings, and the shanten + upgrade calculations
+up next / TODOs:
+- (done) cleanup old / unused code - start from the tile class, then work up to the tile groups
+- (WIP) consolidate the functions for converting between different representations for tiles (e.g. tile "id", which is a u8 from 0 to 33 inclusive, and a string) and for tile sets/lists (e.g. list of tile ids, list of tiles as strings, or a count-array: a 34-length array of counts for each tile type)
+- make sure we have fully tested the tenpai check, as well as determining which tiles are the winning tiles, the potential groupings, and the shanten + upgrade calculations
 
 ### Jul 7 2025
 

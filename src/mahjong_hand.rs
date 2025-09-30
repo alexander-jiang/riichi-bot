@@ -83,7 +83,7 @@ fn tile_id_is_isolated<T: Into<MahjongTileId>>(tile_count_array: &[u8; 34], tile
 pub fn tile_count_array_to_string(tile_count_array: &[u8; 34]) -> String {
     let mut output = String::new();
     // hardcode array len so that the tile_id var is a u8 type
-    for tile_id in 0..34 {
+    for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
         let tile_count = tile_count_array[usize::from(tile_id)];
         let tile_string = mahjong_tile::get_tile_text_from_id(tile_id).unwrap();
         for _i in 0..tile_count {
@@ -1983,7 +1983,6 @@ mod tests {
         }
     }
 
-    // TODO fix failing test
     #[test]
     fn build_shapes_nobetan_shape() {
         // test with a four-in-a-row shape (yonrenkei, aka nobetan)
@@ -2008,7 +2007,6 @@ mod tests {
         }
     }
 
-    // TODO fix failing test
     #[test]
     fn build_shapes_embedded_ryankan_shape() {
         // test with a shape that has an embedded ryankan (3m-5m-7m)

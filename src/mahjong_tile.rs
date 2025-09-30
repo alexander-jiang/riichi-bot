@@ -427,9 +427,9 @@ mod tests {
         assert_eq!(get_num_tile_suit(27), None);
         assert_eq!(get_num_tile_rank(27), None);
 
-        // tile_id for 7z = 34
-        assert_eq!(get_num_tile_suit(34), None);
-        assert_eq!(get_num_tile_rank(34), None);
+        // invalid tile id
+        assert_eq!(get_num_tile_suit(NUM_DISTINCT_TILE_VALUES), None);
+        assert_eq!(get_num_tile_rank(NUM_DISTINCT_TILE_VALUES), None);
 
         // invalid tile id
         assert_eq!(get_num_tile_suit(100), None);
@@ -690,7 +690,7 @@ mod tests {
             Err(_) => assert!(false),
         };
 
-        assert!(get_tile_text_from_id(34).is_err());
+        assert!(get_tile_text_from_id(NUM_DISTINCT_TILE_VALUES).is_err());
     }
 
     #[test]

@@ -1268,7 +1268,8 @@ pub fn get_upgrade_tiles<T: Into<MahjongTileId> + Clone>(
     upgrades
 }
 
-pub fn add_tile_id_to_count_array(tile_count_array: [u8; 34], new_tile_id: u8) -> [u8; 34] {
+pub fn add_tile_id_to_count_array<T: Into<MahjongTileId>>(tile_count_array: [u8; 34], new_tile_id: T) -> [u8; 34] {
+    let new_tile_id: MahjongTileId = new_tile_id.into();
     assert!(
         usize::from(new_tile_id) < tile_count_array.len(),
         "invalid tile id"
@@ -1562,7 +1563,8 @@ pub fn tile_ids_to_string<T: Into<MahjongTileId> + Clone>(tile_ids: &Vec<T>) -> 
     tiles_string
 }
 
-pub fn print_ukiere_after_discard<T: Into<MahjongTileId> + Clone>(options_after_discard: &Vec<(T, Vec<T>, u16)>) {
+// TODO figure out how to use generics for this
+pub fn print_ukiere_after_discard(options_after_discard: &Vec<(MahjongTileId, Vec<MahjongTileId>, u16)>) {
     let mut options = options_after_discard.clone();
     options
         .iter_mut()
@@ -1609,11 +1611,11 @@ mod tests {
         }}
     }
 
-    fn assert_tile_ids_match(tile_ids: &Vec<u8>, expected_tile_ids: &Vec<u8>) {
+    fn assert_tile_ids_match<T: Into<MahjongTileId> + Clone>(tile_ids: &Vec<T>, expected_tile_ids: &Vec<T>) {
         // assert_eq!(tile_ids.len(), expected_tile_ids.len());
-        let mut sorted_tile_ids = tile_ids.clone();
+        let mut sorted_tile_ids: Vec<MahjongTileId> = tile_ids.iter().cloned().map(|t| t.into()).collect();
         sorted_tile_ids.sort();
-        let mut sorted_expected_tile_ids = expected_tile_ids.clone();
+        let mut sorted_expected_tile_ids: Vec<MahjongTileId> = expected_tile_ids.iter().cloned().map(|t| t.into()).collect();
         sorted_expected_tile_ids.sort();
         assert_eq!(
             sorted_tile_ids,
@@ -1624,9 +1626,9 @@ mod tests {
         );
     }
 
-    fn assert_ukiere_tiles_after_discard_match(
+    fn assert_ukiere_tiles_after_discard_match<T: Into<MahjongTileId> + Clone>(
         tile_count_array: [u8; 34],
-        expected_ukiere_after_discard: &HashMap<&'static str, Vec<u8>>,
+        expected_ukiere_after_discard: &HashMap<&'static str, Vec<T>>,
     ) {
         for (discard_tile_str, expected_ukiere_tiles) in expected_ukiere_after_discard {
             let ukiere_tiles = get_ukiere_after_discard(
@@ -1634,21 +1636,22 @@ mod tests {
                 mahjong_tile::get_id_from_tile_text(discard_tile_str).unwrap(),
                 &get_ukiere,
             );
-            assert_tile_ids_match(&ukiere_tiles, expected_ukiere_tiles);
+            let expected_ukiere_tiles: Vec<MahjongTileId> = expected_ukiere_tiles.iter().cloned().map(|t| t.into()).collect();
+            assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
             let ukiere_tiles = get_ukiere_after_discard(
                 tile_count_array,
                 mahjong_tile::get_id_from_tile_text(discard_tile_str).unwrap(),
                 &get_ukiere_optimized,
             );
-            assert_tile_ids_match(&ukiere_tiles, expected_ukiere_tiles);
+            assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
         }
     }
 
-    fn assert_upgrade_tiles_match(
+    fn assert_upgrade_tiles_match<T: Into<MahjongTileId> + Clone>(
         tile_count_array: [u8; 34],
-        expected_upgrades: &HashMap<&'static str, HashMap<&'static str, Vec<u8>>>,
-        other_visible_tiles: &Vec<u8>,
+        expected_upgrades: &HashMap<&'static str, HashMap<&'static str, Vec<T>>>,
+        other_visible_tiles: &Vec<T>,
     ) {
         // println!(
         //     "asserting upgrade tiles for {}",
@@ -1672,14 +1675,15 @@ mod tests {
                     mahjong_tile::get_id_from_tile_text(*discard_tile_str).unwrap(),
                     &get_ukiere,
                 );
-                assert_tile_ids_match(&ukiere_tiles, new_ukiere_tiles);
+                let new_ukiere_tiles: Vec<MahjongTileId> = new_ukiere_tiles.iter().cloned().map(|t| t.into()).collect();
+                assert_tile_ids_match(&ukiere_tiles, &new_ukiere_tiles);
 
                 let ukiere_tiles = get_ukiere_after_discard(
                     new_count_array,
                     mahjong_tile::get_id_from_tile_text(*discard_tile_str).unwrap(),
                     &get_ukiere_optimized,
                 );
-                assert_tile_ids_match(&ukiere_tiles, new_ukiere_tiles);
+                assert_tile_ids_match(&ukiere_tiles, &new_ukiere_tiles);
             }
 
             // check that the discard tile ids (after upgrade draw) mapping in `expected_upgrades` are correct:
@@ -1733,12 +1737,12 @@ mod tests {
 
         // check non-upgrade & non-ukiere tiles: drawing these should not change the max possible ukiere
         // -> the max num of ukiere of the discard options should be the same as the num ukiere before drawing the non-upgrade tile
-        for potential_tile_id in 0..34 {
+        for potential_tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
             let potential_tile_string =
                 mahjong_tile::get_tile_text_from_id(potential_tile_id).unwrap();
             let potential_tile_str = potential_tile_string.as_str();
             if expected_upgrades.contains_key(&potential_tile_str)
-                || ukiere_tile_ids.contains(&potential_tile_id)
+                || ukiere_tile_ids.contains(&MahjongTileId(potential_tile_id))
             {
                 continue;
             }
@@ -1794,9 +1798,10 @@ mod tests {
         }
     }
 
+    // TODO use generics here instead of only accepting MahjongTileId in input types
     fn assert_discards_ukiere_match(
-        discards_ukiere: &Vec<(u8, Vec<u8>, u16)>,
-        expected_discards_ukiere: &Vec<(u8, Vec<u8>, u16)>,
+        discards_ukiere: &Vec<(MahjongTileId, Vec<MahjongTileId>, u16)>,
+        expected_discards_ukiere: &Vec<(MahjongTileId, Vec<MahjongTileId>, u16)>,
     ) {
         let mut sorted_discards_ukiere = discards_ukiere.clone();
         for (_, ukiere_tile_ids_after_discard, _) in sorted_discards_ukiere.iter_mut() {
@@ -2779,7 +2784,7 @@ mod tests {
         // but if you were to draw 69m124578p2356s, the wait improves significantly
         // (you would discard 7s and have at least 6 ukiere, either nobetan or aryanmen)
         // even drawing 4s would slightly improve the wait: could discard 3s for a 4457s with a kanchan wait on 6s (4 ukiere)
-        let mut expected_upgrade_tiles: HashMap<&'static str, HashMap<&'static str, Vec<u8>>> =
+        let mut expected_upgrade_tiles: HashMap<&'static str, HashMap<&'static str, Vec<MahjongTileId>>> =
             HashMap::new();
         expected_upgrade_tiles.insert("1p", hashmap!["7s" => mahjong_tile::tiles_to_tile_ids("147p")]);
         expected_upgrade_tiles.insert("2p", hashmap!["7s" => mahjong_tile::tiles_to_tile_ids("258p")]);
@@ -2830,7 +2835,7 @@ mod tests {
             &get_ukiere_optimized,
             &other_visible_tiles,
         );
-        let mut expected_discard_ukiere: Vec<(u8, Vec<u8>, u16)> = Vec::new();
+        let mut expected_discard_ukiere: Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> = Vec::new();
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("7s").unwrap(),
             mahjong_tile::tiles_to_tile_ids("147p"),
@@ -2862,10 +2867,10 @@ mod tests {
         );
     }
 
-    fn print_shanten_ukiere_after_each_discard(
+    fn print_shanten_ukiere_after_each_discard<T: Into<MahjongTileId> + Clone>(
         tile_count_array: [u8; 34],
-        shanten_ukiere_after_each_discard: &Vec<(u8, i8, Vec<u8>, u16)>,
-        other_visible_tiles: &Vec<u8>,
+        shanten_ukiere_after_each_discard: &Vec<(T, i8, Vec<T>, u16)>,
+        other_visible_tiles: &Vec<T>,
     ) {
         if get_total_tiles_from_count_array(tile_count_array) != 14 {
             // TODO eventually will need to handle the case when there are more tiles due to quads
@@ -2899,11 +2904,11 @@ mod tests {
             num_ukiere_after_discard,
         ) in sorted_shanten_ukiere_after_each_discard
         {
-            let mut sorted_ukiere_tile_ids_after_discard = ukiere_tile_ids_after_discard.clone();
+            let mut sorted_ukiere_tile_ids_after_discard: Vec<MahjongTileId> = ukiere_tile_ids_after_discard.iter().cloned().map(|t| t.into()).collect();
             sorted_ukiere_tile_ids_after_discard.sort();
             println!(
                 "discard {} -> {} shanten, {} ukiere tiles: {} ",
-                mahjong_tile::get_tile_text_from_id(discard_tile_id).unwrap(),
+                mahjong_tile::get_tile_text_from_id(discard_tile_id.clone()).unwrap(),
                 shanten_after_discard,
                 num_ukiere_after_discard,
                 tile_ids_to_string(&sorted_ukiere_tile_ids_after_discard)
@@ -2925,7 +2930,7 @@ mod tests {
                 let mut improve_options = Vec::new();
                 for improve_tile_id in ukiere_tile_ids_after_discard {
                     let after_improve_draw_count_array =
-                        add_tile_id_to_count_array(new_count_array, improve_tile_id);
+                        add_tile_id_to_count_array(new_count_array, improve_tile_id.clone());
                     let mut options_after_ukiere_draw = get_most_ukiere_after_discard(
                         after_improve_draw_count_array,
                         new_shanten,
@@ -3145,7 +3150,7 @@ mod tests {
             &other_visible_tiles,
         );
 
-        let mut expected_discard_ukiere: Vec<(u8, Vec<u8>, u16)> = Vec::new();
+        let mut expected_discard_ukiere: Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> = Vec::new();
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("5s").unwrap(),
             mahjong_tile::tiles_to_tile_ids("2568m46p1z"),
@@ -3192,7 +3197,7 @@ mod tests {
         );
 
         println!("checking if discard ukiere matches...");
-        let mut expected_discard_ukiere: Vec<(u8, Vec<u8>, u16)> = Vec::new();
+        let mut expected_discard_ukiere: Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> = Vec::new();
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("5s").unwrap(),
             mahjong_tile::tiles_to_tile_ids("25m6p"),
@@ -3220,7 +3225,7 @@ mod tests {
 
         println!("checking if upgrade tiles matches...");
         // upgrades after discarding 5s
-        let mut expected_upgrade_tiles: HashMap<&'static str, HashMap<&'static str, Vec<u8>>> =
+        let mut expected_upgrade_tiles: HashMap<&'static str, HashMap<&'static str, Vec<MahjongTileId>>> =
             HashMap::new();
         expected_upgrade_tiles.insert("6m", hashmap!["7m" => mahjong_tile::tiles_to_tile_ids("2345m567p")]);
         expected_upgrade_tiles.insert("8m", hashmap!["6m" => mahjong_tile::tiles_to_tile_ids("2345m567p")]);
@@ -3296,7 +3301,7 @@ mod tests {
             &other_visible_tiles,
         );
 
-        let mut expected_discard_ukiere: Vec<(u8, Vec<u8>, u16)> = Vec::new();
+        let mut expected_discard_ukiere: Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> = Vec::new();
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("4s").unwrap(),
             mahjong_tile::tiles_to_tile_ids("47p58s"),
@@ -3350,7 +3355,7 @@ mod tests {
             &get_ukiere_optimized,
             &other_visible_tiles,
         );
-        let mut expected_discard_ukiere: Vec<(u8, Vec<u8>, u16)> = Vec::new();
+        let mut expected_discard_ukiere: Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> = Vec::new();
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("7s").unwrap(),
             mahjong_tile::tiles_to_tile_ids("12345678m12347p234569s"),
@@ -3387,7 +3392,7 @@ mod tests {
             &other_visible_tiles,
         );
 
-        let mut expected_discard_ukiere: Vec<(u8, Vec<u8>, u16)> = Vec::new();
+        let mut expected_discard_ukiere: Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> = Vec::new();
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("2s").unwrap(),
             mahjong_tile::tiles_to_tile_ids("5p3568s23569m"),
@@ -3449,7 +3454,7 @@ mod tests {
             &get_ukiere_optimized,
             &other_visible_tiles,
         );
-        let mut expected_discard_ukiere: Vec<(u8, Vec<u8>, u16)> = Vec::new();
+        let mut expected_discard_ukiere: Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> = Vec::new();
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("4m").unwrap(),
             mahjong_tile::tiles_to_tile_ids("14p14s"),
@@ -3495,7 +3500,7 @@ mod tests {
             &get_ukiere_optimized,
             &other_visible_tiles,
         );
-        let mut expected_discard_ukiere: Vec<(u8, Vec<u8>, u16)> = Vec::new();
+        let mut expected_discard_ukiere: Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> = Vec::new();
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("7m").unwrap(),
             mahjong_tile::tiles_to_tile_ids("234569m1456789p"),
