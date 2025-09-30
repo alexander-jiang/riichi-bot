@@ -2,17 +2,10 @@ extern crate test;
 
 pub use crate::mahjong_hand;
 pub use crate::mahjong_tile;
+use crate::mahjong_tile::MahjongTileId;
 use std::cmp::min;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
-
-macro_rules! hashmap {
-    ($( $key: expr => $val: expr ),*) => {{
-         let mut map = ::std::collections::HashMap::new();
-         $( map.insert($key, $val); )*
-         map
-    }}
-}
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum MeldType {
@@ -181,7 +174,7 @@ impl TileMeld {
         self.meld_type.is_complete()
     }
 
-    fn tile_ids_to_complete_group(&self) -> Vec<u8> {
+    fn tile_ids_to_complete_group(&self) -> Vec<MahjongTileId> {
         // assumes the tile_ids are sorted
         match self.meld_type {
             MeldType::SingleTile => {
@@ -294,7 +287,7 @@ fn get_total_num_tiles(groups: &Vec<TileMeld>) -> usize {
     num_tiles
 }
 
-fn get_pair_tile_ids(groups: &Vec<TileMeld>) -> Vec<u8> {
+fn get_pair_tile_ids(groups: &Vec<TileMeld>) -> Vec<MahjongTileId> {
     let mut pair_tile_ids = vec![];
     for group in groups.iter() {
         if group.meld_type == MeldType::Pair {
@@ -313,7 +306,7 @@ pub fn get_total_tiles_from_count_array(tile_count_array: [u8; 34]) -> usize {
     total_tiles
 }
 
-pub fn get_tile_ids_from_count_array(tile_count_array: [u8; 34]) -> Vec<u8> {
+pub fn get_tile_ids_from_count_array(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
     let mut tile_ids = vec![];
     for tile_id in 0..34u8 {
         let tile_idx = usize::from(tile_id);
@@ -326,7 +319,7 @@ pub fn get_tile_ids_from_count_array(tile_count_array: [u8; 34]) -> Vec<u8> {
     tile_ids
 }
 
-fn get_distinct_tile_ids_from_count_array(tile_count_array: [u8; 34]) -> Vec<u8> {
+fn get_distinct_tile_ids_from_count_array(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
     let mut distinct_tile_ids = vec![];
     for tile_id in 0..34u8 {
         let tile_idx = usize::from(tile_id);
@@ -370,11 +363,11 @@ impl HandInterpretation {
         get_num_incomplete_groups(&self.groups)
     }
 
-    fn get_pair_tile_ids(&self) -> Vec<u8> {
+    fn get_pair_tile_ids(&self) -> Vec<MahjongTileId> {
         get_pair_tile_ids(&self.groups)
     }
 
-    fn get_single_tile_ids(&self) -> Vec<u8> {
+    fn get_single_tile_ids(&self) -> Vec<MahjongTileId> {
         let mut single_tile_ids = vec![];
         for group in self.groups.iter() {
             if group.meld_type == MeldType::SingleTile {
@@ -405,7 +398,7 @@ impl HandInterpretation {
         shanten
     }
 
-    fn get_ukiere(&self) -> Vec<u8> {
+    fn get_ukiere(&self) -> Vec<MahjongTileId> {
         if self.get_standard_shanten() == -1 {
             return Vec::new();
         }
@@ -1092,7 +1085,7 @@ pub fn get_most_ukiere_after_discard(
     tile_count_array: [u8; 34],
     best_shanten: i8,
     shanten_function: &dyn Fn([u8; 34]) -> i8,
-    ukiere_function: &dyn Fn([u8; 34]) -> Vec<u8>,
+    ukiere_function: &dyn Fn([u8; 34]) -> Vec<MahjongTileId>,
     other_visible_tiles: &Vec<u8>,
 ) -> Vec<(u8, Vec<u8>, u16)> {
     if get_total_tiles_from_count_array(tile_count_array) != 14 {
@@ -1134,7 +1127,7 @@ pub fn get_all_ukiere_after_discard(
     tile_count_array: [u8; 34],
     best_shanten: i8,
     shanten_function: &dyn Fn([u8; 34]) -> i8,
-    ukiere_function: &dyn Fn([u8; 34]) -> Vec<u8>,
+    ukiere_function: &dyn Fn([u8; 34]) -> Vec<MahjongTileId>,
     other_visible_tiles: &Vec<u8>,
 ) -> Vec<(u8, Vec<u8>, u16)> {
     if get_total_tiles_from_count_array(tile_count_array) != 14 {
@@ -1166,7 +1159,7 @@ pub fn get_all_ukiere_after_discard(
 pub fn get_shanten_ukiere_after_each_discard(
     tile_count_array: [u8; 34],
     shanten_function: &dyn Fn([u8; 34]) -> i8,
-    ukiere_function: &dyn Fn([u8; 34]) -> Vec<u8>,
+    ukiere_function: &dyn Fn([u8; 34]) -> Vec<MahjongTileId>,
     other_visible_tiles: &Vec<u8>,
 ) -> Vec<(u8, i8, Vec<u8>, u16)> {
     if get_total_tiles_from_count_array(tile_count_array) != 14 {
@@ -1207,7 +1200,7 @@ pub fn get_shanten_ukiere_after_each_discard(
 pub fn combine_tile_ids_from_count_array_and_vec(
     tile_count_array: [u8; 34],
     tile_ids: &Vec<u8>,
-) -> Vec<u8> {
+) -> Vec<MahjongTileId> {
     let mut new_tile_ids = tile_ids.clone();
     let mut hand_tile_ids = tile_count_array_to_tile_ids(tile_count_array);
     new_tile_ids.append(&mut hand_tile_ids);
@@ -1218,7 +1211,7 @@ pub fn combine_tile_ids_from_count_array_and_vec(
 pub fn get_upgrade_tiles(
     tile_count_array: [u8; 34],
     shanten_function: &dyn Fn([u8; 34]) -> i8,
-    ukiere_function: &dyn Fn([u8; 34]) -> Vec<u8>,
+    ukiere_function: &dyn Fn([u8; 34]) -> Vec<MahjongTileId>,
     other_visible_tiles: &Vec<u8>,
 ) -> HashMap<u8, HashMap<u8, (Vec<u8>, u16)>> {
     if get_total_tiles_from_count_array(tile_count_array) != 13 {
@@ -1310,8 +1303,8 @@ pub fn remove_tile_id_from_count_array(
 pub fn get_ukiere_after_discard(
     tile_count_array: [u8; 34],
     discard_tile_id: u8,
-    ukiere_function: &dyn Fn([u8; 34]) -> Vec<u8>,
-) -> Vec<u8> {
+    ukiere_function: &dyn Fn([u8; 34]) -> Vec<MahjongTileId>,
+) -> Vec<MahjongTileId> {
     if get_total_tiles_from_count_array(tile_count_array) != 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
@@ -1356,7 +1349,7 @@ fn generate_ukiere_tiles(
     chiitoi_shanten: i8,
     kokushi_shanten: i8,
     hand_interpretations: &Vec<HandInterpretation>,
-) -> Vec<u8> {
+) -> Vec<MahjongTileId> {
     let special_shanten = min(chiitoi_shanten, kokushi_shanten);
     let min_shanten = min(special_shanten, standard_shanten);
 
@@ -1388,7 +1381,7 @@ fn generate_ukiere_tiles(
     ukiere_tile_ids
 }
 
-pub fn get_ukiere(tile_count_array: [u8; 34]) -> Vec<u8> {
+pub fn get_ukiere(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
     let interpretations = get_hand_interpretations(tile_count_array);
     let standard_shanten = get_shanten_helper(&interpretations);
     let chiitoi_shanten = get_chiitoi_shanten(tile_count_array);
@@ -1403,7 +1396,7 @@ pub fn get_ukiere(tile_count_array: [u8; 34]) -> Vec<u8> {
     )
 }
 
-pub fn get_ukiere_optimized(tile_count_array: [u8; 34]) -> Vec<u8> {
+pub fn get_ukiere_optimized(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
     let chiitoi_shanten = get_chiitoi_shanten(tile_count_array);
     let kokushi_shanten = get_kokushi_shanten(tile_count_array);
     let special_shanten = min(chiitoi_shanten, kokushi_shanten);
@@ -1419,7 +1412,7 @@ pub fn get_ukiere_optimized(tile_count_array: [u8; 34]) -> Vec<u8> {
     )
 }
 
-pub fn get_ukiere_helper(hand_interpretations: &Vec<HandInterpretation>, shanten: i8) -> Vec<u8> {
+pub fn get_ukiere_helper(hand_interpretations: &Vec<HandInterpretation>, shanten: i8) -> Vec<MahjongTileId> {
     let mut ukiere_tiles = Vec::new();
     // println!("looking for hand interpretations with shanten {}", shanten);
     for interpretation in hand_interpretations.iter() {
@@ -1459,7 +1452,7 @@ pub fn get_chiitoi_shanten(tile_count_array: [u8; 34]) -> i8 {
     6 - num_pairs
 }
 
-pub fn get_chiitoi_ukiere(tile_count_array: [u8; 34]) -> Vec<u8> {
+pub fn get_chiitoi_ukiere(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
     let mut tile_id = 0u8;
     let mut ukiere_tile_ids = Vec::new();
     while usize::from(tile_id) < tile_count_array.len() {
@@ -1493,7 +1486,7 @@ pub fn get_kokushi_shanten(tile_count_array: [u8; 34]) -> i8 {
     kokushi_shanten
 }
 
-pub fn get_kokushi_ukiere(tile_count_array: [u8; 34]) -> Vec<u8> {
+pub fn get_kokushi_ukiere(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
     let mut missing_kokushi_tiles = Vec::new();
     let kokushi_tile_ids = mahjong_tile::tiles_to_tile_ids("19m19p19s1234567z");
     let mut has_kokushi_pair = false;
@@ -1539,7 +1532,7 @@ pub fn tiles_to_count_array(tiles_string: &str) -> [u8; 34] {
     tile_count_array
 }
 
-fn tile_count_array_to_tile_ids(tile_count_array: [u8; 34]) -> Vec<u8> {
+fn tile_count_array_to_tile_ids(tile_count_array: [u8; 34]) -> Vec<MahjongTileId> {
     let mut tile_ids = Vec::new();
     for tile_id in 0..34u8 {
         let tile_idx = usize::from(tile_id);
@@ -1600,6 +1593,14 @@ mod tests {
     use std::cmp::Ordering;
     use std::collections::HashSet;
     use test::Bencher;
+
+    macro_rules! hashmap {
+        ($( $key: expr => $val: expr ),*) => {{
+            let mut map = ::std::collections::HashMap::new();
+            $( map.insert($key, $val); )*
+            map
+        }}
+    }
 
     fn assert_tile_ids_match(tile_ids: &Vec<u8>, expected_tile_ids: &Vec<u8>) {
         // assert_eq!(tile_ids.len(), expected_tile_ids.len());

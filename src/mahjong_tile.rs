@@ -31,6 +31,8 @@
 // - which tile was just drawn / added to the hand (if any) - which is used for hand scoring
 // - how the tile was added to the hand (drawn from the wall, drawn from the dead wall, taken from opponent discard, etc.) - used for hand scoring
 
+use std::fmt;
+
 use crate::mahjong_error;
 
 /// One of the numbered mahjong tile suits (i.e. excludes Wind and Dragon suits)
@@ -53,7 +55,32 @@ pub enum MahjongTileValue {
 }
 
 /// An integer representation of a `MahjongTileValue` (maps 1-to-1 for more compact storage)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MahjongTileId(pub u8);
+
+// implement From trait -> Into trait will be defined automatically
+impl From<u8> for MahjongTileId {
+    fn from(id: u8) -> Self {
+        MahjongTileId(id)
+    }
+}
+impl From<MahjongTileId> for u8 {
+    fn from(id: MahjongTileId) -> Self {
+        id.0
+    }
+}
+impl From<MahjongTileId> for usize {
+    fn from(id: MahjongTileId) -> Self {
+        usize::from(id.0)
+    }
+}
+
+impl fmt::Display for MahjongTileId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // write out with the MSPZ notation (use Debug for the raw tile_id value)
+        write!(f, "{}", MahjongTileValue::from_id(*self).and_then(|id| Ok(id.to_text())).unwrap_or(format!("Invalid tile id: {}", self.0)))
+    }
+}
 
 pub const NUM_DISTINCT_TILE_VALUES: u8 = 34;
 pub const FIRST_PINZU_ID: u8 = 9;
@@ -66,7 +93,7 @@ impl MahjongTileValue {
     /// returns an integer in range 0-33 (inclusive) that represents the distinct tile values (red tiles have the same value),
     /// which is used as the array index for an array of size 34 that stores the count of each tile value (in a hand, in a discard pool, etc.)
     /// If the input is invalid, returns a `MahjongError`
-    pub fn to_id(&self) -> Result<u8, mahjong_error::MahjongError> {
+    pub fn to_id(&self) -> Result<MahjongTileId, mahjong_error::MahjongError> {
         match self {
             MahjongTileValue::Number(value, tile_suit) => {
                 let val = *value;
@@ -76,9 +103,9 @@ impl MahjongTileValue {
                     });
                 }
                 match *tile_suit {
-                    MahjongTileNumberedSuit::Man => Ok(val - 1),
-                    MahjongTileNumberedSuit::Pin => Ok(val - 1 + FIRST_PINZU_ID),
-                    MahjongTileNumberedSuit::Sou => Ok(val - 1 + FIRST_SOUZU_ID),
+                    MahjongTileNumberedSuit::Man => Ok(MahjongTileId(val - 1)),
+                    MahjongTileNumberedSuit::Pin => Ok(MahjongTileId(val - 1 + FIRST_PINZU_ID)),
+                    MahjongTileNumberedSuit::Sou => Ok(MahjongTileId(val - 1 + FIRST_SOUZU_ID)),
                 }
             }
             MahjongTileValue::Wind(value) => {
@@ -88,7 +115,7 @@ impl MahjongTileValue {
                         message: format!("Invalid wind value {} (should be 1-4)", val),
                     });
                 }
-                Ok(val - 1 + FIRST_WIND_ID)
+                Ok(MahjongTileId(val - 1 + FIRST_WIND_ID))
             }
             MahjongTileValue::Dragon(value) => {
                 let val = *value;
@@ -97,7 +124,7 @@ impl MahjongTileValue {
                         message: format!("Invalid dragon value {} (should be 5-7)", val),
                     });
                 }
-                Ok(val - 1 + FIRST_WIND_ID)
+                Ok(MahjongTileId(val - 1 + FIRST_WIND_ID))
             }
         }
     }
@@ -105,7 +132,9 @@ impl MahjongTileValue {
     /// takes an integer in range 0-33 (inclusive) that represents the distinct tile values (red tiles have the same value),
     /// and returns the corresponding value (does not include red tiles)
     /// If the input is invalid, returns a `MahjongError`
-    pub fn from_id(id: u8) -> Result<Self, mahjong_error::MahjongError> {
+    pub fn from_id<T: Into<MahjongTileId>>(tile_id: T) -> Result<Self, mahjong_error::MahjongError> {
+        let tile_id: MahjongTileId = tile_id.into();
+        let id: u8 = tile_id.into();
         if id >= NUM_DISTINCT_TILE_VALUES {
             return Err(mahjong_error::MahjongError {
                 message: format!(
@@ -212,11 +241,12 @@ impl Default for MahjongTile {
 impl MahjongTile {
     // TODO constructor for MahjongTile to validate the MahjongTileValue? how to prevent building the struct with `MahjongTile { (...) }`
 
-    pub fn get_id(&self) -> Result<u8, mahjong_error::MahjongError> {
+    pub fn get_id(&self) -> Result<MahjongTileId, mahjong_error::MahjongError> {
         self.value.to_id()
     }
 
-    pub fn from_id(id: u8) -> Result<Self, mahjong_error::MahjongError> {
+    pub fn from_id<T: Into<MahjongTileId>>(id: T) -> Result<Self, mahjong_error::MahjongError> {
+        let id: MahjongTileId = id.into();
         MahjongTileValue::from_id(id).map(|tile_value| MahjongTile {
             value: tile_value,
             ..Default::default()
@@ -290,14 +320,15 @@ impl MahjongTile {
     }
 }
 
-pub fn get_id_from_tile_text(tile_string: &str) -> Result<u8, mahjong_error::MahjongError> {
+pub fn get_id_from_tile_text(tile_string: &str) -> Result<MahjongTileId, mahjong_error::MahjongError> {
     match MahjongTile::from_text(tile_string) {
         Ok(tile) => tile.get_id(),
         Err(x) => Err(x),
     }
 }
 
-pub fn get_tile_text_from_id(tile_id: u8) -> Result<String, mahjong_error::MahjongError> {
+pub fn get_tile_text_from_id<T: Into<MahjongTileId>>(tile_id: T) -> Result<String, mahjong_error::MahjongError> {
+    let tile_id: MahjongTileId = tile_id.into();
     MahjongTileValue::from_id(tile_id).map(|tile| tile.to_text())
 }
 
@@ -337,7 +368,7 @@ pub fn get_tiles_from_string(tile_string: &str) -> Vec<MahjongTile> {
 
 // TODO make this consistent with get_tiles_from_string (i.e. it should parse both 345m and 3m4m5m correctl)
 /// Note: expects input string to be concatenated mspz notation e.g. 3m4m5m (and not 345m)
-pub fn tiles_to_tile_ids(tiles_string: &str) -> Vec<u8> {
+pub fn tiles_to_tile_ids(tiles_string: &str) -> Vec<MahjongTileId> {
     let mut tile_ids = Vec::new();
     let mut rank_chars: Vec<char> = Vec::new();
     for char in tiles_string.chars() {
@@ -361,7 +392,7 @@ pub fn tiles_to_tile_ids(tiles_string: &str) -> Vec<u8> {
     tile_ids
 }
 
-pub fn tile_ids_to_strings(tile_ids: &Vec<u8>) -> Vec<String> {
+pub fn tile_ids_to_strings<T: Into<MahjongTileId> + Copy>(tile_ids: &Vec<T>) -> Vec<String> {
     tile_ids
         .iter()
         .map(|tile_id| get_tile_text_from_id(*tile_id).unwrap())

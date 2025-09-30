@@ -787,7 +787,7 @@ impl MahjongHand {
 
     /// Returns true if the hand is in tenpai (i.e. adding a single copy of certain tile(s) to the hand will form a winning shape)
     pub fn is_tenpai_brute_force(&self) -> bool {
-        for tile_id in 0..34 {
+        for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
             let mut new_hand = MahjongHand {
                 tiles: self.tiles.clone(),
                 ..Default::default()
