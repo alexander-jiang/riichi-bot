@@ -45,6 +45,14 @@ pub enum MahjongTileNumberedSuit {
 
 /// One of the distinct Mahjong tile values (does not differentiate between red tiles and non-red tiles)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum MahjongWindOrder {
+    East,
+    South,
+    West,
+    North,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MahjongTileValue {
     /// 1-9 m, p or s
     Number(u8, MahjongTileNumberedSuit),
