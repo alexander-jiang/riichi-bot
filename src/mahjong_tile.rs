@@ -53,6 +53,15 @@ impl From<MahjongTileNumberedSuit> for char {
     }
 }
 
+/// The Mahjong wind order (also is the player order)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum MahjongWindOrder {
+    East,
+    South,
+    West,
+    North,
+}
+
 pub const NUM_DISTINCT_TILE_VALUES: u8 = 34;
 pub const FIRST_MANZU_ID: u8 = 0;
 pub const FIRST_PINZU_ID: u8 = 9;
