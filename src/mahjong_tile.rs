@@ -436,7 +436,6 @@ pub const FOUR_OF_EACH_TILE_COUNT_ARRAY: MahjongTileCountArray = MahjongTileCoun
 // what are some common functions e.g. add tile id X to the count array, check if N copies of tile id X are in the count array, etc.
 // see shanten.rs - can likely move some of those functions over to this file
 
-// TODO test
 pub fn get_total_tiles_from_count_array(tile_count_array: MahjongTileCountArray) -> usize {
     let mut total_tiles: usize = 0;
     for tile_idx in 0..tile_count_array.0.len() {
@@ -445,7 +444,6 @@ pub fn get_total_tiles_from_count_array(tile_count_array: MahjongTileCountArray)
     total_tiles
 }
 
-// TODO test
 pub fn get_tile_ids_from_count_array(
     tile_count_array: MahjongTileCountArray,
 ) -> Vec<MahjongTileId> {
@@ -461,7 +459,6 @@ pub fn get_tile_ids_from_count_array(
     tile_ids
 }
 
-// TODO test
 pub fn get_distinct_tile_ids_from_count_array(
     tile_count_array: MahjongTileCountArray,
 ) -> Vec<MahjongTileId> {
@@ -861,5 +858,66 @@ mod tests {
         ];
         expected_tiles.sort();
         assert_eq!(tiles, expected_tiles);
+    }
+
+    #[test]
+    fn test_get_total_tiles_from_count_array() {
+        let empty_tile_count_array: MahjongTileCountArray = Default::default();
+        assert_eq!(get_total_tiles_from_count_array(empty_tile_count_array), 0);
+
+        assert_eq!(
+            get_total_tiles_from_count_array(FOUR_OF_EACH_TILE_COUNT_ARRAY),
+            4 * 34
+        );
+
+        let mut tile_count_array: MahjongTileCountArray = Default::default();
+        tile_count_array.0[usize::from(get_id_from_tile_text("3m").unwrap())] = 2;
+        tile_count_array.0[usize::from(get_id_from_tile_text("2p").unwrap())] = 1;
+        tile_count_array.0[usize::from(get_id_from_tile_text("4s").unwrap())] = 1;
+        tile_count_array.0[usize::from(get_id_from_tile_text("6z").unwrap())] = 2;
+        assert_eq!(get_total_tiles_from_count_array(tile_count_array), 6);
+    }
+
+    #[test]
+    fn test_get_tile_ids_from_count_array() {
+        let empty_tile_count_array: MahjongTileCountArray = Default::default();
+        let empty_tile_ids = get_tile_ids_from_count_array(empty_tile_count_array);
+        assert!(empty_tile_ids.is_empty());
+
+        let mut tile_count_array: MahjongTileCountArray = Default::default();
+        tile_count_array.0[usize::from(get_id_from_tile_text("3m").unwrap())] = 2;
+        tile_count_array.0[usize::from(get_id_from_tile_text("2p").unwrap())] = 1;
+        let tile_ids = get_tile_ids_from_count_array(tile_count_array);
+        assert_eq!(tile_ids.len(), 3);
+        let matching_3m_tiles: Vec<MahjongTileId> = tile_ids
+            .iter()
+            .cloned()
+            .filter(|&tile_id| tile_id == get_id_from_tile_text("3m").unwrap())
+            .collect();
+        assert_eq!(matching_3m_tiles.len(), 2);
+        let matching_2p_tiles: Vec<MahjongTileId> = tile_ids
+            .iter()
+            .cloned()
+            .filter(|&tile_id| tile_id == get_id_from_tile_text("2p").unwrap())
+            .collect();
+        assert_eq!(matching_2p_tiles.len(), 1);
+    }
+
+    #[test]
+    fn test_get_distinct_tile_ids_from_count_array() {
+        let empty_tile_count_array: MahjongTileCountArray = Default::default();
+        let empty_tile_ids = get_distinct_tile_ids_from_count_array(empty_tile_count_array);
+        assert!(empty_tile_ids.is_empty());
+
+        let mut tile_count_array: MahjongTileCountArray = Default::default();
+        tile_count_array.0[usize::from(get_id_from_tile_text("3m").unwrap())] = 2;
+        tile_count_array.0[usize::from(get_id_from_tile_text("2p").unwrap())] = 1;
+        let distinct_tile_ids = get_distinct_tile_ids_from_count_array(tile_count_array);
+        assert_eq!(distinct_tile_ids.len(), 2);
+        assert!(distinct_tile_ids.contains(&get_id_from_tile_text("3m").unwrap()));
+        assert!(distinct_tile_ids.contains(&get_id_from_tile_text("2p").unwrap()));
+
+        assert!(!distinct_tile_ids.contains(&get_id_from_tile_text("3p").unwrap()));
+        assert!(!distinct_tile_ids.contains(&get_id_from_tile_text("2m").unwrap()));
     }
 }
