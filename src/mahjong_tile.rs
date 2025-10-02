@@ -436,6 +436,7 @@ pub const FOUR_OF_EACH_TILE_COUNT_ARRAY: MahjongTileCountArray = MahjongTileCoun
 // what are some common functions e.g. add tile id X to the count array, check if N copies of tile id X are in the count array, etc.
 // see shanten.rs - can likely move some of those functions over to this file
 
+// TODO test
 pub fn get_total_tiles_from_count_array(tile_count_array: MahjongTileCountArray) -> usize {
     let mut total_tiles: usize = 0;
     for tile_idx in 0..tile_count_array.0.len() {
@@ -444,6 +445,7 @@ pub fn get_total_tiles_from_count_array(tile_count_array: MahjongTileCountArray)
     total_tiles
 }
 
+// TODO test
 pub fn get_tile_ids_from_count_array(
     tile_count_array: MahjongTileCountArray,
 ) -> Vec<MahjongTileId> {
@@ -459,6 +461,7 @@ pub fn get_tile_ids_from_count_array(
     tile_ids
 }
 
+// TODO test
 pub fn get_distinct_tile_ids_from_count_array(
     tile_count_array: MahjongTileCountArray,
 ) -> Vec<MahjongTileId> {
