@@ -32,7 +32,10 @@ fn generate_random_tile_id_rng(remaining_tile_count: MahjongTileCountArray) -> M
 
 /// generates a random tile id from the pool of tiles remaining (panics if there are no tiles left),
 /// weighted by the number of copies of tiles remaining
-fn generate_random_tile_id(remaining_tile_count: MahjongTileCountArray, rng: &mut ThreadRng) -> MahjongTileId {
+fn generate_random_tile_id(
+    remaining_tile_count: MahjongTileCountArray,
+    rng: &mut ThreadRng,
+) -> MahjongTileId {
     let tiles_remaining = mahjong_tile::get_tile_ids_from_count_array(remaining_tile_count);
     if tiles_remaining.len() == 0 {
         panic!("no tiles remaining");
@@ -45,16 +48,16 @@ fn remove_tile_ids_from_count_array<T: Into<MahjongTileId> + Clone>(
     tile_count_array: MahjongTileCountArray,
     tile_ids_to_remove: &Vec<T>,
 ) -> MahjongTileCountArray {
-    let mut tiles_after_remove = [0u8; 34];
-    for i in 0..tiles_after_remove.len() {
-        tiles_after_remove[i] = tile_count_array[i];
+    let mut tiles_after_remove: MahjongTileCountArray = Default::default();
+    for i in 0..tiles_after_remove.0.len() {
+        tiles_after_remove.0[i] = tile_count_array.0[i];
     }
     for tile_id in tile_ids_to_remove {
         let tile_id: MahjongTileId = tile_id.clone().into();
-        if tiles_after_remove[usize::from(tile_id)] == 0 {
+        if tiles_after_remove.0[usize::from(tile_id)] == 0 {
             panic!("no more copies of tile left to remove");
         }
-        tiles_after_remove[usize::from(tile_id)] -= 1;
+        tiles_after_remove.0[usize::from(tile_id)] -= 1;
     }
     tiles_after_remove
 }
@@ -93,17 +96,20 @@ fn run_basic_analysis<T: Into<MahjongTileId> + Clone>(
     );
 
     // precompute (discard tile id, resulting ukiere tile ids) after each possible improvement tile draw
-    let mut draw_tile_id_to_ukiere_tile_ids: HashMap<MahjongTileId, Vec<(MahjongTileId, Vec<MahjongTileId>, u16)>> = HashMap::new();
+    let mut draw_tile_id_to_ukiere_tile_ids: HashMap<
+        MahjongTileId,
+        Vec<(MahjongTileId, Vec<MahjongTileId>, u16)>,
+    > = HashMap::new();
     for improve_tile_id in starting_ukiere_tile_ids.iter() {
         let improve_tile_id = *improve_tile_id;
         let mut tile_count_array_after_draw = starting_hand;
-        if tile_count_array_after_draw[usize::from(improve_tile_id)] == 4 {
+        if tile_count_array_after_draw.0[usize::from(improve_tile_id)] == 4 {
             panic!(
                 "cannot draw more than a fourth copy of the tile {}",
                 mahjong_tile::get_tile_text_from_id(improve_tile_id).unwrap()
             );
         }
-        tile_count_array_after_draw[usize::from(improve_tile_id)] += 1;
+        tile_count_array_after_draw.0[usize::from(improve_tile_id)] += 1;
         let ukiere_after_improve = shanten::get_all_ukiere_after_discard(
             tile_count_array_after_draw,
             starting_shanten - 1,
@@ -130,12 +136,14 @@ fn run_basic_analysis<T: Into<MahjongTileId> + Clone>(
         //     "total visible tiles so far: {}",
         //     shanten::tile_ids_to_string(&total_visible_tiles_so_far)
         // );
-        let mut remaining_tile_count =
-            remove_tile_ids_from_count_array([4u8; 34], &total_visible_tiles_so_far);
+        let mut remaining_tile_count = remove_tile_ids_from_count_array(
+            MahjongTileCountArray([4u8; 34]),
+            &total_visible_tiles_so_far,
+        );
 
-        let mut hand = [0u8; 34];
-        for tile_id in 0..starting_hand.len() {
-            hand[tile_id] = starting_hand[tile_id];
+        let mut hand: MahjongTileCountArray = Default::default();
+        for tile_id in 0..starting_hand.0.len() {
+            hand.0[tile_id] = starting_hand.0[tile_id];
         }
 
         // draw a tile
@@ -147,10 +155,10 @@ fn run_basic_analysis<T: Into<MahjongTileId> + Clone>(
             //     mahjong_tile::get_tile_text_from_id(drawn_tile_id).unwrap(),
             //     shanten::tile_ids_to_string(&hand_tile_ids)
             // );
-            if remaining_tile_count[usize::from(drawn_tile_id)] == 0 {
+            if remaining_tile_count.0[usize::from(drawn_tile_id)] == 0 {
                 panic!("no more copies of tile left to remove");
             }
-            remaining_tile_count[usize::from(drawn_tile_id)] -= 1;
+            remaining_tile_count.0[usize::from(drawn_tile_id)] -= 1;
             total_visible_tiles_so_far.push(drawn_tile_id);
 
             // in this case, we only accept ukiere tiles, disregard upgrades
@@ -252,12 +260,12 @@ mod tests {
         let mut tile_count_array = shanten::tiles_to_count_array("135m");
         let new_count_array = tile_count_array;
         let tile_id_4m = mahjong_tile::get_id_from_tile_text("4m").unwrap();
-        assert_eq!(tile_count_array[usize::from(tile_id_4m)], 0);
-        assert_eq!(new_count_array[usize::from(tile_id_4m)], 0);
+        assert_eq!(tile_count_array.0[usize::from(tile_id_4m)], 0);
+        assert_eq!(new_count_array.0[usize::from(tile_id_4m)], 0);
 
-        tile_count_array[usize::from(tile_id_4m)] += 1;
-        assert_eq!(tile_count_array[usize::from(tile_id_4m)], 1);
-        assert_eq!(new_count_array[usize::from(tile_id_4m)], 0);
+        tile_count_array.0[usize::from(tile_id_4m)] += 1;
+        assert_eq!(tile_count_array.0[usize::from(tile_id_4m)], 1);
+        assert_eq!(new_count_array.0[usize::from(tile_id_4m)], 0);
     }
 
     #[bench]
@@ -266,11 +274,11 @@ mod tests {
         let tile_id_4m = mahjong_tile::get_id_from_tile_text("4m").unwrap();
         let mut tile_count_array = shanten::tiles_to_count_array("135m");
         b.iter(|| {
-            tile_count_array[usize::from(tile_id_4m)] = 0;
+            tile_count_array.0[usize::from(tile_id_4m)] = 0;
             let new_count_array = tile_count_array;
-            tile_count_array[usize::from(tile_id_4m)] = 1;
-            assert_eq!(tile_count_array[usize::from(tile_id_4m)], 1);
-            assert_eq!(new_count_array[usize::from(tile_id_4m)], 0);
+            tile_count_array.0[usize::from(tile_id_4m)] = 1;
+            assert_eq!(tile_count_array.0[usize::from(tile_id_4m)], 1);
+            assert_eq!(new_count_array.0[usize::from(tile_id_4m)], 0);
             tile_count_array
         });
     }
@@ -278,17 +286,17 @@ mod tests {
     #[test]
     fn test_manual_copy_tile_count_array() {
         let mut tile_count_array = shanten::tiles_to_count_array("135m");
-        let mut new_count_array = [0u8; 34];
-        for tile_id in 0..tile_count_array.len() {
-            new_count_array[tile_id] = tile_count_array[tile_id];
+        let mut new_count_array: MahjongTileCountArray = Default::default();
+        for tile_id in 0..tile_count_array.0.len() {
+            new_count_array.0[tile_id] = tile_count_array.0[tile_id];
         }
         let tile_id_4m = mahjong_tile::get_id_from_tile_text("4m").unwrap();
-        assert_eq!(tile_count_array[usize::from(tile_id_4m)], 0);
-        assert_eq!(new_count_array[usize::from(tile_id_4m)], 0);
+        assert_eq!(tile_count_array.0[usize::from(tile_id_4m)], 0);
+        assert_eq!(new_count_array.0[usize::from(tile_id_4m)], 0);
 
-        tile_count_array[usize::from(tile_id_4m)] += 1;
-        assert_eq!(tile_count_array[usize::from(tile_id_4m)], 1);
-        assert_eq!(new_count_array[usize::from(tile_id_4m)], 0);
+        tile_count_array.0[usize::from(tile_id_4m)] += 1;
+        assert_eq!(tile_count_array.0[usize::from(tile_id_4m)], 1);
+        assert_eq!(new_count_array.0[usize::from(tile_id_4m)], 0);
     }
 
     #[test]
@@ -300,28 +308,29 @@ mod tests {
         let mut hand_tile_ids = mahjong_tile::tiles_to_tile_ids("345m1156p46778s6s");
         visible_tile_ids.append(&mut hand_tile_ids);
 
-        let remaining_tile_count = remove_tile_ids_from_count_array([4u8; 34], &visible_tile_ids);
+        let remaining_tile_count =
+            remove_tile_ids_from_count_array(MahjongTileCountArray([4u8; 34]), &visible_tile_ids);
         println!("actual remaining tile count:\n{:?}", remaining_tile_count);
-        let expected_remaining_tile_count: MahjongTileCountArray = [
+        let expected_remaining_tile_count: MahjongTileCountArray = MahjongTileCountArray([
             4, 4, 3, 2, 3, 3, 4, 4, 2, // manzu
             2, 3, 2, 4, 3, 3, 4, 3, 3, // pinzu
             2, 4, 4, 3, 4, 1, 2, 3, 3, // souzu
             2, 2, 1, 0, 2, 2, 2, // honor
-        ];
+        ]);
         let tile_id_4p = mahjong_tile::get_id_from_tile_text("4p").unwrap();
         let tile_id_7p = mahjong_tile::get_id_from_tile_text("7p").unwrap();
         let tile_id_5s = mahjong_tile::get_id_from_tile_text("5s").unwrap();
         let tile_id_8s = mahjong_tile::get_id_from_tile_text("8s").unwrap();
         assert_eq!(remaining_tile_count, expected_remaining_tile_count);
         assert_eq!(
-            remaining_tile_count[usize::from(tile_id_4p)]
-                + remaining_tile_count[usize::from(tile_id_7p)]
-                + remaining_tile_count[usize::from(tile_id_5s)]
-                + remaining_tile_count[usize::from(tile_id_8s)],
+            remaining_tile_count.0[usize::from(tile_id_4p)]
+                + remaining_tile_count.0[usize::from(tile_id_7p)]
+                + remaining_tile_count.0[usize::from(tile_id_5s)]
+                + remaining_tile_count.0[usize::from(tile_id_8s)],
             15
         );
 
-        let mut generated_tile_count_array = [0u32; 34];
+        let mut generated_tile_count_array = [0u32; 34]; // need u32 here to count instances
         let num_iters = 1_000_000;
         for _i in 0..num_iters {
             let generated_tile_id = generate_random_tile_id_rng(remaining_tile_count);
@@ -331,7 +340,7 @@ mod tests {
             "generated tile distribution: over {} iterations\n{:?}",
             num_iters, generated_tile_count_array
         );
-        let mut num_ukiere_iters = 0;
+        let mut num_ukiere_iters: u32 = 0;
         num_ukiere_iters += generated_tile_count_array[usize::from(tile_id_4p)];
         num_ukiere_iters += generated_tile_count_array[usize::from(tile_id_7p)];
         num_ukiere_iters += generated_tile_count_array[usize::from(tile_id_5s)];
@@ -352,14 +361,14 @@ mod tests {
         let tile_id_4m = mahjong_tile::get_id_from_tile_text("4m").unwrap();
         let mut tile_count_array = shanten::tiles_to_count_array("135m");
         b.iter(|| {
-            tile_count_array[usize::from(tile_id_4m)] = 0;
-            let mut new_count_array = [0u8; 34];
-            for tile_id in 0..tile_count_array.len() {
-                new_count_array[tile_id] = tile_count_array[tile_id];
+            tile_count_array.0[usize::from(tile_id_4m)] = 0;
+            let mut new_count_array: MahjongTileCountArray = Default::default();
+            for tile_id in 0..tile_count_array.0.len() {
+                new_count_array.0[tile_id] = tile_count_array.0[tile_id];
             }
-            tile_count_array[usize::from(tile_id_4m)] = 1;
-            assert_eq!(tile_count_array[usize::from(tile_id_4m)], 1);
-            assert_eq!(new_count_array[usize::from(tile_id_4m)], 0);
+            tile_count_array.0[usize::from(tile_id_4m)] = 1;
+            assert_eq!(tile_count_array.0[usize::from(tile_id_4m)], 1);
+            assert_eq!(new_count_array.0[usize::from(tile_id_4m)], 0);
             tile_count_array
         });
     }
@@ -367,14 +376,14 @@ mod tests {
     #[bench]
     fn bench_generate_random_tile_id_rng(b: &mut Bencher) {
         // without the ThreadRng passed in: 786.13 ns / iter (+/- 10.42)
-        let remaining_tile_count = [4u8; 34];
+        let remaining_tile_count = MahjongTileCountArray([4u8; 34]);
         b.iter(|| generate_random_tile_id_rng(remaining_tile_count));
     }
 
     #[bench]
     fn bench_generate_random_tile_id(b: &mut Bencher) {
         // with the ThreadRng passed in: 803.49 ns / iter (+/- 13.53)
-        let remaining_tile_count = [4u8; 34];
+        let remaining_tile_count = MahjongTileCountArray([4u8; 34]);
         let mut rng = rand::rng();
         b.iter(|| generate_random_tile_id(remaining_tile_count, &mut rng));
     }
@@ -382,7 +391,7 @@ mod tests {
     #[bench]
     fn bench_remove_tile_ids_from_count_array(b: &mut Bencher) {
         // 30.17 ns/iter (+/- 1.05)
-        let remaining_tile_count = [4u8; 34];
+        let remaining_tile_count = MahjongTileCountArray([4u8; 34]);
         let visible_tile_ids = mahjong_tile::tiles_to_tile_ids(
             "6s4z2z3z9m9p7z6m2p8p4z1z2z3p3p9s4z5z6z3z1s3z7z4z1z6z5z1s4m9m",
         );

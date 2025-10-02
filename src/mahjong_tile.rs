@@ -104,7 +104,9 @@ impl MahjongTileValue {
     /// takes an integer in range 0-33 (inclusive) that represents the distinct tile values (red tiles have the same value),
     /// and returns the corresponding value (does not include red tiles)
     /// If the input is invalid, returns a `MahjongError`
-    pub fn from_id<T: Into<MahjongTileId>>(tile_id: T) -> Result<Self, mahjong_error::MahjongError> {
+    pub fn from_id<T: Into<MahjongTileId>>(
+        tile_id: T,
+    ) -> Result<Self, mahjong_error::MahjongError> {
         let tile_id: MahjongTileId = tile_id.into();
         let id: u8 = tile_id.into();
         if id >= NUM_DISTINCT_TILE_VALUES {
@@ -118,7 +120,10 @@ impl MahjongTileValue {
         }
         if id < FIRST_PINZU_ID {
             // 0-8 is manzu (1m-9m)
-            return Ok(MahjongTileValue::Number(id + 1, MahjongTileNumberedSuit::Man));
+            return Ok(MahjongTileValue::Number(
+                id + 1,
+                MahjongTileNumberedSuit::Man,
+            ));
         } else if id < FIRST_SOUZU_ID {
             // 9-17 is pinzu (1p-9p)
             return Ok(MahjongTileValue::Number(
@@ -186,7 +191,13 @@ impl From<MahjongTileId> for usize {
 impl fmt::Display for MahjongTileId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // write out with the MSPZ notation (use Debug for the raw tile_id value)
-        write!(f, "{}", MahjongTileValue::from_id(*self).and_then(|id| Ok(id.to_text())).unwrap_or(format!("Invalid tile id: {}", self.0)))
+        write!(
+            f,
+            "{}",
+            MahjongTileValue::from_id(*self)
+                .and_then(|id| Ok(id.to_text()))
+                .unwrap_or(format!("Invalid tile id: {}", self.0))
+        )
     }
 }
 
@@ -322,14 +333,18 @@ impl MahjongTile {
     }
 }
 
-pub fn get_id_from_tile_text(tile_string: &str) -> Result<MahjongTileId, mahjong_error::MahjongError> {
+pub fn get_id_from_tile_text(
+    tile_string: &str,
+) -> Result<MahjongTileId, mahjong_error::MahjongError> {
     match MahjongTile::from_text(tile_string) {
         Ok(tile) => tile.get_id(),
         Err(x) => Err(x),
     }
 }
 
-pub fn get_tile_text_from_id<T: Into<MahjongTileId>>(tile_id: T) -> Result<String, mahjong_error::MahjongError> {
+pub fn get_tile_text_from_id<T: Into<MahjongTileId>>(
+    tile_id: T,
+) -> Result<String, mahjong_error::MahjongError> {
     let tile_id: MahjongTileId = tile_id.into();
     MahjongTileValue::from_id(tile_id).map(|tile| tile.to_text())
 }
@@ -425,7 +440,9 @@ pub fn get_total_tiles_from_count_array(tile_count_array: MahjongTileCountArray)
     total_tiles
 }
 
-pub fn get_tile_ids_from_count_array(tile_count_array: MahjongTileCountArray) -> Vec<MahjongTileId> {
+pub fn get_tile_ids_from_count_array(
+    tile_count_array: MahjongTileCountArray,
+) -> Vec<MahjongTileId> {
     let mut tile_ids = vec![];
     for tile_id in 0..NUM_DISTINCT_TILE_VALUES {
         let tile_idx = usize::from(tile_id);
@@ -438,7 +455,9 @@ pub fn get_tile_ids_from_count_array(tile_count_array: MahjongTileCountArray) ->
     tile_ids
 }
 
-pub fn get_distinct_tile_ids_from_count_array(tile_count_array: MahjongTileCountArray) -> Vec<MahjongTileId> {
+pub fn get_distinct_tile_ids_from_count_array(
+    tile_count_array: MahjongTileCountArray,
+) -> Vec<MahjongTileId> {
     let mut distinct_tile_ids = vec![];
     for tile_id in 0..NUM_DISTINCT_TILE_VALUES {
         let tile_idx = usize::from(tile_id);
@@ -448,7 +467,6 @@ pub fn get_distinct_tile_ids_from_count_array(tile_count_array: MahjongTileCount
     }
     distinct_tile_ids
 }
-
 
 #[cfg(test)]
 mod tests {
