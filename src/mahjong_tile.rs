@@ -429,6 +429,8 @@ impl Default for MahjongTileCountArray {
     }
 }
 
+pub const FOUR_OF_EACH_TILE_COUNT_ARRAY: MahjongTileCountArray = MahjongTileCountArray([4u8; 34]);
+
 // what are some common functions e.g. add tile id X to the count array, check if N copies of tile id X are in the count array, etc.
 // see shanten.rs - can likely move some of those functions over to this file
 
