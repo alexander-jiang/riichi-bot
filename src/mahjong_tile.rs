@@ -352,7 +352,8 @@ pub fn get_tile_text_from_id<T: Into<MahjongTileId>>(
 // ##### CONVERSION FUNCTIONS #####
 // Individual tiles can be represented as:
 // - `MahjongTile` objects, which distinguish between red-fives and non-red-fives (useful for scoring, but not as useful for shanten/tenpai analysis)
-// - `u8` tile_id values, which do not distinguish between red-fives and non-red-fives
+// - `MahjongTileValue` objects, which ... i'm not sure why we have...
+// - tile_id values (`u8` or `MahjongTileId`, which are interchangeable), which do not distinguish between red-fives and non-red-fives
 // - String tile representation in MSPZ notation e.g. "1z" -> east wind, "3p" -> 3-pin (can represent red fives as "0" i.e. "0s" means red-5-sou vs "5s" means non-red-5-sou)
 // Groups/sets of tiles (e.g. a meld, a hand, etc.) can be represented as:
 // - a collection (e.g. `Vec`) of any of the above, but usually either `Vec<MahjongTile>` or `Vec<u8>` -- it

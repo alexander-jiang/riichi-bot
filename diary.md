@@ -1,11 +1,24 @@
 # Diary
 
+### Oct 1 2025
+
+table of the various types used to represent a single tile:
+
+```
+v from  \\  to > | MahjongTileValue          | MahjongTileId/u8        | MahjongTile            | String
+MahjongTileValue | n/a                       | MahjongTileValue::to_id | MahjongTile { ... }    | MahjongTileValue::to_text
+MahjongTileId/u8 | MahjongTileValue::from_id | n/a                     | MahjongTile::from_id   | get_tile_text_from_id & MahjongTileId Display impl
+MahjongTile      | MahjongTile.value         | MahjongTile::get_id     | n/a                    | ??
+String           | ??                        | get_id_from_tile_text   | MahjongTile::from_text | n/a
+```
+
+note that `u8` and `MahjongTileId` are interchangeable (1-to-1).
+
 ### Sep 29 2025
 
 - doing lots of refactoring: replacing `u8` with `MahjongTileId` where applicable, replacing the hardcoded/magic number 34 with `mahjong_tile::NUM_DISTINCT_TILE_VALUES`
 - next up: replace `[u8; 34]` with a custom type
 - fix up `shanten::tiles_to_tile_ids` to be consistent and accept shorthand MSPZ notation e.g. "123m" instead of just "1m2m3m"
-
 
 ### Sep 26 2025
 
@@ -13,6 +26,7 @@
 - Fixed bug with tenpai `tile_grouping::get_all_tenpai_wait_tiles` function allowing to be tenpai on a tile when all four copies of that tile are in your hand
 
 up next / TODOs:
+
 - (done) cleanup old / unused code - start from the tile class, then work up to the tile groups
 - (WIP) consolidate the functions for converting between different representations for tiles (e.g. tile "id", which is a u8 from 0 to 33 inclusive, and a string) and for tile sets/lists (e.g. list of tile ids, list of tiles as strings, or a count-array: a 34-length array of counts for each tile type)
 - make sure we have fully tested the tenpai check, as well as determining which tiles are the winning tiles, the potential groupings, and the shanten + upgrade calculations
