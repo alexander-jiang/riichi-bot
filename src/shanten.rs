@@ -3,8 +3,8 @@ extern crate test;
 pub use crate::mahjong_hand;
 pub use crate::mahjong_tile;
 use crate::mahjong_tile::{
-    get_distinct_tile_ids_from_count_array, get_total_tiles_from_count_array,
-    MahjongTileCountArray, MahjongTileId,
+    get_distinct_tile_ids_from_count_array, get_tile_ids_from_string,
+    get_total_tiles_from_count_array, MahjongTileCountArray, MahjongTileId,
 };
 use std::cmp::min;
 use std::collections::{HashMap, VecDeque};
@@ -1456,7 +1456,7 @@ pub fn get_chiitoi_ukiere(tile_count_array: MahjongTileCountArray) -> Vec<Mahjon
 }
 
 pub fn get_kokushi_shanten(tile_count_array: MahjongTileCountArray) -> i8 {
-    let kokushi_tile_ids = mahjong_tile::tiles_to_tile_ids("19m19p19s1234567z");
+    let kokushi_tile_ids = get_tile_ids_from_string("19m19p19s1234567z");
     let mut num_kokushi_tiles = 0;
     let mut has_kokushi_pair = false;
     for kokushi_tile_id in kokushi_tile_ids.iter() {
@@ -1478,7 +1478,7 @@ pub fn get_kokushi_shanten(tile_count_array: MahjongTileCountArray) -> i8 {
 
 pub fn get_kokushi_ukiere(tile_count_array: MahjongTileCountArray) -> Vec<MahjongTileId> {
     let mut missing_kokushi_tiles = Vec::new();
-    let kokushi_tile_ids = mahjong_tile::tiles_to_tile_ids("19m19p19s1234567z");
+    let kokushi_tile_ids = get_tile_ids_from_string("19m19p19s1234567z");
     let mut has_kokushi_pair = false;
     for kokushi_tile_id in kokushi_tile_ids.iter() {
         let kokushi_tile_idx = usize::from(*kokushi_tile_id);
@@ -1838,7 +1838,7 @@ mod tests {
 
     #[test]
     fn tile_ids_from_string() {
-        let tile_ids = mahjong_tile::tiles_to_tile_ids("1234m");
+        let tile_ids = get_tile_ids_from_string("1234m");
         assert_eq!(tile_ids.len(), 4);
         assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("1m").unwrap()));
         assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("2m").unwrap()));
@@ -1897,7 +1897,7 @@ mod tests {
 
     #[test]
     fn hand_tile_ids_from_string() {
-        let tile_ids = mahjong_tile::tiles_to_tile_ids("46p255567s33478m4s");
+        let tile_ids = get_tile_ids_from_string("46p255567s33478m4s");
         assert_eq!(tile_ids.len(), 14);
         assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("4p").unwrap()));
         assert!(tile_ids.contains(&mahjong_tile::get_id_from_tile_text("6p").unwrap()));
@@ -1917,25 +1917,25 @@ mod tests {
         let single_terminal_tile =
             TileMeld::new(vec![mahjong_tile::get_id_from_tile_text("1m").unwrap()]);
         let ukiere_tile_ids = single_terminal_tile.tile_ids_to_complete_group();
-        let expected_ukiere_tile_ids = mahjong_tile::tiles_to_tile_ids("123m");
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("123m");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let single_middle_tile =
             TileMeld::new(vec![mahjong_tile::get_id_from_tile_text("8p").unwrap()]);
         let ukiere_tile_ids = single_middle_tile.tile_ids_to_complete_group();
-        let expected_ukiere_tile_ids = mahjong_tile::tiles_to_tile_ids("6789p");
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("6789p");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let single_middle_tile =
             TileMeld::new(vec![mahjong_tile::get_id_from_tile_text("3s").unwrap()]);
         let ukiere_tile_ids = single_middle_tile.tile_ids_to_complete_group();
-        let expected_ukiere_tile_ids = mahjong_tile::tiles_to_tile_ids("12345s");
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("12345s");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let single_honor_tile =
             TileMeld::new(vec![mahjong_tile::get_id_from_tile_text("6z").unwrap()]);
         let ukiere_tile_ids = single_honor_tile.tile_ids_to_complete_group();
-        let expected_ukiere_tile_ids = mahjong_tile::tiles_to_tile_ids("6z");
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("6z");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let pair = TileMeld::new(vec![
@@ -1943,7 +1943,7 @@ mod tests {
             mahjong_tile::get_id_from_tile_text("2z").unwrap(),
         ]);
         let ukiere_tile_ids = pair.tile_ids_to_complete_group();
-        let expected_ukiere_tile_ids = mahjong_tile::tiles_to_tile_ids("2z");
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("2z");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let ryanmen = TileMeld::new(vec![
@@ -1951,7 +1951,7 @@ mod tests {
             mahjong_tile::get_id_from_tile_text("4p").unwrap(),
         ]);
         let ukiere_tile_ids = ryanmen.tile_ids_to_complete_group();
-        let expected_ukiere_tile_ids = mahjong_tile::tiles_to_tile_ids("25p");
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("25p");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let kanchan = TileMeld::new(vec![
@@ -1959,7 +1959,7 @@ mod tests {
             mahjong_tile::get_id_from_tile_text("9m").unwrap(),
         ]);
         let ukiere_tile_ids = kanchan.tile_ids_to_complete_group();
-        let expected_ukiere_tile_ids = mahjong_tile::tiles_to_tile_ids("8m");
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("8m");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let penchan = TileMeld::new(vec![
@@ -1967,7 +1967,7 @@ mod tests {
             mahjong_tile::get_id_from_tile_text("9p").unwrap(),
         ]);
         let ukiere_tile_ids = penchan.tile_ids_to_complete_group();
-        let expected_ukiere_tile_ids = mahjong_tile::tiles_to_tile_ids("7p");
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("7p");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
     }
 
@@ -1979,7 +1979,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 2);
 
         // ukiere tiles: 5p3568s23569m
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("5p3568s23569m");
+        let expected_ukiere_tiles = get_tile_ids_from_string("5p3568s23569m");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -1995,7 +1995,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 47m37p
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("47m37p");
+        let expected_ukiere_tiles = get_tile_ids_from_string("47m37p");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2011,7 +2011,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 23456s1z
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("23456s1z");
+        let expected_ukiere_tiles = get_tile_ids_from_string("23456s1z");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2030,7 +2030,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 47p45s
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("47p45s");
+        let expected_ukiere_tiles = get_tile_ids_from_string("47p45s");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2049,7 +2049,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 12469s2p
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("12469s2p");
+        let expected_ukiere_tiles = get_tile_ids_from_string("12469s2p");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2068,7 +2068,7 @@ mod tests {
 
         // ukiere tiles: completing either ryanmen group or pairing a tile in the ryanmen group
         // total: 1234s4567p
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("1234s4567p");
+        let expected_ukiere_tiles = get_tile_ids_from_string("1234s4567p");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2087,7 +2087,7 @@ mod tests {
 
         // ukiere tiles: anything within 2 of a floating tile (3s7s), and 2p
         // total: 123456789s2p
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("123456789s2p");
+        let expected_ukiere_tiles = get_tile_ids_from_string("123456789s2p");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2103,7 +2103,7 @@ mod tests {
         // ukiere tiles: anything within 2 of a floating tile (4m7m6p), and
         // the manzu complex shape can accept 147m (2344m-567m or 234m-4567m), 2358m (24m-34567m)
         // total: 123456789m45678p
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("123456789m45678p");
+        let expected_ukiere_tiles = get_tile_ids_from_string("123456789m45678p");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2143,7 +2143,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 2);
 
         // ukiere tiles: 5m58p37s
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("5m58p37s");
+        let expected_ukiere_tiles = get_tile_ids_from_string("5m58p37s");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2159,7 +2159,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 3);
 
         // ukiere tiles: 12345678m123456789p6789s (12m-5m-88m-2p-7p-789p-889s; also 3-shanten from chiitoi)
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("12345678m123456789p6789s");
+        let expected_ukiere_tiles = get_tile_ids_from_string("12345678m123456789p6789s");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2174,7 +2174,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 8p
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("8p");
+        let expected_ukiere_tiles = get_tile_ids_from_string("8p");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2189,7 +2189,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 2p
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("2p");
+        let expected_ukiere_tiles = get_tile_ids_from_string("2p");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2204,7 +2204,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 3m
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("3m");
+        let expected_ukiere_tiles = get_tile_ids_from_string("3m");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2219,7 +2219,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 4p9s
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("4p9s");
+        let expected_ukiere_tiles = get_tile_ids_from_string("4p9s");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2234,7 +2234,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 69p
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("69p");
+        let expected_ukiere_tiles = get_tile_ids_from_string("69p");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2250,7 +2250,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 36p
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("36p");
+        let expected_ukiere_tiles = get_tile_ids_from_string("36p");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2266,7 +2266,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 25s
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("25s");
+        let expected_ukiere_tiles = get_tile_ids_from_string("25s");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2282,7 +2282,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 67m
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("67m");
+        let expected_ukiere_tiles = get_tile_ids_from_string("67m");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2298,7 +2298,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 13m
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("13m");
+        let expected_ukiere_tiles = get_tile_ids_from_string("13m");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2314,7 +2314,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 258s
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("258s");
+        let expected_ukiere_tiles = get_tile_ids_from_string("258s");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2330,7 +2330,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 467m
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("467m");
+        let expected_ukiere_tiles = get_tile_ids_from_string("467m");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2346,7 +2346,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 1m36s
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("1m36s");
+        let expected_ukiere_tiles = get_tile_ids_from_string("1m36s");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2362,7 +2362,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 258p
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("258p");
+        let expected_ukiere_tiles = get_tile_ids_from_string("258p");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2379,7 +2379,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 7p25z
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("7p25z");
+        let expected_ukiere_tiles = get_tile_ids_from_string("7p25z");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2392,7 +2392,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 9p7z
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("9p7z");
+        let expected_ukiere_tiles = get_tile_ids_from_string("9p7z");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2405,7 +2405,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 2m56s (to form a sixth pair), 134m9p47s (to complete a group)
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("1234m9p4567s");
+        let expected_ukiere_tiles = get_tile_ids_from_string("1234m9p4567s");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2420,7 +2420,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 7p
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("7p");
+        let expected_ukiere_tiles = get_tile_ids_from_string("7p");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2449,7 +2449,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 9m7z
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("9m7z");
+        let expected_ukiere_tiles = get_tile_ids_from_string("9m7z");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2462,7 +2462,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 19m19p19s1234567z (in particular, drawing 7z gives a 13-sided wait)
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("19m19p19s1234567z");
+        let expected_ukiere_tiles = get_tile_ids_from_string("19m19p19s1234567z");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2479,7 +2479,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 9m
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("9m");
+        let expected_ukiere_tiles = get_tile_ids_from_string("9m");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2492,7 +2492,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 19m19p19s1234567z (any terminal or honor tile)
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("19m19p19s1234567z");
+        let expected_ukiere_tiles = get_tile_ids_from_string("19m19p19s1234567z");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2575,19 +2575,15 @@ mod tests {
 
         // ukiere tiles after discard 9p (or 6p): 568m78p369s
         let mut expected_ukiere_tiles_after_discard = HashMap::new();
-        expected_ukiere_tiles_after_discard
-            .insert("6p", mahjong_tile::tiles_to_tile_ids("568m78p369s"));
-        expected_ukiere_tiles_after_discard
-            .insert("9p", mahjong_tile::tiles_to_tile_ids("568m78p369s"));
-        expected_ukiere_tiles_after_discard
-            .insert("6m", mahjong_tile::tiles_to_tile_ids("58m369s"));
-        expected_ukiere_tiles_after_discard
-            .insert("7m", mahjong_tile::tiles_to_tile_ids("6m78p369s"));
-        expected_ukiere_tiles_after_discard.insert("8p", mahjong_tile::tiles_to_tile_ids("7p369s"));
-        expected_ukiere_tiles_after_discard.insert("1s", mahjong_tile::tiles_to_tile_ids("7p69s"));
-        expected_ukiere_tiles_after_discard.insert("2s", mahjong_tile::tiles_to_tile_ids("7p69s"));
-        expected_ukiere_tiles_after_discard.insert("7s", mahjong_tile::tiles_to_tile_ids("7p3s"));
-        expected_ukiere_tiles_after_discard.insert("8s", mahjong_tile::tiles_to_tile_ids("7p3s"));
+        expected_ukiere_tiles_after_discard.insert("6p", get_tile_ids_from_string("568m78p369s"));
+        expected_ukiere_tiles_after_discard.insert("9p", get_tile_ids_from_string("568m78p369s"));
+        expected_ukiere_tiles_after_discard.insert("6m", get_tile_ids_from_string("58m369s"));
+        expected_ukiere_tiles_after_discard.insert("7m", get_tile_ids_from_string("6m78p369s"));
+        expected_ukiere_tiles_after_discard.insert("8p", get_tile_ids_from_string("7p369s"));
+        expected_ukiere_tiles_after_discard.insert("1s", get_tile_ids_from_string("7p69s"));
+        expected_ukiere_tiles_after_discard.insert("2s", get_tile_ids_from_string("7p69s"));
+        expected_ukiere_tiles_after_discard.insert("7s", get_tile_ids_from_string("7p3s"));
+        expected_ukiere_tiles_after_discard.insert("8s", get_tile_ids_from_string("7p3s"));
 
         for (discard_tile_str, expected_ukiere_tiles) in expected_ukiere_tiles_after_discard {
             let ukiere_tiles = get_ukiere_after_discard(
@@ -2619,14 +2615,13 @@ mod tests {
 
         // ukiere tiles after discard 8m: 146m25p
         let mut expected_ukiere_tiles_after_discard = HashMap::new();
-        expected_ukiere_tiles_after_discard
-            .insert("8m", mahjong_tile::tiles_to_tile_ids("146m25p"));
-        expected_ukiere_tiles_after_discard.insert("2m", mahjong_tile::tiles_to_tile_ids("69m25p"));
-        expected_ukiere_tiles_after_discard.insert("3m", mahjong_tile::tiles_to_tile_ids("69m25p"));
-        expected_ukiere_tiles_after_discard.insert("5m", mahjong_tile::tiles_to_tile_ids("69m25p"));
-        expected_ukiere_tiles_after_discard.insert("7m", mahjong_tile::tiles_to_tile_ids("14m25p"));
-        expected_ukiere_tiles_after_discard.insert("3p", mahjong_tile::tiles_to_tile_ids("1469m"));
-        expected_ukiere_tiles_after_discard.insert("4p", mahjong_tile::tiles_to_tile_ids("1469m"));
+        expected_ukiere_tiles_after_discard.insert("8m", get_tile_ids_from_string("146m25p"));
+        expected_ukiere_tiles_after_discard.insert("2m", get_tile_ids_from_string("69m25p"));
+        expected_ukiere_tiles_after_discard.insert("3m", get_tile_ids_from_string("69m25p"));
+        expected_ukiere_tiles_after_discard.insert("5m", get_tile_ids_from_string("69m25p"));
+        expected_ukiere_tiles_after_discard.insert("7m", get_tile_ids_from_string("14m25p"));
+        expected_ukiere_tiles_after_discard.insert("3p", get_tile_ids_from_string("1469m"));
+        expected_ukiere_tiles_after_discard.insert("4p", get_tile_ids_from_string("1469m"));
 
         for (discard_tile_str, expected_ukiere_tiles) in expected_ukiere_tiles_after_discard {
             let ukiere_tiles = get_ukiere_after_discard(
@@ -2659,12 +2654,12 @@ mod tests {
         // ukiere tiles after discard 6m or 8m: 14m3p - but the argument is that, if you keep 68m (and cut 24p),
         // then if you were to draw 5m (upgrade to ryanmen wait), you have overlapping wait on 4m (between 23m and now 56m)
         let mut expected_ukiere_tiles_after_discard = HashMap::new();
-        expected_ukiere_tiles_after_discard.insert("8m", mahjong_tile::tiles_to_tile_ids("14m3p"));
-        expected_ukiere_tiles_after_discard.insert("6m", mahjong_tile::tiles_to_tile_ids("14m3p"));
-        expected_ukiere_tiles_after_discard.insert("2p", mahjong_tile::tiles_to_tile_ids("147m"));
-        expected_ukiere_tiles_after_discard.insert("4p", mahjong_tile::tiles_to_tile_ids("147m"));
-        expected_ukiere_tiles_after_discard.insert("2m", mahjong_tile::tiles_to_tile_ids("7m3p"));
-        expected_ukiere_tiles_after_discard.insert("3m", mahjong_tile::tiles_to_tile_ids("7m3p"));
+        expected_ukiere_tiles_after_discard.insert("8m", get_tile_ids_from_string("14m3p"));
+        expected_ukiere_tiles_after_discard.insert("6m", get_tile_ids_from_string("14m3p"));
+        expected_ukiere_tiles_after_discard.insert("2p", get_tile_ids_from_string("147m"));
+        expected_ukiere_tiles_after_discard.insert("4p", get_tile_ids_from_string("147m"));
+        expected_ukiere_tiles_after_discard.insert("2m", get_tile_ids_from_string("7m3p"));
+        expected_ukiere_tiles_after_discard.insert("3m", get_tile_ids_from_string("7m3p"));
         assert_ukiere_tiles_after_discard_match(tiles, &expected_ukiere_tiles_after_discard);
     }
 
@@ -2677,7 +2672,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 0);
 
         // ukiere tiles: 14s
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("14s");
+        let expected_ukiere_tiles = get_tile_ids_from_string("14s");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2690,7 +2685,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 1);
 
         // ukiere tiles: 458p14s
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("458p14s");
+        let expected_ukiere_tiles = get_tile_ids_from_string("458p14s");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2703,7 +2698,7 @@ mod tests {
         assert_eq!(get_shanten_optimized(tiles), 2);
 
         // ukiere tiles: 3458p12345678s (3p236s will make the hand 1-shanten for chiitoi)
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("3458p12345678s");
+        let expected_ukiere_tiles = get_tile_ids_from_string("3458p12345678s");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2721,8 +2716,8 @@ mod tests {
         // (can't interpret as 45s-579s because you need the pair of 5s)
 
         let mut expected_ukiere_tiles_after_discard = HashMap::new();
-        expected_ukiere_tiles_after_discard.insert("7m", mahjong_tile::tiles_to_tile_ids("25p8s"));
-        expected_ukiere_tiles_after_discard.insert("4s", mahjong_tile::tiles_to_tile_ids("25p8s"));
+        expected_ukiere_tiles_after_discard.insert("7m", get_tile_ids_from_string("25p8s"));
+        expected_ukiere_tiles_after_discard.insert("4s", get_tile_ids_from_string("25p8s"));
         assert_ukiere_tiles_after_discard_match(tiles, &expected_ukiere_tiles_after_discard);
     }
 
@@ -2741,15 +2736,12 @@ mod tests {
         // discard 5p (headless 1-shanten if 6678s is one group): 147m will form a pair in manzu, 47p leaves you with 6678s aryanmen, 69s forms pair in souzu
         let mut expected_ukiere_tiles_after_discard = HashMap::new();
         expected_ukiere_tiles_after_discard
-            .insert("6p", mahjong_tile::tiles_to_tile_ids("123456789m5p456789s"));
+            .insert("6p", get_tile_ids_from_string("123456789m5p456789s"));
         expected_ukiere_tiles_after_discard
-            .insert("6s", mahjong_tile::tiles_to_tile_ids("123456789m45678p"));
-        expected_ukiere_tiles_after_discard
-            .insert("4m", mahjong_tile::tiles_to_tile_ids("45678p456789s"));
-        expected_ukiere_tiles_after_discard
-            .insert("7m", mahjong_tile::tiles_to_tile_ids("45678p456789s"));
-        expected_ukiere_tiles_after_discard
-            .insert("5p", mahjong_tile::tiles_to_tile_ids("147m47p69s"));
+            .insert("6s", get_tile_ids_from_string("123456789m45678p"));
+        expected_ukiere_tiles_after_discard.insert("4m", get_tile_ids_from_string("45678p456789s"));
+        expected_ukiere_tiles_after_discard.insert("7m", get_tile_ids_from_string("45678p456789s"));
+        expected_ukiere_tiles_after_discard.insert("5p", get_tile_ids_from_string("147m47p69s"));
         assert_ukiere_tiles_after_discard_match(tiles, &expected_ukiere_tiles_after_discard);
 
         // 2nd example (timestamp 1:40:29)
@@ -2763,18 +2755,14 @@ mod tests {
         // discard 4p: 2m - 44m - 6m - 888m - 678p - 999p
         // discard 4m (headless + ankou): 246m - 888m - 4p - 678p - 999p -> can accept 7m (24m-678m-88m) and 5p (456p-789p-99p) as well
         let mut expected_ukiere_tiles_after_discard = HashMap::new();
-        expected_ukiere_tiles_after_discard
-            .insert("2m", mahjong_tile::tiles_to_tile_ids("45678m234569p"));
-        expected_ukiere_tiles_after_discard
-            .insert("6m", mahjong_tile::tiles_to_tile_ids("1234m234569p"));
-        expected_ukiere_tiles_after_discard
-            .insert("4m", mahjong_tile::tiles_to_tile_ids("23567m45p"));
-        expected_ukiere_tiles_after_discard
-            .insert("4p", mahjong_tile::tiles_to_tile_ids("12345678m"));
+        expected_ukiere_tiles_after_discard.insert("2m", get_tile_ids_from_string("45678m234569p"));
+        expected_ukiere_tiles_after_discard.insert("6m", get_tile_ids_from_string("1234m234569p"));
+        expected_ukiere_tiles_after_discard.insert("4m", get_tile_ids_from_string("23567m45p"));
+        expected_ukiere_tiles_after_discard.insert("4p", get_tile_ids_from_string("12345678m"));
         // remaining options lock in a pair of 8m or 9p, which means the 4p doesn't count towards shanten and the 2446m needs to form 2 groups
-        expected_ukiere_tiles_after_discard.insert("8m", mahjong_tile::tiles_to_tile_ids("35m"));
-        expected_ukiere_tiles_after_discard.insert("6p", mahjong_tile::tiles_to_tile_ids("35m"));
-        expected_ukiere_tiles_after_discard.insert("9p", mahjong_tile::tiles_to_tile_ids("35m"));
+        expected_ukiere_tiles_after_discard.insert("8m", get_tile_ids_from_string("35m"));
+        expected_ukiere_tiles_after_discard.insert("6p", get_tile_ids_from_string("35m"));
+        expected_ukiere_tiles_after_discard.insert("9p", get_tile_ids_from_string("35m"));
         assert_ukiere_tiles_after_discard_match(tiles, &expected_ukiere_tiles_after_discard);
     }
 
@@ -2786,7 +2774,7 @@ mod tests {
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
-        let expected_ukiere_tiles = mahjong_tile::tiles_to_tile_ids("7s");
+        let expected_ukiere_tiles = get_tile_ids_from_string("7s");
         let ukiere_tiles = get_ukiere(tiles);
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
@@ -2800,65 +2788,29 @@ mod tests {
             &'static str,
             HashMap<&'static str, Vec<MahjongTileId>>,
         > = HashMap::new();
-        expected_upgrade_tiles.insert(
-            "1p",
-            hashmap!["7s" => mahjong_tile::tiles_to_tile_ids("147p")],
-        );
-        expected_upgrade_tiles.insert(
-            "2p",
-            hashmap!["7s" => mahjong_tile::tiles_to_tile_ids("258p")],
-        );
-        expected_upgrade_tiles.insert(
-            "4p",
-            hashmap!["7s" => mahjong_tile::tiles_to_tile_ids("147p")],
-        );
-        expected_upgrade_tiles.insert(
-            "5p",
-            hashmap!["7s" => mahjong_tile::tiles_to_tile_ids("258p")],
-        );
-        expected_upgrade_tiles.insert(
-            "7p",
-            hashmap!["7s" => mahjong_tile::tiles_to_tile_ids("147p")],
-        );
-        expected_upgrade_tiles.insert(
-            "8p",
-            hashmap!["7s" => mahjong_tile::tiles_to_tile_ids("258p")],
-        );
-        expected_upgrade_tiles.insert(
-            "6m",
-            hashmap!["7s" => mahjong_tile::tiles_to_tile_ids("69m")],
-        );
-        expected_upgrade_tiles.insert(
-            "9m",
-            hashmap!["7s" => mahjong_tile::tiles_to_tile_ids("69m")],
-        );
-        expected_upgrade_tiles.insert(
-            "2s",
-            hashmap!["7s" => mahjong_tile::tiles_to_tile_ids("25s")],
-        );
-        expected_upgrade_tiles.insert(
-            "3s",
-            hashmap!["7s" => mahjong_tile::tiles_to_tile_ids("36s")],
-        );
-        expected_upgrade_tiles.insert(
-            "5s",
-            hashmap!["7s" => mahjong_tile::tiles_to_tile_ids("25s")],
-        );
+        expected_upgrade_tiles.insert("1p", hashmap!["7s" => get_tile_ids_from_string("147p")]);
+        expected_upgrade_tiles.insert("2p", hashmap!["7s" => get_tile_ids_from_string("258p")]);
+        expected_upgrade_tiles.insert("4p", hashmap!["7s" => get_tile_ids_from_string("147p")]);
+        expected_upgrade_tiles.insert("5p", hashmap!["7s" => get_tile_ids_from_string("258p")]);
+        expected_upgrade_tiles.insert("7p", hashmap!["7s" => get_tile_ids_from_string("147p")]);
+        expected_upgrade_tiles.insert("8p", hashmap!["7s" => get_tile_ids_from_string("258p")]);
+        expected_upgrade_tiles.insert("6m", hashmap!["7s" => get_tile_ids_from_string("69m")]);
+        expected_upgrade_tiles.insert("9m", hashmap!["7s" => get_tile_ids_from_string("69m")]);
+        expected_upgrade_tiles.insert("2s", hashmap!["7s" => get_tile_ids_from_string("25s")]);
+        expected_upgrade_tiles.insert("3s", hashmap!["7s" => get_tile_ids_from_string("36s")]);
+        expected_upgrade_tiles.insert("5s", hashmap!["7s" => get_tile_ids_from_string("25s")]);
         expected_upgrade_tiles.insert(
             "6s",
-            hashmap!["7s" => mahjong_tile::tiles_to_tile_ids("36s"), "3s" => mahjong_tile::tiles_to_tile_ids("47s")],
+            hashmap!["7s" => get_tile_ids_from_string("36s"), "3s" => get_tile_ids_from_string("47s")],
         );
-        expected_upgrade_tiles.insert(
-            "4s",
-            hashmap!["3s" => mahjong_tile::tiles_to_tile_ids("6s")],
-        );
+        expected_upgrade_tiles.insert("4s", hashmap!["3s" => get_tile_ids_from_string("6s")]);
 
         // calculate the tiles that, if drawn, upgrade the ukiere of the hand at the current shanten
         let other_visible_tiles = vec![];
         assert_upgrade_tiles_match(tiles, &expected_upgrade_tiles, &other_visible_tiles);
 
         // for example, test that the ukiere tiles count is correct after drawing 1p
-        let ukiere_tiles = mahjong_tile::tiles_to_tile_ids("147p");
+        let ukiere_tiles = get_tile_ids_from_string("147p");
         // remove the original tiles in hand, plus the next tile that is drawn
         let mut visible_tile_ids = Vec::new();
         let tiles_as_ids = tile_count_array_to_tile_ids(tiles);
@@ -2888,7 +2840,7 @@ mod tests {
         let mut expected_discard_ukiere: Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> = Vec::new();
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("7s").unwrap(),
-            mahjong_tile::tiles_to_tile_ids("147p"),
+            get_tile_ids_from_string("147p"),
             9,
         ));
         assert_discards_ukiere_match(&best_ukiere_after_discard, &expected_discard_ukiere);
@@ -3157,21 +3109,21 @@ mod tests {
         let hand_interpretation = HandInterpretation {
             total_tile_count_array: tiles_after_discard_4s,
             groups: vec![
-                TileMeld::new(mahjong_tile::tiles_to_tile_ids("345m")),
-                TileMeld::new(mahjong_tile::tiles_to_tile_ids("11p")),
-                TileMeld::new(mahjong_tile::tiles_to_tile_ids("56p")),
-                TileMeld::new(mahjong_tile::tiles_to_tile_ids("6s")),
-                TileMeld::new(mahjong_tile::tiles_to_tile_ids("67s")),
-                TileMeld::new(mahjong_tile::tiles_to_tile_ids("678s")),
+                TileMeld::new(get_tile_ids_from_string("345m")),
+                TileMeld::new(get_tile_ids_from_string("11p")),
+                TileMeld::new(get_tile_ids_from_string("56p")),
+                TileMeld::new(get_tile_ids_from_string("6s")),
+                TileMeld::new(get_tile_ids_from_string("67s")),
+                TileMeld::new(get_tile_ids_from_string("678s")),
             ],
         };
         assert_tile_ids_match(
             &hand_interpretation.get_ukiere(),
-            &mahjong_tile::tiles_to_tile_ids("47p58s"),
+            &get_tile_ids_from_string("47p58s"),
         );
         assert_eq!(hand_interpretation.get_standard_shanten(), 1);
 
-        let expected_ukiere_after_discard_4s = mahjong_tile::tiles_to_tile_ids("147p56789s");
+        let expected_ukiere_after_discard_4s = get_tile_ids_from_string("147p56789s");
         let ukiere_after_discard_4s =
             get_ukiere_after_discard(tiles_after_draw, tile_id_4s, &get_ukiere);
         // println!("checking ukiere after discard 4s from 345m1156p4666778s (using get_ukiere):");
@@ -3208,7 +3160,7 @@ mod tests {
         let mut expected_discard_ukiere: Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> = Vec::new();
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("5s").unwrap(),
-            mahjong_tile::tiles_to_tile_ids("2568m46p1z"),
+            get_tile_ids_from_string("2568m46p1z"),
             24,
         ));
         assert_discards_ukiere_match(&best_ukiere_after_discard, &expected_discard_ukiere);
@@ -3242,7 +3194,7 @@ mod tests {
         let tiles_after_call = tiles_to_count_array("5789s57p34667m111z");
         let shanten_after_discard =
             get_best_shanten_after_discard(tiles_after_call, &get_shanten_optimized);
-        let other_visible_tiles = mahjong_tile::tiles_to_tile_ids("3p");
+        let other_visible_tiles = get_tile_ids_from_string("3p");
         let best_ukiere_after_discard = get_most_ukiere_after_discard(
             tiles_after_call,
             shanten_after_discard,
@@ -3255,12 +3207,12 @@ mod tests {
         let mut expected_discard_ukiere: Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> = Vec::new();
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("5s").unwrap(),
-            mahjong_tile::tiles_to_tile_ids("25m6p"),
+            get_tile_ids_from_string("25m6p"),
             12,
         ));
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("7m").unwrap(),
-            mahjong_tile::tiles_to_tile_ids("25m6p"),
+            get_tile_ids_from_string("25m6p"),
             12,
         ));
         assert_discards_ukiere_match(&best_ukiere_after_discard, &expected_discard_ukiere);
@@ -3286,11 +3238,11 @@ mod tests {
         > = HashMap::new();
         expected_upgrade_tiles.insert(
             "6m",
-            hashmap!["7m" => mahjong_tile::tiles_to_tile_ids("2345m567p")],
+            hashmap!["7m" => get_tile_ids_from_string("2345m567p")],
         );
         expected_upgrade_tiles.insert(
             "8m",
-            hashmap!["6m" => mahjong_tile::tiles_to_tile_ids("2345m567p")],
+            hashmap!["6m" => get_tile_ids_from_string("2345m567p")],
         );
         // the upgrade options below: 34m345789p are not included in the results from this efficiency trainer:
         // https://euophrys.itch.io/mahjong-efficiency-trainer
@@ -3299,48 +3251,42 @@ mod tests {
         // or draw 3m -> cut 7m -> 33466m57p789s111z: 1 shanten, 16 ukiere: 2356m6p
         expected_upgrade_tiles.insert(
             "3m",
-            hashmap!["4m" => mahjong_tile::tiles_to_tile_ids("3568m6p"), "7m" => mahjong_tile::tiles_to_tile_ids("2356m6p")],
+            hashmap!["4m" => get_tile_ids_from_string("3568m6p"), "7m" => get_tile_ids_from_string("2356m6p")],
         );
         // draw 4m is an upgrade -> cut 3m -> 44667m57p789s111z: 1 shanten, 16 ukiere: 4568m6p
         // or draw 4m -> cut 7m -> 34466m57p789s111z: 1 shanten, 16 ukiere: 2456m6p
         expected_upgrade_tiles.insert(
             "4m",
-            hashmap!["3m" => mahjong_tile::tiles_to_tile_ids("4568m6p"), "7m" => mahjong_tile::tiles_to_tile_ids("2456m6p")],
+            hashmap!["3m" => get_tile_ids_from_string("4568m6p"), "7m" => get_tile_ids_from_string("2456m6p")],
         );
         // draw 3p is an upgrade (357p ryankan) -> cut 7m -> 3466m357p789s111z: 1 shanten, 16 ukiere: 25m46p
-        expected_upgrade_tiles.insert(
-            "3p",
-            hashmap!["7m" => mahjong_tile::tiles_to_tile_ids("25m46p")],
-        );
+        expected_upgrade_tiles.insert("3p", hashmap!["7m" => get_tile_ids_from_string("25m46p")]);
         // draw 4p is an upgrade (57p kanchan -> 45p ryanmen) -> cut 7p -> 34667m45p789s111z: 1 shanten, 16 ukiere: 25m36p
         // or draw 4p -> cut 7m -> 3466m457p789s111z: 1 shanten, 16 ukiere: 256m56p
         expected_upgrade_tiles.insert(
             "4p",
-            hashmap!["7p" => mahjong_tile::tiles_to_tile_ids("25m36p"), "7m" => mahjong_tile::tiles_to_tile_ids("25m36p")],
+            hashmap!["7p" => get_tile_ids_from_string("25m36p"), "7m" => get_tile_ids_from_string("25m36p")],
         );
         // draw 5p is an upgrade -> cut 7m -> 3466m557p789s111z: 1 shanten, 16 ukiere: 256m56p
         // or draw 5p -> cut 7p -> 34667m55p789s111z: 1 shanten, 16 ukiere: 2568m5p
         expected_upgrade_tiles.insert(
             "5p",
-            hashmap!["7m" => mahjong_tile::tiles_to_tile_ids("256m56p"), "7p" => mahjong_tile::tiles_to_tile_ids("2568m5p")],
+            hashmap!["7m" => get_tile_ids_from_string("256m56p"), "7p" => get_tile_ids_from_string("2568m5p")],
         );
         // draw 7p is an upgrade -> cut 7m -> 3466m577p789s111z: 1 shanten, 16 ukiere: 256m67p
         // or draw 7p -> cut 5p -> 34667m77p789s111z: 1 shanten, 16 ukiere: 2568m7p
         expected_upgrade_tiles.insert(
             "7p",
-            hashmap!["7m" => mahjong_tile::tiles_to_tile_ids("256m67p"), "5p" => mahjong_tile::tiles_to_tile_ids("2568m7p")],
+            hashmap!["7m" => get_tile_ids_from_string("256m67p"), "5p" => get_tile_ids_from_string("2568m7p")],
         );
         // draw 8p is an upgrade (57p kanchan -> 78p ryanmen) -> cut 5p -> 34667m78p789s111z: 1 shanten, 16 ukiere: 25m69p
         // or draw 8p -> cut 7m -> 3466m578p789s111z: 1 shanten, 16 ukiere: 25m69p
         expected_upgrade_tiles.insert(
             "8p",
-            hashmap!["5p" => mahjong_tile::tiles_to_tile_ids("25m69p"), "7m" => mahjong_tile::tiles_to_tile_ids("25m69p")],
+            hashmap!["5p" => get_tile_ids_from_string("25m69p"), "7m" => get_tile_ids_from_string("25m69p")],
         );
         // draw 9p is an upgrade (579p ryankan) -> cut 7m -> 3466m579p789s111z: 1 shanten, 16 ukiere: 25m68p
-        expected_upgrade_tiles.insert(
-            "9p",
-            hashmap!["7m" => mahjong_tile::tiles_to_tile_ids("25m68p")],
-        );
+        expected_upgrade_tiles.insert("9p", hashmap!["7m" => get_tile_ids_from_string("25m68p")]);
 
         // calculate the tiles that, if drawn, upgrade the ukiere of the hand at the current shanten
         let tiles_after_cut_5s = remove_tile_id_from_count_array(
@@ -3373,12 +3319,12 @@ mod tests {
         let mut expected_discard_ukiere: Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> = Vec::new();
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("4s").unwrap(),
-            mahjong_tile::tiles_to_tile_ids("47p58s"),
+            get_tile_ids_from_string("47p58s"),
             15,
         ));
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("2p").unwrap(),
-            mahjong_tile::tiles_to_tile_ids("47p58s"),
+            get_tile_ids_from_string("47p58s"),
             15,
         ));
         // discard 7s -> also 1 shanten, but only 12 ukiere: 47p5s
@@ -3427,7 +3373,7 @@ mod tests {
         let mut expected_discard_ukiere: Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> = Vec::new();
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("7s").unwrap(),
-            mahjong_tile::tiles_to_tile_ids("12345678m12347p234569s"),
+            get_tile_ids_from_string("12345678m12347p234569s"),
             67,
         ));
         assert_discards_ukiere_match(&best_ukiere_after_discard, &expected_discard_ukiere);
@@ -3464,17 +3410,17 @@ mod tests {
         let mut expected_discard_ukiere: Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> = Vec::new();
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("2s").unwrap(),
-            mahjong_tile::tiles_to_tile_ids("5p3568s23569m"),
+            get_tile_ids_from_string("5p3568s23569m"),
             34,
         ));
         // expected_discard_ukiere.push((
         //     mahjong_tile::get_id_from_tile_text("4p").unwrap(),
-        //     mahjong_tile::tiles_to_tile_ids("358s23569m"),
+        //     get_tile_ids_from_string("358s23569m"),
         //     27,
         // ));
         // expected_discard_ukiere.push((
         //     mahjong_tile::get_id_from_tile_text("6p").unwrap(),
-        //     mahjong_tile::tiles_to_tile_ids("358s23569m"),
+        //     get_tile_ids_from_string("358s23569m"),
         //     27,
         // ));
         assert_discards_ukiere_match(&best_ukiere_after_discard, &expected_discard_ukiere);
@@ -3526,12 +3472,12 @@ mod tests {
         let mut expected_discard_ukiere: Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> = Vec::new();
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("4m").unwrap(),
-            mahjong_tile::tiles_to_tile_ids("14p14s"),
+            get_tile_ids_from_string("14p14s"),
             16,
         ));
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("7m").unwrap(),
-            mahjong_tile::tiles_to_tile_ids("14p14s"),
+            get_tile_ids_from_string("14p14s"),
             16,
         ));
         assert_discards_ukiere_match(&best_ukiere_after_discard, &expected_discard_ukiere);
@@ -3571,22 +3517,22 @@ mod tests {
         let mut expected_discard_ukiere: Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> = Vec::new();
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("7m").unwrap(),
-            mahjong_tile::tiles_to_tile_ids("234569m1456789p"),
+            get_tile_ids_from_string("234569m1456789p"),
             43,
         ));
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("4m").unwrap(),
-            mahjong_tile::tiles_to_tile_ids("256789m1456789p"),
+            get_tile_ids_from_string("256789m1456789p"),
             41,
         ));
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("7p").unwrap(),
-            mahjong_tile::tiles_to_tile_ids("23456789m"),
+            get_tile_ids_from_string("23456789m"),
             25,
         ));
         expected_discard_ukiere.push((
             mahjong_tile::get_id_from_tile_text("2m").unwrap(),
-            mahjong_tile::tiles_to_tile_ids("37m147p"),
+            get_tile_ids_from_string("37m147p"),
             15,
         ));
         assert_discards_ukiere_match(&best_ukiere_after_discard, &expected_discard_ukiere);

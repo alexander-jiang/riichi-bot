@@ -361,18 +361,20 @@ pub fn get_tile_text_from_id<T: Into<MahjongTileId>>(
 // - a "count array" i.e. a `[u8; 34]` array, where the value at index i represents the number of tiles of tile_id = i. For example, [1, 2, 0, 0, ..., 0] means [1m, 2m, 2m]
 // - a condensed String representation in MSPZ notation e.g. "123s444p555z" -> [1s, 2s, 3s, 4p, 4p, 4p, 5z, 5z, 5z]
 
-// utility function to generate a list of `MahjongTile` objects from a string
+/// utility function to generate a list of `MahjongTile` objects from a string
 pub fn get_tiles_from_string(tile_string: &str) -> Vec<MahjongTile> {
     let mut tiles = Vec::new();
     let mut tile_ranks_so_far: Vec<char> = Vec::new();
     let tile_suit_chars = vec!['m', 'p', 's', 'z'];
     for current_tile_string_char in tile_string.chars() {
         if tile_suit_chars.contains(&current_tile_string_char) {
+            // potential optimization: is it faster to tile_suit_chars.contains(...) vs. doing == for each possible char
             for tile_rank in tile_ranks_so_far {
                 let mut single_tile_string = String::new();
                 single_tile_string.push(tile_rank);
-                single_tile_string.push(current_tile_string_char.clone());
-                tiles.push(MahjongTile::from_text(single_tile_string.as_str()).unwrap());
+                single_tile_string.push(current_tile_string_char);
+                let tile = MahjongTile::from_text(single_tile_string.as_str()).unwrap();
+                tiles.push(tile);
             }
             tile_ranks_so_far = vec![];
         } else {
@@ -383,9 +385,8 @@ pub fn get_tiles_from_string(tile_string: &str) -> Vec<MahjongTile> {
     tiles
 }
 
-// TODO make this consistent with get_tiles_from_string (i.e. it should parse both 345m and 3m4m5m correctl)
-/// Note: expects input string to be concatenated mspz notation e.g. 3m4m5m (and not 345m)
-pub fn tiles_to_tile_ids(tiles_string: &str) -> Vec<MahjongTileId> {
+/// utility function to generate a list of `MahjongTileId` objects from a string
+pub fn get_tile_ids_from_string(tiles_string: &str) -> Vec<MahjongTileId> {
     let mut tile_ids = Vec::new();
     let mut rank_chars: Vec<char> = Vec::new();
     for char in tiles_string.chars() {
@@ -403,6 +404,7 @@ pub fn tiles_to_tile_ids(tiles_string: &str) -> Vec<MahjongTileId> {
             }
             rank_chars = Vec::new();
         } else {
+            // assume if it's not a tile suit char, then it's a tile rank
             rank_chars.push(char);
         }
     }
@@ -833,5 +835,28 @@ mod tests {
         ];
         expected_tiles.sort();
         assert_eq!(tiles_from_string, expected_tiles);
+    }
+
+    #[test]
+    fn test_get_tile_ids_from_string() {
+        let mut tiles = get_tile_ids_from_string("3m4m5m");
+        tiles.sort();
+        let mut expected_tiles = vec![
+            MahjongTile::from_text("3m").unwrap().get_id().unwrap(),
+            MahjongTile::from_text("4m").unwrap().get_id().unwrap(),
+            MahjongTile::from_text("5m").unwrap().get_id().unwrap(),
+        ];
+        expected_tiles.sort();
+        assert_eq!(tiles, expected_tiles);
+
+        let mut tiles = get_tile_ids_from_string("345m");
+        tiles.sort();
+        let mut expected_tiles = vec![
+            MahjongTile::from_text("3m").unwrap().get_id().unwrap(),
+            MahjongTile::from_text("4m").unwrap().get_id().unwrap(),
+            MahjongTile::from_text("5m").unwrap().get_id().unwrap(),
+        ];
+        expected_tiles.sort();
+        assert_eq!(tiles, expected_tiles);
     }
 }
