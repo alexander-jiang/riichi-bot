@@ -109,7 +109,7 @@ fn run_basic_analysis<T: Into<MahjongTileId> + Clone>(
         if tile_count_array_after_draw.0[usize::from(improve_tile_id)] == 4 {
             panic!(
                 "cannot draw more than a fourth copy of the tile {}",
-                mahjong_tile::get_tile_text_from_id(improve_tile_id).unwrap()
+                mahjong_tile::get_tile_text_from_id(improve_tile_id)
             );
         }
         tile_count_array_after_draw.0[usize::from(improve_tile_id)] += 1;
@@ -155,7 +155,7 @@ fn run_basic_analysis<T: Into<MahjongTileId> + Clone>(
             // let hand_tile_ids = mahjong_tile::get_tile_ids_from_count_array(hand);
             // println!(
             //     "draw {}, hand = {}",
-            //     mahjong_tile::get_tile_text_from_id(drawn_tile_id).unwrap(),
+            //     mahjong_tile::get_tile_text_from_id(drawn_tile_id),
             //     shanten::tile_ids_to_string(&hand_tile_ids)
             // );
             if remaining_tile_count.0[usize::from(drawn_tile_id)] == 0 {
@@ -177,7 +177,7 @@ fn run_basic_analysis<T: Into<MahjongTileId> + Clone>(
                     );
                     // println!(
                     //     "can discard {} , resulting ukiere: {} tiles, {}",
-                    //     mahjong_tile::get_tile_text_from_id(*_discard_tile_id).unwrap(),
+                    //     mahjong_tile::get_tile_text_from_id(*_discard_tile_id),
                     //     actual_num_ukiere_after_improve_discard,
                     //     shanten::tile_ids_to_string(ukiere_after_improve_discard)
                     // );

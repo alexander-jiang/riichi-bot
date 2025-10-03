@@ -1,5 +1,10 @@
 # Diary
 
+### up next
+
+- remove `MahjongTileValue` type (replace with `MahjongTileId`) and move the functions/methods currently implemented on `MahjongTileValue` into `MahjongTileId`
+- make sure we have fully tested the tenpai check, as well as determining which tiles are the winning tiles, the potential groupings, and the shanten + upgrade calculations
+
 ### Oct 1 2025
 
 table of the various types used to represent a single tile:
@@ -16,9 +21,9 @@ note that `u8` and `MahjongTileId` are interchangeable (1-to-1).
 
 ### Sep 29 2025
 
-- doing lots of refactoring: replacing `u8` with `MahjongTileId` where applicable, replacing the hardcoded/magic number 34 with `mahjong_tile::NUM_DISTINCT_TILE_VALUES`
-- next up: replace `[u8; 34]` with a custom type
-- fix up `shanten::tiles_to_tile_ids` to be consistent and accept shorthand MSPZ notation e.g. "123m" instead of just "1m2m3m"
+- (done) doing lots of refactoring: replacing `u8` with `MahjongTileId` where applicable, replacing the hardcoded/magic number 34 with `mahjong_tile::NUM_DISTINCT_TILE_VALUES`
+- (done) next up: replace `[u8; 34]` with a custom type
+- (done) fix up `shanten::tiles_to_tile_ids` to be consistent and accept shorthand MSPZ notation e.g. "123m" instead of just "1m2m3m"
 
 ### Sep 26 2025
 
@@ -28,7 +33,7 @@ note that `u8` and `MahjongTileId` are interchangeable (1-to-1).
 up next / TODOs:
 
 - (done) cleanup old / unused code - start from the tile class, then work up to the tile groups
-- (WIP) consolidate the functions for converting between different representations for tiles (e.g. tile "id", which is a u8 from 0 to 33 inclusive, and a string) and for tile sets/lists (e.g. list of tile ids, list of tiles as strings, or a count-array: a 34-length array of counts for each tile type)
+- (done) consolidate the functions for converting between different representations for tiles (e.g. tile "id", which is a u8 from 0 to 33 inclusive, and a string) and for tile sets/lists (e.g. list of tile ids, list of tiles as strings, or a count-array: a 34-length array of counts for each tile type)
 - make sure we have fully tested the tenpai check, as well as determining which tiles are the winning tiles, the potential groupings, and the shanten + upgrade calculations
 
 ### Jul 7 2025

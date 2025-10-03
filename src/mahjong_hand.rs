@@ -88,7 +88,7 @@ pub fn tile_count_array_to_string(tile_count_array: &MahjongTileCountArray) -> S
     // hardcode array len so that the tile_id var is a u8 type
     for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
         let tile_count = tile_count_array.0[usize::from(tile_id)];
-        let tile_string = mahjong_tile::get_tile_text_from_id(tile_id).unwrap();
+        let tile_string = mahjong_tile::get_tile_text_from_id(tile_id);
         for _i in 0..tile_count {
             output.push_str(&tile_string);
         }
@@ -311,7 +311,7 @@ impl MahjongHand {
 
         let mut new_tile_count_array: MahjongTileCountArray = Default::default();
         for tile in self.tiles.iter() {
-            new_tile_count_array.0[usize::from(tile.get_id().unwrap())] += 1;
+            new_tile_count_array.0[usize::from(tile.value)] += 1;
         }
         new_tile_count_array
     }
@@ -320,7 +320,7 @@ impl MahjongHand {
     pub fn update_tile_count_array(&mut self) -> MahjongTileCountArray {
         let mut new_tile_count_array: MahjongTileCountArray = Default::default();
         for tile in self.tiles.iter() {
-            new_tile_count_array.0[usize::from(tile.get_id().unwrap())] += 1;
+            new_tile_count_array.0[usize::from(tile.value)] += 1;
         }
 
         // update/overwrite the stored tile_count_array
@@ -334,7 +334,7 @@ impl MahjongHand {
         // update self.tile_count_array (if it was previously computed)
         if self.tile_count_array.is_some() {
             let mut new_tile_count_array = self.tile_count_array.unwrap();
-            let new_tile_id = new_tile.get_id().unwrap();
+            let new_tile_id = new_tile.value;
             new_tile_count_array.0[usize::from(new_tile_id)] += 1;
             self.tile_count_array = Some(new_tile_count_array);
         }
@@ -815,12 +815,12 @@ impl MahjongHand {
                 tiles: self.tiles.clone(),
                 ..Default::default()
             };
-            let new_tile = mahjong_tile::MahjongTile::from_id(tile_id).unwrap();
+            let new_tile = mahjong_tile::MahjongTile::from(tile_id);
             new_hand.add_tile(new_tile);
             if new_hand.is_winning_shape() {
                 // println!(
                 //     "hand is tenpai, wins on {}",
-                //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                //     mahjong_tile::get_tile_text_from_id(tile_id)
                 // );
                 return true;
             }
@@ -847,12 +847,12 @@ impl MahjongHand {
                 tiles: self.tiles.clone(),
                 ..Default::default()
             };
-            let new_tile = mahjong_tile::MahjongTile::from_id(tile_id).unwrap();
+            let new_tile = mahjong_tile::MahjongTile::from(tile_id);
             new_hand.add_tile(new_tile);
             if new_hand.is_winning_shape() {
                 // println!(
                 //     "hand is tenpai, wins on {}",
-                //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                //     mahjong_tile::get_tile_text_from_id(tile_id)
                 // );
                 tenpai_tiles.push(MahjongTileId(tile_id));
             }
@@ -905,7 +905,7 @@ impl MahjongHand {
             let honor_tile_count = partial_state.tile_count_array.0[tile_idx];
             // println!(
             //     "considering honor tile {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
             if honor_tile_count == 0 {
                 tile_id += 1;
@@ -963,7 +963,7 @@ impl MahjongHand {
 
             // println!(
             //     "considering tile {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
 
             if num_tile_count >= 3 {
@@ -979,7 +979,7 @@ impl MahjongHand {
                 queue.push_back(new_state_after_triplet);
                 // println!(
                 //     "will recursively try forming a triplet {}",
-                //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                //     mahjong_tile::get_tile_text_from_id(tile_id)
                 // );
 
                 let mut new_state_after_pair = current_state.clone();
@@ -997,7 +997,7 @@ impl MahjongHand {
                     queue.push_back(new_state_after_pair);
                     // println!(
                     //     "will recursively try forming a pair {}",
-                    //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                    //     mahjong_tile::get_tile_text_from_id(tile_id)
                     // );
                 } else {
                     // println!("exceeded incomplete group budget, cannot form an additional pair")
@@ -1022,7 +1022,7 @@ impl MahjongHand {
                     queue.push_back(new_state_after_pair);
                     // println!(
                     //     "will recursively try forming a pair {}",
-                    //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                    //     mahjong_tile::get_tile_text_from_id(tile_id)
                     // );
                 } else {
                     // println!("exceeded incomplete group budget, cannot form an additional pair")
@@ -1054,7 +1054,7 @@ impl MahjongHand {
                 queue.push_back(new_state_after_sequence);
                 // println!(
                 //     "will recursively try forming a sequence from {}",
-                //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                //     mahjong_tile::get_tile_text_from_id(tile_id)
                 // );
             }
 
@@ -1074,7 +1074,7 @@ impl MahjongHand {
                 queue.push_back(new_state_after_ryanmen);
                 // println!(
                 //     "will recursively try forming a ryanmen from {}",
-                //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                //     mahjong_tile::get_tile_text_from_id(tile_id)
                 // );
             }
 
@@ -1094,7 +1094,7 @@ impl MahjongHand {
                 queue.push_back(new_state_after_penchan);
                 // println!(
                 //     "will recursively try forming a penchan from {}",
-                //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                //     mahjong_tile::get_tile_text_from_id(tile_id)
                 // );
             }
 
@@ -1119,7 +1119,7 @@ impl MahjongHand {
                 queue.push_back(new_state_after_kanchan);
                 // println!(
                 //     "will recursively try forming a kanchan from {}",
-                //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                //     mahjong_tile::get_tile_text_from_id(tile_id)
                 // );
             }
 
@@ -1138,7 +1138,7 @@ impl MahjongHand {
                 queue.push_back(new_state_after_isolated);
                 // println!(
                 //     "will recursively try forming an isolated tile from {}",
-                //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+                //     mahjong_tile::get_tile_text_from_id(tile_id)
                 // );
             }
         }

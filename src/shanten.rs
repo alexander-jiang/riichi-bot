@@ -254,8 +254,7 @@ impl fmt::Display for HandInterpretation {
         for tile_group_count_array in self.groups.iter() {
             let mut meld_tile_ids_string = String::new();
             for &tile_id in tile_group_count_array.tile_ids.iter() {
-                meld_tile_ids_string
-                    .push_str(&mahjong_tile::get_tile_text_from_id(tile_id).unwrap());
+                meld_tile_ids_string.push_str(&mahjong_tile::get_tile_text_from_id(tile_id));
             }
             tile_groups_string_vec.push(meld_tile_ids_string);
         }
@@ -502,8 +501,7 @@ impl fmt::Display for PartialMeldInterpretation {
         for tile_group_count_array in self.groups.iter() {
             let mut meld_tile_ids_string = String::new();
             for &tile_id in tile_group_count_array.tile_ids.iter() {
-                meld_tile_ids_string
-                    .push_str(&mahjong_tile::get_tile_text_from_id(tile_id).unwrap());
+                meld_tile_ids_string.push_str(&mahjong_tile::get_tile_text_from_id(tile_id));
             }
             tile_groups_string_vec.push(meld_tile_ids_string);
         }
@@ -578,7 +576,7 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
             queue.push_front(new_state_after_triplet);
             // println!(
             //     "will recursively try forming a triplet from {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
 
             let mut new_state_after_pair = partial_interpretation.clone();
@@ -588,7 +586,7 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
             queue.push_front(new_state_after_pair);
             // println!(
             //     "will recursively try forming a pair from {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
 
             // however, it's possible that these three tiles are used as multiple sequences / incomplete groups e.g. 666778s can be 678s-67s-6s
@@ -601,7 +599,7 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
             queue.push_front(new_state_after_pair);
             // println!(
             //     "will recursively try forming a pair from {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
         }
 
@@ -624,7 +622,7 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
             queue.push_front(new_state_after_sequence);
             // println!(
             //     "will recursively try forming a sequence from {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
         }
 
@@ -640,7 +638,7 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
             queue.push_front(new_state_after_ryanmen);
             // println!(
             //     "will recursively try forming a ryanmen from {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
         }
 
@@ -656,7 +654,7 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
             queue.push_front(new_state_after_penchan);
             // println!(
             //     "will recursively try forming a penchan from {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
         }
 
@@ -673,7 +671,7 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
             queue.push_front(new_state_after_kanchan);
             // println!(
             //     "will recursively try forming a kanchan from {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
         }
 
@@ -686,7 +684,7 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
         queue.push_front(new_state_after_isolated);
         // println!(
         //     "will recursively try forming an isolated tile from {}",
-        //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+        //     mahjong_tile::get_tile_text_from_id(tile_id)
         // );
     }
 
@@ -842,7 +840,7 @@ pub fn get_suit_melds_min_shanten(
             add_to_queue(&mut queue, new_state_after_triplet);
             // println!(
             //     "will recursively try forming a triplet from {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
 
             let mut new_state_after_pair = partial_interpretation.clone();
@@ -852,7 +850,7 @@ pub fn get_suit_melds_min_shanten(
             add_to_queue(&mut queue, new_state_after_pair);
             // println!(
             //     "will recursively try forming a pair from {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
 
             // however, it's possible that these three tiles are used as multiple sequences / incomplete groups e.g. 666778s can be 678s-67s-6s
@@ -865,7 +863,7 @@ pub fn get_suit_melds_min_shanten(
             add_to_queue(&mut queue, new_state_after_pair);
             // println!(
             //     "will recursively try forming a pair from {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
         }
 
@@ -888,7 +886,7 @@ pub fn get_suit_melds_min_shanten(
             add_to_queue(&mut queue, new_state_after_sequence);
             // println!(
             //     "will recursively try forming a sequence from {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
         }
 
@@ -904,7 +902,7 @@ pub fn get_suit_melds_min_shanten(
             add_to_queue(&mut queue, new_state_after_ryanmen);
             // println!(
             //     "will recursively try forming a ryanmen from {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
         }
 
@@ -920,7 +918,7 @@ pub fn get_suit_melds_min_shanten(
             add_to_queue(&mut queue, new_state_after_penchan);
             // println!(
             //     "will recursively try forming a penchan from {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
         }
 
@@ -937,7 +935,7 @@ pub fn get_suit_melds_min_shanten(
             add_to_queue(&mut queue, new_state_after_kanchan);
             // println!(
             //     "will recursively try forming a kanchan from {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
         }
 
@@ -950,7 +948,7 @@ pub fn get_suit_melds_min_shanten(
         add_to_queue(&mut queue, new_state_after_isolated);
         // println!(
         //     "will recursively try forming an isolated tile from {}",
-        //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+        //     mahjong_tile::get_tile_text_from_id(tile_id)
         // );
         // print_queue(&queue);
     }
@@ -1314,7 +1312,7 @@ where
         } else {
             panic!(
                 "tried to remove too many copies of tile {} (tile_id {})",
-                mahjong_tile::get_tile_text_from_id(mahjong_tile_id).unwrap(),
+                mahjong_tile::get_tile_text_from_id(mahjong_tile_id),
                 mahjong_tile_id
             );
         }
@@ -1418,7 +1416,7 @@ pub fn get_ukiere_helper(
         for &tile_id in new_tile_ids.iter() {
             // print!(
             //     "ukiere tile: {}",
-            //     mahjong_tile::get_tile_text_from_id(tile_id).unwrap()
+            //     mahjong_tile::get_tile_text_from_id(tile_id)
             // );
             if !ukiere_tiles.contains(&tile_id) {
                 ukiere_tiles.push(tile_id);
@@ -1540,7 +1538,7 @@ pub fn tile_ids_to_string<T: Into<MahjongTileId> + Clone>(tile_ids: &Vec<T>) -> 
     let mut tiles_string = String::new();
     for tile_id in tile_ids.iter() {
         let tile_id: MahjongTileId = tile_id.clone().into();
-        let tile_string = mahjong_tile::get_tile_text_from_id(tile_id).unwrap();
+        let tile_string = mahjong_tile::get_tile_text_from_id(tile_id);
         tiles_string.push_str(&tile_string);
     }
     tiles_string
@@ -1571,7 +1569,7 @@ pub fn print_ukiere_after_discard(
             |(discard_tile_id, ukiere_tile_ids_after_discard, num_ukiere_tiles_after_discard)| {
                 format!(
                     "cut {} => {} ukiere: {}",
-                    mahjong_tile::get_tile_text_from_id(discard_tile_id.clone()).unwrap(),
+                    mahjong_tile::get_tile_text_from_id(discard_tile_id.clone()),
                     num_ukiere_tiles_after_discard,
                     tile_ids_to_string(&ukiere_tile_ids_after_discard)
                 )
@@ -1698,9 +1696,7 @@ mod tests {
 
             let discard_tiles_after_upgrade_draw: HashSet<String> =
                 HashSet::from_iter(best_ukiere_discards.into_iter().map(
-                    |(discard_tile_id, _, _)| {
-                        mahjong_tile::get_tile_text_from_id(discard_tile_id).unwrap()
-                    },
+                    |(discard_tile_id, _, _)| mahjong_tile::get_tile_text_from_id(discard_tile_id),
                 ));
             let expected_best_discard_tiles_after_upgrade_draw: HashSet<String> =
                 HashSet::from_iter((*discard_tile_str_to_ukiere_tiles).keys().map(|&s| {
@@ -1736,8 +1732,7 @@ mod tests {
         // check non-upgrade & non-ukiere tiles: drawing these should not change the max possible ukiere
         // -> the max num of ukiere of the discard options should be the same as the num ukiere before drawing the non-upgrade tile
         for potential_tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
-            let potential_tile_string =
-                mahjong_tile::get_tile_text_from_id(potential_tile_id).unwrap();
+            let potential_tile_string = mahjong_tile::get_tile_text_from_id(potential_tile_id);
             let potential_tile_str = potential_tile_string.as_str();
             if expected_upgrades.contains_key(&potential_tile_str)
                 || ukiere_tile_ids.contains(&MahjongTileId(potential_tile_id))
@@ -1778,8 +1773,7 @@ mod tests {
             // format for display
             let mut discard_tile_str_to_ukiere = HashMap::new();
             for (discard_tile_id, ukiere_tiles_after_discard) in discard_tile_id_to_ukiere {
-                let discard_tile_str =
-                    mahjong_tile::get_tile_text_from_id(discard_tile_id).unwrap();
+                let discard_tile_str = mahjong_tile::get_tile_text_from_id(discard_tile_id);
                 let mut sorted_ukiere_tiles_after_discard = ukiere_tiles_after_discard.clone();
                 sorted_ukiere_tiles_after_discard.sort();
                 let ukiere_tiles_str = tile_ids_to_string(&sorted_ukiere_tiles_after_discard);
@@ -2850,7 +2844,7 @@ mod tests {
         // {
         //     println!(
         //         "discard {} -> {} ukiere tiles: {} ",
-        //         mahjong_tile::get_tile_text_from_id(discard_tile_id).unwrap(),
+        //         mahjong_tile::get_tile_text_from_id(discard_tile_id),
         //         num_ukiere_after_discard,
         //         tile_ids_to_string(&ukiere_tile_ids_after_discard)
         //     );
@@ -2915,7 +2909,7 @@ mod tests {
             sorted_ukiere_tile_ids_after_discard.sort();
             println!(
                 "discard {} -> {} shanten, {} ukiere tiles: {} ",
-                mahjong_tile::get_tile_text_from_id(discard_tile_id.clone()).unwrap(),
+                mahjong_tile::get_tile_text_from_id(discard_tile_id.clone()),
                 shanten_after_discard,
                 num_ukiere_after_discard,
                 tile_ids_to_string(&sorted_ukiere_tile_ids_after_discard)
@@ -2988,8 +2982,7 @@ mod tests {
                                         "cut {} => {} ukiere: {}",
                                         mahjong_tile::get_tile_text_from_id(
                                             discard_after_improve_tile_id
-                                        )
-                                        .unwrap(),
+                                        ),
                                         num_ukiere_tiles_after_improve_discard,
                                         tile_ids_to_string(&ukiere_tiles_after_improve_discard)
                                     )
@@ -2998,7 +2991,7 @@ mod tests {
                             .collect();
                         format!(
                             "    draw {} -> {}",
-                            mahjong_tile::get_tile_text_from_id(improve_tile_id).unwrap(),
+                            mahjong_tile::get_tile_text_from_id(improve_tile_id),
                             options_after_improve_str_parts.join("; ")
                         )
                     })
@@ -3069,8 +3062,7 @@ mod tests {
                                             "cut {} => {} ukiere: {}",
                                             mahjong_tile::get_tile_text_from_id(
                                                 discard_after_upgrade_tile_id
-                                            )
-                                            .unwrap(),
+                                            ),
                                             num_ukiere_after_upgrade_discard,
                                             tile_ids_to_string(
                                                 &sorted_ukiere_after_upgrade_discard
@@ -3081,7 +3073,7 @@ mod tests {
                                 .collect();
                             format!(
                                 "    draw {} -> {}",
-                                mahjong_tile::get_tile_text_from_id(upgrade_tile_id).unwrap(),
+                                mahjong_tile::get_tile_text_from_id(upgrade_tile_id),
                                 discard_to_ukiere_str_parts.join("; ")
                             )
                         })
@@ -3171,7 +3163,7 @@ mod tests {
         // {
         //     println!(
         //         "discard {} -> {} ukiere tiles: {} ",
-        //         mahjong_tile::get_tile_text_from_id(discard_tile_id).unwrap(),
+        //         mahjong_tile::get_tile_text_from_id(discard_tile_id),
         //         num_ukiere_after_discard,
         //         tile_ids_to_string(&ukiere_tile_ids_after_discard)
         //     );
@@ -3335,7 +3327,7 @@ mod tests {
         // {
         //     println!(
         //         "discard {} -> {} ukiere tiles: {} ",
-        //         mahjong_tile::get_tile_text_from_id(discard_tile_id).unwrap(),
+        //         mahjong_tile::get_tile_text_from_id(discard_tile_id),
         //         num_ukiere_after_discard,
         //         tile_ids_to_string(&ukiere_tile_ids_after_discard)
         //     );
