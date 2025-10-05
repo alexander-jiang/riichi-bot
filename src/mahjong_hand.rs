@@ -276,15 +276,15 @@ fn tile_ids_to_complete_group(
             } else if tile_num_rank == 9 {
                 return Some(vec![MahjongTileId::decrement_tile_id(&mahjong_tile_id, 2)]);
             } else if tile_num_rank == 1 {
-                return Some(vec![MahjongTileId::new(mahjong_tile_id.0 + 2)]);
+                return Some(vec![MahjongTileId::increment_tile_id(&mahjong_tile_id, 2)]);
             } else if tile_num_rank == 2 {
-                return Some(vec![MahjongTileId::new(mahjong_tile_id.0 + 1)]);
+                return Some(vec![MahjongTileId::increment_tile_id(&mahjong_tile_id, 1)]);
             } else {
                 panic!("invalid penchan");
             }
         } else if can_make_kanchan(tile_count_array, mahjong_tile_id) {
             if tile_idx + 2 < tile_count_array.0.len() && tile_count_array.0[tile_idx + 2] > 0 {
-                return Some(vec![MahjongTileId::new(mahjong_tile_id.0 + 1)]);
+                return Some(vec![MahjongTileId::increment_tile_id(&mahjong_tile_id, 1)]);
             } else {
                 return Some(vec![MahjongTileId::decrement_tile_id(&mahjong_tile_id, 1)]);
             }
@@ -1673,9 +1673,9 @@ mod tests {
         let mut tile_counts: MahjongTileCountArray = Default::default();
         let tile_id_9m = MahjongTileId::from_text("9m").unwrap();
         tile_counts.0[usize::from(tile_id_9m)] = 1;
-        let tile_id_1p = MahjongTileId::new(tile_id_9m.0 + 1);
+        let tile_id_1p = MahjongTileId::increment_tile_id(&tile_id_9m, 1);
         tile_counts.0[usize::from(tile_id_1p)] = 1;
-        let tile_id_2p = MahjongTileId::new(tile_id_9m.0 + 2);
+        let tile_id_2p = MahjongTileId::increment_tile_id(&tile_id_9m, 2);
         tile_counts.0[usize::from(tile_id_2p)] = 1;
 
         assert!(!can_make_sequence(&tile_counts, tile_id_9m));
@@ -1752,7 +1752,7 @@ mod tests {
         let mut tile_counts: MahjongTileCountArray = Default::default();
         let tile_id_9p = MahjongTileId::from_text("9p").unwrap();
         tile_counts.0[usize::from(tile_id_9p)] = 1;
-        let tile_id_1s = MahjongTileId::new(tile_id_9p.0 + 1);
+        let tile_id_1s = MahjongTileId::increment_tile_id(&tile_id_9p, 1);
         tile_counts.0[usize::from(tile_id_1s)] = 1;
 
         assert!(!can_make_ryanmen(&tile_counts, tile_id_9p));
@@ -1818,7 +1818,7 @@ mod tests {
         let mut tile_counts: MahjongTileCountArray = Default::default();
         let tile_id_9p = MahjongTileId::from_text("9p").unwrap();
         tile_counts.0[usize::from(tile_id_9p)] = 1;
-        let tile_id_1s = MahjongTileId::new(tile_id_9p.0 + 1);
+        let tile_id_1s = MahjongTileId::increment_tile_id(&tile_id_9p, 1);
         tile_counts.0[usize::from(tile_id_1s)] = 1;
 
         assert!(!can_make_penchan(&tile_counts, tile_id_9p));
@@ -1889,7 +1889,7 @@ mod tests {
         let mut tile_counts: MahjongTileCountArray = Default::default();
         let tile_id_9m = MahjongTileId::from_text("9m").unwrap();
         tile_counts.0[usize::from(tile_id_9m)] = 1;
-        let tile_id_2p = MahjongTileId::new(tile_id_9m.0 + 2);
+        let tile_id_2p = MahjongTileId::increment_tile_id(&tile_id_9m, 2);
         tile_counts.0[usize::from(tile_id_2p)] = 1;
 
         assert!(!can_make_kanchan(&tile_counts, tile_id_9m));

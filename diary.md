@@ -18,6 +18,8 @@ String           | MahjongTileId::from_text | MahjongTile::from_text | n/a
 
 There is also `mahjong_tile::get_tile_text_from_u8` (from `u8` to `String`) function for additional conversion (`MahjongTileId::from_text` replaced `mahjong_tile::get_id_from_tile_text`).
 
+checking on results of refactors: https://github.com/alexander-jiang/riichi-bot/compare/f2304150767924c29f0bc620159f3e0c0d18950a...f7ca8fc27f45cc937828c1776795fd9ac64cb719
+
 ### Oct 1 2025
 
 table of the various types used to represent a single tile:
