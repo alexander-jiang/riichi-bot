@@ -7,6 +7,19 @@
 
 ### Oct 1 2025
 
+Updated table of the various types used to represent a single tile:
+
+```
+v from  \\  to > | MahjongTileId/u8         | MahjongTile            | String
+MahjongTileId/u8 | MahjongTileId::new(u8)   | MahjongTile::from      | MahjongTileId::to_text
+MahjongTile      | MahjongTile.value        | n/a                    | MahjongTile::to_text
+String           | MahjongTileId::from_text | MahjongTile::from_text | n/a
+```
+
+There is also `mahjong_tile::get_tile_text_from_u8` (from `u8` to `String`) function for additional conversion (`MahjongTileId::from_text` replaced `mahjong_tile::get_id_from_tile_text`).
+
+### Oct 1 2025
+
 table of the various types used to represent a single tile:
 
 ```

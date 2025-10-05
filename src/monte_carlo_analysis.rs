@@ -46,20 +46,20 @@ fn generate_random_tile_id(
     *tiles_remaining.get(n).unwrap()
 }
 
-fn remove_tile_ids_from_count_array<T: Into<MahjongTileId> + Clone>(
+fn remove_tile_ids_from_count_array(
     tile_count_array: MahjongTileCountArray,
-    tile_ids_to_remove: &Vec<T>,
+    tile_ids_to_remove: &Vec<MahjongTileId>,
 ) -> MahjongTileCountArray {
     let mut tiles_after_remove: MahjongTileCountArray = Default::default();
     for i in 0..tiles_after_remove.0.len() {
         tiles_after_remove.0[i] = tile_count_array.0[i];
     }
     for tile_id in tile_ids_to_remove {
-        let tile_id: MahjongTileId = tile_id.clone().into();
-        if tiles_after_remove.0[usize::from(tile_id)] == 0 {
+        let tile_idx = usize::from(*tile_id);
+        if tiles_after_remove.0[tile_idx] == 0 {
             panic!("no more copies of tile left to remove");
         }
-        tiles_after_remove.0[usize::from(tile_id)] -= 1;
+        tiles_after_remove.0[tile_idx] -= 1;
     }
     tiles_after_remove
 }
@@ -67,9 +67,9 @@ fn remove_tile_ids_from_count_array<T: Into<MahjongTileId> + Clone>(
 /// takes a starting hand (after discard), any visible tiles outside of the starting hand, and the parameters for the simulation:
 /// number of trials and maximum allowed draws per trial
 #[allow(unused)]
-fn run_basic_analysis<T: Into<MahjongTileId> + Clone>(
+fn run_basic_analysis(
     starting_hand: MahjongTileCountArray,
-    visible_tile_ids: &Vec<T>,
+    visible_tile_ids: &Vec<MahjongTileId>,
     num_trials: u32,
     max_allowed_draws: u16,
 ) {
@@ -109,7 +109,7 @@ fn run_basic_analysis<T: Into<MahjongTileId> + Clone>(
         if tile_count_array_after_draw.0[usize::from(improve_tile_id)] == 4 {
             panic!(
                 "cannot draw more than a fourth copy of the tile {}",
-                mahjong_tile::get_tile_text_from_id(improve_tile_id)
+                improve_tile_id
             );
         }
         tile_count_array_after_draw.0[usize::from(improve_tile_id)] += 1;
@@ -155,7 +155,7 @@ fn run_basic_analysis<T: Into<MahjongTileId> + Clone>(
             // let hand_tile_ids = mahjong_tile::get_tile_ids_from_count_array(hand);
             // println!(
             //     "draw {}, hand = {}",
-            //     mahjong_tile::get_tile_text_from_id(drawn_tile_id),
+            //     drawn_tile_id,
             //     shanten::tile_ids_to_string(&hand_tile_ids)
             // );
             if remaining_tile_count.0[usize::from(drawn_tile_id)] == 0 {
@@ -177,7 +177,7 @@ fn run_basic_analysis<T: Into<MahjongTileId> + Clone>(
                     );
                     // println!(
                     //     "can discard {} , resulting ukiere: {} tiles, {}",
-                    //     mahjong_tile::get_tile_text_from_id(*_discard_tile_id),
+                    //     _discard_tile_id,
                     //     actual_num_ukiere_after_improve_discard,
                     //     shanten::tile_ids_to_string(ukiere_after_improve_discard)
                     // );
@@ -243,7 +243,7 @@ mod tests {
         let hand_before_discard = shanten::tiles_to_count_array("345m11256p46778s6s");
         let starting_hand = shanten::remove_tile_id_from_count_array(
             hand_before_discard,
-            mahjong_tile::get_id_from_tile_text("2p").unwrap(),
+            mahjong_tile::MahjongTileId::from_text("2p").unwrap(),
         );
         // visible tiles:
         // dora indicator: 6s
@@ -262,7 +262,7 @@ mod tests {
     fn test_copy_tile_count_array() {
         let mut tile_count_array = shanten::tiles_to_count_array("135m");
         let new_count_array = tile_count_array;
-        let tile_id_4m = mahjong_tile::get_id_from_tile_text("4m").unwrap();
+        let tile_id_4m = mahjong_tile::MahjongTileId::from_text("4m").unwrap();
         assert_eq!(tile_count_array.0[usize::from(tile_id_4m)], 0);
         assert_eq!(new_count_array.0[usize::from(tile_id_4m)], 0);
 
@@ -274,7 +274,7 @@ mod tests {
     #[bench]
     fn bench_copy_tile_count_array(b: &mut Bencher) {
         // 12.34 ns/iter (+/- 0.06)
-        let tile_id_4m = mahjong_tile::get_id_from_tile_text("4m").unwrap();
+        let tile_id_4m = mahjong_tile::MahjongTileId::from_text("4m").unwrap();
         let mut tile_count_array = shanten::tiles_to_count_array("135m");
         b.iter(|| {
             tile_count_array.0[usize::from(tile_id_4m)] = 0;
@@ -293,7 +293,7 @@ mod tests {
         for tile_id in 0..tile_count_array.0.len() {
             new_count_array.0[tile_id] = tile_count_array.0[tile_id];
         }
-        let tile_id_4m = mahjong_tile::get_id_from_tile_text("4m").unwrap();
+        let tile_id_4m = mahjong_tile::MahjongTileId::from_text("4m").unwrap();
         assert_eq!(tile_count_array.0[usize::from(tile_id_4m)], 0);
         assert_eq!(new_count_array.0[usize::from(tile_id_4m)], 0);
 
@@ -320,10 +320,10 @@ mod tests {
             2, 4, 4, 3, 4, 1, 2, 3, 3, // souzu
             2, 2, 1, 0, 2, 2, 2, // honor
         ]);
-        let tile_id_4p = mahjong_tile::get_id_from_tile_text("4p").unwrap();
-        let tile_id_7p = mahjong_tile::get_id_from_tile_text("7p").unwrap();
-        let tile_id_5s = mahjong_tile::get_id_from_tile_text("5s").unwrap();
-        let tile_id_8s = mahjong_tile::get_id_from_tile_text("8s").unwrap();
+        let tile_id_4p = mahjong_tile::MahjongTileId::from_text("4p").unwrap();
+        let tile_id_7p = mahjong_tile::MahjongTileId::from_text("7p").unwrap();
+        let tile_id_5s = mahjong_tile::MahjongTileId::from_text("5s").unwrap();
+        let tile_id_8s = mahjong_tile::MahjongTileId::from_text("8s").unwrap();
         assert_eq!(remaining_tile_count, expected_remaining_tile_count);
         assert_eq!(
             remaining_tile_count.0[usize::from(tile_id_4p)]
@@ -361,7 +361,7 @@ mod tests {
     #[bench]
     fn bench_manual_copy_tile_count_array(b: &mut Bencher) {
         // 12.34 ns/iter (+/- 0.11)
-        let tile_id_4m = mahjong_tile::get_id_from_tile_text("4m").unwrap();
+        let tile_id_4m = mahjong_tile::MahjongTileId::from_text("4m").unwrap();
         let mut tile_count_array = shanten::tiles_to_count_array("135m");
         b.iter(|| {
             tile_count_array.0[usize::from(tile_id_4m)] = 0;
