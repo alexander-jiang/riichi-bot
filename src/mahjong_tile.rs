@@ -71,7 +71,8 @@ impl TryFrom<u8> for MahjongTileId {
     type Error = mahjong_error::MahjongError;
 
     fn try_from(value: u8) -> Result<MahjongTileId, Self::Error> {
-        let tile_id = MahjongTileId::new(value);
+        // don't use MahjongTileId::new here, otherwise you get a infinite recursive loop (MahjongTileId::new uses this TryFrom trait)
+        let tile_id = MahjongTileId(value);
         if !tile_id.is_valid_id() {
             let err_string = format!("invalid tile id {}", tile_id);
             return Err::<MahjongTileId, Self::Error>(mahjong_error::MahjongError {
