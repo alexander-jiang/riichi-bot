@@ -2,7 +2,6 @@
 
 ### up next
 
-- remove `MahjongTileValue` type (replace with `MahjongTileId`) and move the functions/methods currently implemented on `MahjongTileValue` into `MahjongTileId`
 - make sure we have fully tested the tenpai check, as well as determining which tiles are the winning tiles, the potential groupings, and the shanten + upgrade calculations
 
 ### Oct 1 2025
