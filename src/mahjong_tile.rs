@@ -406,7 +406,7 @@ pub fn get_tile_text_from_u8(tile_id: u8) -> String {
 // - tile_id values (`u8` or `MahjongTileId`, which are interchangeable), which do not distinguish between red-fives and non-red-fives
 // - String tile representation in MSPZ notation e.g. "1z" -> east wind, "3p" -> 3-pin (can represent red fives as "0" i.e. "0s" means red-5-sou vs "5s" means non-red-5-sou)
 // Groups/sets of tiles (e.g. a meld, a hand, etc.) can be represented as:
-// - a collection (e.g. `Vec`) of any of the above, but usually either `Vec<MahjongTile>` or `Vec<u8>` -- it
+// - a collection (e.g. `Vec`) of any of the above, but usually either `Vec<MahjongTile>` or `Vec<MahjongTileId>` -- note that it
 //   doesn't have to be a `Vec`, what we really want is a multi-set (i.e. duplicates are allowed and order doesn't
 //   matter i.e. [1s, 2s, 3s] should be equal to [3s, 1s, 2s], for gameplay purposes, we can have multiple tiles of the same value/type)
 // - a "count array" i.e. a `[u8; 34]` array, where the value at index i represents the number of tiles of tile_id = i. For example, [1, 2, 0, 0, ..., 0] means [1m, 2m, 2m]
@@ -602,12 +602,12 @@ mod tests {
 
     #[test]
     fn test_mahjong_tile_id_is_numbered_tile() {
-        assert!(MahjongTileId(0).is_numbered_tile());
-        assert!(MahjongTileId(FIRST_PINZU_ID).is_numbered_tile());
-        assert!(MahjongTileId(FIRST_SOUZU_ID.saturating_add(8)).is_numbered_tile());
-        assert!(!MahjongTileId(FIRST_HONOR_ID).is_numbered_tile());
-        assert!(MahjongTileId(NUM_DISTINCT_TILE_VALUES.saturating_sub(1)).is_numbered_tile());
-        assert!(!MahjongTileId(NUM_DISTINCT_TILE_VALUES).is_numbered_tile());
+        assert!(MahjongTileId(0).is_numbered_tile()); // 1m
+        assert!(MahjongTileId(FIRST_PINZU_ID).is_numbered_tile()); // 1p
+        assert!(MahjongTileId(FIRST_SOUZU_ID.saturating_add(8)).is_numbered_tile()); // 9s
+        assert!(!MahjongTileId(FIRST_HONOR_ID).is_numbered_tile()); // 1z i.e. east wind
+        assert!(!MahjongTileId(NUM_DISTINCT_TILE_VALUES.saturating_sub(1)).is_numbered_tile()); // 7z i.e. red dragon
+        assert!(!MahjongTileId(NUM_DISTINCT_TILE_VALUES).is_numbered_tile()); // invalid tile id
     }
 
     #[test]
