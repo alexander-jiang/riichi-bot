@@ -254,8 +254,7 @@ impl fmt::Display for HandInterpretation {
         write!(
             f,
             "tiles={}, tile_groups=[{}]",
-            mahjong_hand::tile_count_array_to_string(&self.total_tile_count_array),
-            tile_groups_string,
+            self.total_tile_count_array, tile_groups_string,
         )
     }
 }
@@ -501,8 +500,7 @@ impl fmt::Display for PartialMeldInterpretation {
         write!(
             f,
             "remaining tiles={}, tile_groups=[{}]",
-            mahjong_hand::tile_count_array_to_string(&self.remaining_tile_count_array),
-            tile_groups_string,
+            self.remaining_tile_count_array, tile_groups_string,
         )
     }
 }
@@ -2895,8 +2893,7 @@ mod tests {
             let new_shanten = get_shanten_optimized(new_count_array);
             // println!(
             //     "hand {} is {} shanten",
-            //     mahjong_hand::tile_count_array_to_string(&new_count_array),
-            //     new_shanten
+            //     new_count_array, new_shanten
             // );
 
             // for performance, only print out improve results (i.e. results after drawing an ukiere tile)

@@ -16,9 +16,12 @@ tile count array functions to add: (will need to refactor existing usages)
 
 conversion functions to add:
 [x] MahjongTileCountArray::from_tile_ids(Vec<MahjongTileId>) -> MahjongTileCountArray
-[x] MahjongTileCountArray::from_text(String) -> MahjongTileCountArray (this actually already existed: shanten::tiles_to_count_array -> remove that function and rename the usages of that function to MahjongTileCountArray::from_text)
+[x] MahjongTileCountArray::from_text(String) -> MahjongTileCountArray
+    * (this already existed: shanten::tiles_to_count_array -> remove that function and rename the usages of that function to MahjongTileCountArray::from_text)
 [x] MahjongTileCountArray::to_text() -> String
-[x] tile_ids_to_string(&Vec<MahjongTileId>) -> String (this already existed in shanten::tile_ids_to_string -> remove that one and rename the usages of that function to mahjong_tile::tile_ids_to_string)
+    * (this already existed: mahjong_hand::tile_count_array_to_string -> remove that function and rename the usages of that function to MahjongTileCountArray::to_text)
+[x] tile_ids_to_string(&Vec<MahjongTileId>) -> String
+    * (this already existed in shanten::tile_ids_to_string -> remove that function and rename the usages of that function to mahjong_tile::tile_ids_to_string)
 
 functions that exist already:
 get_tile_ids_from_string(String) -> Vec<MahjongTileId>

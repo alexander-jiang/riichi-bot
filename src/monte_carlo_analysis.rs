@@ -280,6 +280,34 @@ mod tests {
     }
 
     #[test]
+    fn test_clone_tile_count_array() {
+        let mut tile_count_array = MahjongTileCountArray::from_text("135m");
+        let new_count_array = tile_count_array.clone();
+        let tile_id_4m = mahjong_tile::MahjongTileId::from_text("4m").unwrap();
+        assert_eq!(tile_count_array.0[usize::from(tile_id_4m)], 0);
+        assert_eq!(new_count_array.0[usize::from(tile_id_4m)], 0);
+
+        tile_count_array.0[usize::from(tile_id_4m)] += 1;
+        assert_eq!(tile_count_array.0[usize::from(tile_id_4m)], 1);
+        assert_eq!(new_count_array.0[usize::from(tile_id_4m)], 0);
+    }
+
+    #[bench]
+    fn bench_clone_tile_count_array(b: &mut Bencher) {
+        // 12.34 ns/iter (+/- 0.06)
+        let tile_id_4m = mahjong_tile::MahjongTileId::from_text("4m").unwrap();
+        let mut tile_count_array = MahjongTileCountArray::from_text("135m");
+        b.iter(|| {
+            tile_count_array.0[usize::from(tile_id_4m)] = 0;
+            let new_count_array = tile_count_array.clone();
+            tile_count_array.0[usize::from(tile_id_4m)] = 1;
+            assert_eq!(tile_count_array.0[usize::from(tile_id_4m)], 1);
+            assert_eq!(new_count_array.0[usize::from(tile_id_4m)], 0);
+            tile_count_array
+        });
+    }
+
+    #[test]
     fn test_manual_copy_tile_count_array() {
         let mut tile_count_array = MahjongTileCountArray::from_text("135m");
         let mut new_count_array: MahjongTileCountArray = Default::default();

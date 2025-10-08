@@ -41,11 +41,11 @@ impl fmt::Display for PartialHandGroupingState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut tile_groups_string_vec = vec![];
         for tile_group_count_array in self.groups_tile_counts.iter() {
-            tile_groups_string_vec.push(tile_count_array_to_string(&tile_group_count_array));
+            tile_groups_string_vec.push(tile_group_count_array.to_text());
         }
         let tile_groups_string = tile_groups_string_vec.join(", ");
         write!(f, "remaining tiles={}, tile_groups=[{}], num_complete_groups={}, num_incomplete_groups={}, num_pairs={}",
-            tile_count_array_to_string(&self.tile_count_array),
+            self.tile_count_array,
             tile_groups_string,
             self.num_complete_groups,
             self.num_incomplete_groups,
@@ -78,19 +78,6 @@ fn tile_id_is_isolated(tile_count_array: &MahjongTileCountArray, tile_id: Mahjon
         // single copy of n-tile isolated if there is no (n-1) tile and no (n+1) tile in that suit
         return tile_count_array.0[tile_idx + 1] == 0 && tile_count_array.0[tile_idx - 1] == 0;
     }
-}
-
-pub fn tile_count_array_to_string(tile_count_array: &MahjongTileCountArray) -> String {
-    let mut output = String::new();
-    // hardcode array len so that the tile_id var is a u8 type
-    for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
-        let tile_count = tile_count_array.0[usize::from(tile_id)];
-        let tile_string = mahjong_tile::get_tile_text_from_u8(tile_id);
-        for _i in 0..tile_count {
-            output.push_str(&tile_string);
-        }
-    }
-    output
 }
 
 /// sequence = three consecutive tiles (e.g. 123 or 678)
