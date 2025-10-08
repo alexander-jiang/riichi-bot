@@ -4,6 +4,32 @@
 
 - make sure we have fully tested the tenpai check, as well as determining which tiles are the winning tiles, the potential groupings, and the shanten + upgrade calculations
 
+### Oct 6 2025
+
+Thinking about collections of mahjong tiles. What we usually want is a multi-set (neither a `Vec` / list, where order matters, nor a set, which doesn't allow duplicates).
+
+The main representations are: `MahjongTileCountArray`, MSPZ string, and a `Vec<MahjongTileId>` (or `Vec<MahjongTile>`).
+
+```
+tile count array functions to add: (will need to refactor existing usages)
+[x] MahjongTileCountArray::get_tile_id_count(MahjongTileId) -> u8
+
+conversion functions to add:
+[x] MahjongTileCountArray::from_tile_ids(Vec<MahjongTileId>) -> MahjongTileCountArray
+[x] MahjongTileCountArray::from_text(String) -> MahjongTileCountArray (this actually already existed: shanten::tiles_to_count_array -> remove that function and rename the usages of that function to MahjongTileCountArray::from_text)
+[x] MahjongTileCountArray::to_text() -> String
+[x] tile_ids_to_string(&Vec<MahjongTileId>) -> String (this already existed in shanten::tile_ids_to_string -> remove that one and rename the usages of that function to mahjong_tile::tile_ids_to_string)
+
+functions that exist already:
+get_tile_ids_from_string(String) -> Vec<MahjongTileId>
+get_tiles_from_string(String) -> Vec<MahjongTile>
+
+rename:
+[x] get_tile_ids_from_count_array(MahjongTileCountArray) -> Vec<MahjongTileId> --> rename to MahjongTileCountArray::to_tile_ids -> Vec<MahjongTileId> (this already existed in shanten::tile_count_array_to_tile_ids)
+[x] get_distinct_tile_ids_from_count_array(MahjongTileCountArray) -> Vec<MahjongTileId> --> rename to MahjongTileCountArray::to_distinct_tile_ids -> Vec<MahjongTileId>
+[x] get_total_tiles_from_count_array(MahjongTileCountArray) -> usize --> rename to MahjongTileCountArray::total_tiles() -> usize
+```
+
 ### Oct 1 2025
 
 Updated table of the various types used to represent a single tile:

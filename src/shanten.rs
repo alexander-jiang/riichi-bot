@@ -1,8 +1,7 @@
 extern crate test;
 
 use crate::mahjong_tile::{
-    get_distinct_tile_ids_from_count_array, get_tile_ids_from_string,
-    get_total_tiles_from_count_array, MahjongTileCountArray, MahjongTileId,
+    get_tile_ids_from_string, tile_ids_to_string, MahjongTileCountArray, MahjongTileId,
 };
 pub use crate::{mahjong_error, mahjong_hand, mahjong_tile};
 use std::cmp::min;
@@ -320,7 +319,7 @@ fn standard_shanten_formula(
 
 impl HandInterpretation {
     fn num_tiles(&self) -> usize {
-        mahjong_tile::get_total_tiles_from_count_array(self.total_tile_count_array)
+        self.total_tile_count_array.total_tiles()
     }
 
     fn get_num_complete_groups(&self) -> i8 {
@@ -516,7 +515,7 @@ impl PartialMeldInterpretation {
         let num_incomplete_groups = get_num_incomplete_groups(&self.groups);
 
         // assume that, of the remaining tiles, we can form complete groups
-        let remaining_tiles = get_total_tiles_from_count_array(self.remaining_tile_count_array);
+        let remaining_tiles = self.remaining_tile_count_array.total_tiles();
         let ideal_remaining_complete_groups = i8::try_from(remaining_tiles / 3).ok().unwrap();
         let ideal_remaining_incomplete_groups = if remaining_tiles % 3 == 2 { 1 } else { 0 };
         let best_possible_shanten = standard_shanten_formula(
@@ -1046,7 +1045,7 @@ pub fn get_shanten_after_each_discard(
     tile_count_array: MahjongTileCountArray,
     shanten_function: &dyn Fn(MahjongTileCountArray) -> i8,
 ) -> HashMap<i8, Vec<MahjongTileId>> {
-    if get_total_tiles_from_count_array(tile_count_array) != 14 {
+    if tile_count_array.total_tiles() != 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
     }
@@ -1087,7 +1086,7 @@ pub fn get_best_shanten_after_discard(
     tile_count_array: MahjongTileCountArray,
     shanten_function: &dyn Fn(MahjongTileCountArray) -> i8,
 ) -> i8 {
-    if get_total_tiles_from_count_array(tile_count_array) != 14 {
+    if tile_count_array.total_tiles() != 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
     }
@@ -1111,7 +1110,7 @@ pub fn get_most_ukiere_after_discard(
     ukiere_function: &dyn Fn(MahjongTileCountArray) -> Vec<MahjongTileId>,
     other_visible_tiles: &Vec<MahjongTileId>,
 ) -> Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> {
-    if get_total_tiles_from_count_array(tile_count_array) != 14 {
+    if tile_count_array.total_tiles() != 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
     }
@@ -1153,7 +1152,7 @@ pub fn get_all_ukiere_after_discard(
     ukiere_function: &dyn Fn(MahjongTileCountArray) -> Vec<MahjongTileId>,
     other_visible_tiles: &Vec<MahjongTileId>,
 ) -> Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> {
-    if get_total_tiles_from_count_array(tile_count_array) != 14 {
+    if tile_count_array.total_tiles() != 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
     }
@@ -1185,7 +1184,7 @@ pub fn get_shanten_ukiere_after_each_discard(
     ukiere_function: &dyn Fn(MahjongTileCountArray) -> Vec<MahjongTileId>,
     other_visible_tiles: &Vec<MahjongTileId>,
 ) -> Vec<(MahjongTileId, i8, Vec<MahjongTileId>, u16)> {
-    if get_total_tiles_from_count_array(tile_count_array) != 14 {
+    if tile_count_array.total_tiles() != 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
     }
@@ -1225,7 +1224,7 @@ pub fn combine_tile_ids_from_count_array_and_vec(
     tile_ids: &Vec<MahjongTileId>,
 ) -> Vec<MahjongTileId> {
     let mut new_tile_ids = tile_ids.clone();
-    let mut hand_tile_ids = tile_count_array_to_tile_ids(tile_count_array);
+    let mut hand_tile_ids = tile_count_array.to_tile_ids();
     new_tile_ids.append(&mut hand_tile_ids);
     new_tile_ids
 }
@@ -1237,7 +1236,7 @@ pub fn get_upgrade_tiles(
     ukiere_function: &dyn Fn(MahjongTileCountArray) -> Vec<MahjongTileId>,
     other_visible_tiles: &Vec<MahjongTileId>,
 ) -> HashMap<MahjongTileId, HashMap<MahjongTileId, (Vec<MahjongTileId>, u16)>> {
-    if get_total_tiles_from_count_array(tile_count_array) != 13 {
+    if tile_count_array.total_tiles() != 13 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
     }
@@ -1256,7 +1255,7 @@ pub fn get_upgrade_tiles(
             continue;
         }
         let new_count_array = add_tile_id_to_count_array(tile_count_array, draw_mahjong_tile_id);
-        let new_tiles = get_distinct_tile_ids_from_count_array(new_count_array);
+        let new_tiles = new_count_array.to_distinct_tile_ids();
         let visible_tile_ids =
             combine_tile_ids_from_count_array_and_vec(new_count_array, other_visible_tiles);
 
@@ -1332,7 +1331,7 @@ pub fn get_ukiere_after_discard(
     discard_tile_id: MahjongTileId,
     ukiere_function: &dyn Fn(MahjongTileCountArray) -> Vec<MahjongTileId>,
 ) -> Vec<MahjongTileId> {
-    if get_total_tiles_from_count_array(tile_count_array) != 14 {
+    if tile_count_array.total_tiles() != 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
     }
@@ -1537,53 +1536,6 @@ pub fn get_kokushi_ukiere(tile_count_array: MahjongTileCountArray) -> Vec<Mahjon
     }
 }
 
-pub fn tiles_to_count_array(tiles_string: &str) -> MahjongTileCountArray {
-    let mut tile_count_array: MahjongTileCountArray = Default::default();
-    let mut rank_chars: Vec<char> = Vec::new();
-    for char in tiles_string.chars() {
-        if char == 'm' || char == 's' || char == 'p' || char == 'z' {
-            if rank_chars.is_empty() {
-                panic!("expected some numbers/ranks to come before the suit character")
-            }
-            for rank_char in rank_chars {
-                let mut tile_string = String::new();
-                // println!("found tile {}{}", rank_char, char);
-                tile_string.push(rank_char);
-                tile_string.push(char);
-                let tile_id = MahjongTileId::from_text(&tile_string).unwrap();
-                tile_count_array.0[usize::from(tile_id)] += 1;
-            }
-            rank_chars = Vec::new();
-        } else {
-            rank_chars.push(char);
-        }
-    }
-    tile_count_array
-}
-
-fn tile_count_array_to_tile_ids(tile_count_array: MahjongTileCountArray) -> Vec<MahjongTileId> {
-    let mut tile_ids = Vec::new();
-    for tile_id in 0..mahjong_tile::NUM_DISTINCT_TILE_VALUES {
-        let tile_idx = usize::from(tile_id);
-        if tile_count_array.0[tile_idx] == 0 {
-            continue;
-        }
-        for _i in 0..tile_count_array.0[tile_idx] {
-            tile_ids.push(MahjongTileId::new(tile_id));
-        }
-    }
-    tile_ids
-}
-
-pub fn tile_ids_to_string(tile_ids: &Vec<MahjongTileId>) -> String {
-    let mut tiles_string = String::new();
-    for tile_id in tile_ids.iter() {
-        let tile_string = tile_id.to_text();
-        tiles_string.push_str(&tile_string);
-    }
-    tiles_string
-}
-
 // Question: could we use generics for this? (hypothetically?)
 // e.g. make the signature: `pub fn print_ukiere_after_discard<T: TryInto<MahjongTileId>>(options_after_discard: &Vec<(T, Vec<T>, u16)>)`?
 pub fn print_ukiere_after_discard(
@@ -1682,9 +1634,9 @@ mod tests {
     ) {
         // println!(
         //     "asserting upgrade tiles for {}",
-        //     tile_ids_to_string(&tile_count_array_to_tile_ids(tile_count_array))
+        //     tile_ids_to_string(&tile_count_array.to_tile_ids())
         // );
-        if get_total_tiles_from_count_array(tile_count_array) != 13 {
+        if tile_count_array.total_tiles() != 13 {
             // TODO eventually will need to handle the case when there are more tiles due to quads
             panic!("invalid number of tiles");
         }
@@ -1694,7 +1646,7 @@ mod tests {
                 tile_count_array,
                 MahjongTileId::from_text(&draw_tile_str).unwrap(),
             );
-            // println!("considering ukiere tiles after discard for {}", tile_ids_to_string(&tile_count_array_to_tile_ids(new_count_array)));
+            // println!("considering ukiere tiles after discard for {}", tile_ids_to_string(&new_count_array.to_tile_ids()));
 
             for (discard_tile_str, new_ukiere_tiles) in discard_tile_str_to_ukiere_tiles {
                 let ukiere_tiles = get_ukiere_after_discard(
@@ -1747,12 +1699,12 @@ mod tests {
 
         // println!(
         //     "getting shanten for {}",
-        //     tile_ids_to_string(&tile_count_array_to_tile_ids(tile_count_array))
+        //     tile_ids_to_string(&tile_count_array.to_tile_ids())
         // );
         let shanten = get_shanten_optimized(tile_count_array);
         // println!(
         //     "getting ukiere for {}",
-        //     tile_ids_to_string(&tile_count_array_to_tile_ids(tile_count_array))
+        //     tile_ids_to_string(&tile_count_array.to_tile_ids())
         // );
         let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
 
@@ -1777,7 +1729,7 @@ mod tests {
             println!(
                 "checking ukiere after draw {} -> discard for {}",
                 potential_tile_string,
-                tile_ids_to_string(&tile_count_array_to_tile_ids(new_count_array))
+                tile_ids_to_string(&new_count_array.to_tile_ids())
             );
             // check that the best discard from this new hand is the same tile that was just added - and we don't get any more ukiere
             let ukiere_after_nonupgrade = get_most_ukiere_after_discard(
@@ -1843,7 +1795,7 @@ mod tests {
 
     #[test]
     fn tile_counts_from_string() {
-        let tiles = tiles_to_count_array("1234m");
+        let tiles = MahjongTileCountArray::from_text("1234m");
         assert_eq!(
             tiles.0[usize::from(MahjongTileId::from_text("1m").unwrap())],
             1
@@ -1874,7 +1826,7 @@ mod tests {
 
     #[test]
     fn hand_tile_counts_from_string() {
-        let tiles = tiles_to_count_array("46p255567s33478m4s");
+        let tiles = MahjongTileCountArray::from_text("46p255567s33478m4s");
         assert_eq!(
             tiles.0[usize::from(MahjongTileId::from_text("4p").unwrap())],
             1
@@ -1995,7 +1947,7 @@ mod tests {
 
     #[test]
     fn hand_two_shanten_and_ukiere() {
-        let tiles = tiles_to_count_array("46p455567s33478m");
+        let tiles = MahjongTileCountArray::from_text("46p455567s33478m");
         // hand is 2-shanten: 46p - 455s - 567s - 334m - 78m
         assert_eq!(get_shanten(tiles), 2);
         assert_eq!(get_shanten_optimized(tiles), 2);
@@ -2011,7 +1963,7 @@ mod tests {
 
     #[test]
     fn hand_one_shanten_and_ukiere() {
-        let tiles = tiles_to_count_array("56m23346778p234s");
+        let tiles = MahjongTileCountArray::from_text("56m23346778p234s");
         // hand is 1-shanten: 56m - 234p - 678p - 3p - 7p - 234s
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
@@ -2027,7 +1979,7 @@ mod tests {
 
     #[test]
     fn complex_souzu_one_shanten() {
-        let tiles = tiles_to_count_array("12234455s345p11z");
+        let tiles = MahjongTileCountArray::from_text("12234455s345p11z");
         // hand is 1-shanten: 123s - 24s - 455s - 345p - 11z
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
@@ -2046,7 +1998,7 @@ mod tests {
         // floating 1-shanten is characterized by 2 complete groups + 1 pair + 2 incomplete groups
         // plus 1 unused/floating tile
         // https://riichi.wiki/Iishanten#Yojouhai
-        let tiles = tiles_to_count_array("233445m56p4455s7z");
+        let tiles = MahjongTileCountArray::from_text("233445m56p4455s7z");
         // hand is 1-shanten: 234m - 345m - 56p - 44s - 55s - 7z
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
@@ -2065,7 +2017,7 @@ mod tests {
         // complete 1-shanten is characterized by 2 complete groups + 1 pair + 2 incomplete groups,
         // but the last tile is also part of one of the incomplete groups e.g. 223s
         // https://riichi.wiki/Iishanten#Kanzenkei
-        let tiles = tiles_to_count_array("234m22378s22567p");
+        let tiles = MahjongTileCountArray::from_text("234m22378s22567p");
         // hand is 1-shanten: 234m - 223s - 78s - 22p - 567p
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
@@ -2083,7 +2035,7 @@ mod tests {
     fn hand_headless_one_shanten_with_ankou() {
         // headless 1-shanten is characterized by 3 complete groups + no pair (must have at least 1 incomplete group)
         // https://riichi.wiki/Iishanten#Atamanashi
-        let tiles = tiles_to_count_array("23s678s56p888p888m");
+        let tiles = MahjongTileCountArray::from_text("23s678s56p888p888m");
         // hand is 1-shanten: 23s - 678s - 56p - 888p - 888m
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
@@ -2102,7 +2054,7 @@ mod tests {
     fn hand_kutsuki_one_shanten() {
         // kutsuki 1-shanten is characterized by 3 complete groups + 1 pair: https://riichi.wiki/Iishanten#Kuttsuki
         // example from wiki:
-        let tiles = tiles_to_count_array("234678m37s22567p");
+        let tiles = MahjongTileCountArray::from_text("234678m37s22567p");
         // hand is 1-shanten: 234m - 678m - 3s - 7s - 22p - 567p
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
@@ -2117,7 +2069,7 @@ mod tests {
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         // example from youtube video: https://youtu.be/TulF31VKJ94?si=DlCBB2flwB-Y7P18 (timestamp 1:33:59)
-        let tiles = tiles_to_count_array("2344567m556p678s");
+        let tiles = MahjongTileCountArray::from_text("2344567m556p678s");
         // hand is 1-shanten: 234m - 456m - 7m - 556p - 678s (but the 4m could be considered floating as well, or as part of 2344m shape)
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
@@ -2135,7 +2087,7 @@ mod tests {
 
     #[test]
     fn complete_hand_shanten() {
-        let tiles = tiles_to_count_array("55588m234s11p666z1p");
+        let tiles = MahjongTileCountArray::from_text("55588m234s11p666z1p");
         assert_eq!(get_shanten(tiles), -1);
         assert_eq!(get_shanten_optimized(tiles), -1);
 
@@ -2147,7 +2099,7 @@ mod tests {
 
     #[test]
     fn complete_honitsu_hand_shanten() {
-        let tiles = tiles_to_count_array("3335577899m111z8m");
+        let tiles = MahjongTileCountArray::from_text("3335577899m111z8m");
         assert_eq!(get_shanten(tiles), -1);
         assert_eq!(get_shanten_optimized(tiles), -1);
 
@@ -2160,7 +2112,7 @@ mod tests {
     #[test]
     fn six_block_hand_two_shanten() {
         // example from: https://pathofhouou.blogspot.com/2019/05/calculating-shanten-and-ukeire.html
-        let tiles = tiles_to_count_array("12346m6799p1268s");
+        let tiles = MahjongTileCountArray::from_text("12346m6799p1268s");
         assert_eq!(get_shanten(tiles), 2);
         assert_eq!(get_shanten_optimized(tiles), 2);
 
@@ -2176,7 +2128,7 @@ mod tests {
     #[test]
     fn three_shanten_hand() {
         // example from: https://pathofhouou.blogspot.com/2019/05/calculating-shanten-and-ukeire.html
-        let tiles = tiles_to_count_array("12588m27789p889s");
+        let tiles = MahjongTileCountArray::from_text("12588m27789p889s");
         assert_eq!(get_shanten(tiles), 3);
         assert_eq!(get_shanten_optimized(tiles), 3);
 
@@ -2191,7 +2143,7 @@ mod tests {
 
     #[test]
     fn tenpai_tanki_wait() {
-        let tiles = tiles_to_count_array("123999m5558p666z");
+        let tiles = MahjongTileCountArray::from_text("123999m5558p666z");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2206,7 +2158,7 @@ mod tests {
 
     #[test]
     fn tenpai_kanchan_wait() {
-        let tiles = tiles_to_count_array("13p456777999s33z");
+        let tiles = MahjongTileCountArray::from_text("13p456777999s33z");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2221,7 +2173,7 @@ mod tests {
 
     #[test]
     fn tenpai_penchan_wait() {
-        let tiles = tiles_to_count_array("12777m345p67899s");
+        let tiles = MahjongTileCountArray::from_text("12777m345p67899s");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2236,7 +2188,7 @@ mod tests {
 
     #[test]
     fn tenpai_shanpon_wait() {
-        let tiles = tiles_to_count_array("123999m44p99s777z");
+        let tiles = MahjongTileCountArray::from_text("123999m44p99s777z");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2251,7 +2203,7 @@ mod tests {
 
     #[test]
     fn tenpai_ryanmen_wait() {
-        let tiles = tiles_to_count_array("666m78p666789s22z");
+        let tiles = MahjongTileCountArray::from_text("666m78p666789s22z");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2267,7 +2219,7 @@ mod tests {
     #[test]
     fn tenpai_nobetan_wait() {
         //e.g. 3456p - https://riichi.wiki/Nobetan
-        let tiles = tiles_to_count_array("777m3456p555666s");
+        let tiles = MahjongTileCountArray::from_text("777m3456p555666s");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2283,7 +2235,7 @@ mod tests {
     #[test]
     fn tenpai_aryanmen_wait() {
         // e.g. 3455s - https://riichi.wiki/Aryanmen
-        let tiles = tiles_to_count_array("567m123456p3455s");
+        let tiles = MahjongTileCountArray::from_text("567m123456p3455s");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2299,7 +2251,7 @@ mod tests {
     #[test]
     fn tenpai_kantan_wait() {
         // 2-sided wait e.g. 6888m - https://riichi.wiki/Ryantan#Kantan
-        let tiles = tiles_to_count_array("2226888m444p111z");
+        let tiles = MahjongTileCountArray::from_text("2226888m444p111z");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2315,7 +2267,7 @@ mod tests {
     #[test]
     fn tenpai_pentan_wait() {
         // 2-sided wait e.g. 1222m - https://riichi.wiki/Kantan#Pentan
-        let tiles = tiles_to_count_array("1222m678p345789s");
+        let tiles = MahjongTileCountArray::from_text("1222m678p345789s");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2331,7 +2283,7 @@ mod tests {
     #[test]
     fn tenpai_standard_sanmenchan_wait() {
         // 3-sided wait e.g. 34567s - https://riichi.wiki/Sanmenchan
-        let tiles = tiles_to_count_array("666m33678p34567s");
+        let tiles = MahjongTileCountArray::from_text("666m33678p34567s");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2347,7 +2299,7 @@ mod tests {
     #[test]
     fn tenpai_ryantan_wait() {
         // 3-sided wait e.g. 5556m - https://riichi.wiki/Kantan#Ryantan
-        let tiles = tiles_to_count_array("5556m234789p666z");
+        let tiles = MahjongTileCountArray::from_text("5556m234789p666z");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2363,7 +2315,7 @@ mod tests {
     #[test]
     fn tenpai_entotsu_wait() {
         // 3-sided wait e.g. 11m45666s - https://riichi.wiki/Sanmenchan#Entotsu
-        let tiles = tiles_to_count_array("11m222456p45666s");
+        let tiles = MahjongTileCountArray::from_text("11m222456p45666s");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2379,7 +2331,7 @@ mod tests {
     #[test]
     fn tenpai_sanmentan_wait() {
         // 3-sided wait e.g. 2345678p -  https://riichi.wiki/Sanmenchan#Sanmentan
-        let tiles = tiles_to_count_array("233445m2345678p");
+        let tiles = MahjongTileCountArray::from_text("233445m2345678p");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2396,7 +2348,7 @@ mod tests {
     fn chiitoi_one_shanten() {
         // https://riichi.wiki/Iishanten#Chiitoitsu
         // example with no triplets
-        let tiles = tiles_to_count_array("1166m4499s667p25z");
+        let tiles = MahjongTileCountArray::from_text("1166m4499s667p25z");
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
 
@@ -2409,7 +2361,7 @@ mod tests {
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         // example with a triplet
-        let tiles = tiles_to_count_array("3388m229p111s337z");
+        let tiles = MahjongTileCountArray::from_text("3388m229p111s337z");
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
 
@@ -2422,7 +2374,7 @@ mod tests {
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         // example that is 1-shanten for both chiitoi and standard hand structure
-        let tiles = tiles_to_count_array("233m11223399p56s");
+        let tiles = MahjongTileCountArray::from_text("233m11223399p56s");
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
 
@@ -2437,7 +2389,7 @@ mod tests {
 
     #[test]
     fn chiitoi_tenpai() {
-        let tiles = tiles_to_count_array("1166m4499s667p55z");
+        let tiles = MahjongTileCountArray::from_text("1166m4499s667p55z");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2452,7 +2404,7 @@ mod tests {
 
     #[test]
     fn chiitoi_complete_hand() {
-        let tiles = tiles_to_count_array("1166m4499s6677p55z");
+        let tiles = MahjongTileCountArray::from_text("1166m4499s6677p55z");
         assert_eq!(get_shanten(tiles), -1);
         assert_eq!(get_shanten_optimized(tiles), -1);
 
@@ -2466,7 +2418,7 @@ mod tests {
     fn kokushi_musou_one_shanten() {
         // https://riichi.wiki/Iishanten#Kokushi_musou
         // example with a pair
-        let tiles = tiles_to_count_array("1m139p19s1234566z");
+        let tiles = MahjongTileCountArray::from_text("1m139p19s1234566z");
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
 
@@ -2479,7 +2431,7 @@ mod tests {
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         // example with no pair
-        let tiles = tiles_to_count_array("19m139p19s123456z");
+        let tiles = MahjongTileCountArray::from_text("19m139p19s123456z");
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
 
@@ -2496,7 +2448,7 @@ mod tests {
     fn kokushi_musou_tenpai() {
         // aka thirteen orphans - https://riichi.wiki/Kokushi_musou
         // 1-sided wait
-        let tiles = tiles_to_count_array("1m19p19s12345667z");
+        let tiles = MahjongTileCountArray::from_text("1m19p19s12345667z");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2509,7 +2461,7 @@ mod tests {
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         // 13-sided wait
-        let tiles = tiles_to_count_array("19m19p19s1234567z");
+        let tiles = MahjongTileCountArray::from_text("19m19p19s1234567z");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2525,7 +2477,7 @@ mod tests {
     #[test]
     fn kokushi_musou_complete() {
         // aka thirteen orphans - https://riichi.wiki/Kokushi_musou
-        let tiles = tiles_to_count_array("19m19p199s1234567z");
+        let tiles = MahjongTileCountArray::from_text("19m19p199s1234567z");
         assert_eq!(get_shanten(tiles), -1);
         assert_eq!(get_shanten_optimized(tiles), -1);
 
@@ -2537,7 +2489,7 @@ mod tests {
 
     #[bench]
     fn bench_standard_shanten(b: &mut Bencher) {
-        let tiles = tiles_to_count_array("12234455s345p11z");
+        let tiles = MahjongTileCountArray::from_text("12234455s345p11z");
         // hand is 1-shanten: 123s - 24s - 455s - 345p - 11z
         // ukiere tiles: 23456s1z
         b.iter(|| {
@@ -2548,7 +2500,7 @@ mod tests {
 
     // #[test]
     // fn debug_get_hand_interpretations() {
-    //     let tiles = tiles_to_count_array("12234455s345p11z");
+    //     let tiles = MahjongTileCountArray::from_text("12234455s345p11z");
     //     let hand_interpretations = get_hand_interpretations(tiles);
     //     for hand_interpretation in hand_interpretations {
     //         println!(
@@ -2561,8 +2513,8 @@ mod tests {
 
     // #[test]
     // fn debug_get_hand_interpretations_min_shanten() {
-    //     // let tiles = tiles_to_count_array("23s678s56p888p888m");
-    //     let tiles = tiles_to_count_array("12234455s345p11z");
+    //     // let tiles = MahjongTileCountArray::from_text("23s678s56p888p888m");
+    //     let tiles = MahjongTileCountArray::from_text("12234455s345p11z");
     //     let hand_interpretations = get_hand_interpretations_min_shanten(tiles, 3);
     //     for hand_interpretation in hand_interpretations {
     //         println!(
@@ -2575,7 +2527,7 @@ mod tests {
 
     #[bench]
     fn bench_standard_shanten_optimized(b: &mut Bencher) {
-        let tiles = tiles_to_count_array("12234455s345p11z");
+        let tiles = MahjongTileCountArray::from_text("12234455s345p11z");
         // hand is 1-shanten: 123s - 24s - 455s - 345p - 11z
         // ukiere tiles: 23456s1z
         b.iter(|| {
@@ -2587,7 +2539,7 @@ mod tests {
     #[test]
     fn wwyd_efficiency_problem_example1() {
         // examples from https://justanotherjapanesemahjongblog.blogspot.com/2012/01/choosing-multi-wait-tenpai-problem.html
-        let tiles = tiles_to_count_array("123667m6889p1278s");
+        let tiles = MahjongTileCountArray::from_text("123667m6889p1278s");
         assert_eq!(get_best_shanten_after_discard(tiles, &get_shanten), 2);
         assert_eq!(
             get_best_shanten_after_discard(tiles, &get_shanten_optimized),
@@ -2627,7 +2579,7 @@ mod tests {
     #[test]
     fn wwyd_efficiency_problem_example2() {
         // examples from https://justanotherjapanesemahjongblog.blogspot.com/2012/01/choosing-multi-wait-tenpai-problem.html
-        let tiles = tiles_to_count_array("2334578m34p66999s");
+        let tiles = MahjongTileCountArray::from_text("2334578m34p66999s");
         assert_eq!(get_best_shanten_after_discard(tiles, &get_shanten), 1);
         assert_eq!(
             get_best_shanten_after_discard(tiles, &get_shanten_optimized),
@@ -2665,7 +2617,7 @@ mod tests {
     #[test]
     fn wwyd_efficiency_problem_example3() {
         // examples from https://justanotherjapanesemahjongblog.blogspot.com/2012/01/choosing-multi-wait-tenpai-problem.html
-        let tiles = tiles_to_count_array("2368m24888p33567s");
+        let tiles = MahjongTileCountArray::from_text("2368m24888p33567s");
         assert_eq!(get_best_shanten_after_discard(tiles, &get_shanten), 1);
         assert_eq!(
             get_best_shanten_after_discard(tiles, &get_shanten_optimized),
@@ -2689,7 +2641,7 @@ mod tests {
     fn tenpai_and_n_shanten_examples_riichi_book_1() {
         // examples from riichi book 1: section 3.2.3 (ready and n-away)
         // tenpai hand
-        let tiles = tiles_to_count_array("34588p23678s777z");
+        let tiles = MahjongTileCountArray::from_text("34588p23678s777z");
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
 
@@ -2702,7 +2654,7 @@ mod tests {
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         // 1-shanten hand:
-        let tiles = tiles_to_count_array("35588p23678s777z");
+        let tiles = MahjongTileCountArray::from_text("35588p23678s777z");
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
 
@@ -2715,7 +2667,7 @@ mod tests {
         assert_tile_ids_match(&ukiere_tiles, &expected_ukiere_tiles);
 
         // 2-shanten hand
-        let tiles = tiles_to_count_array("35588p23677s777z");
+        let tiles = MahjongTileCountArray::from_text("35588p23677s777z");
         assert_eq!(get_shanten(tiles), 2);
         assert_eq!(get_shanten_optimized(tiles), 2);
 
@@ -2731,7 +2683,7 @@ mod tests {
     #[test]
     fn wwyd_basic_efficiency_riichi_book_1() {
         // examples from riichi book 1: section 3.2.3 (ready and n-away > advancing your hand)
-        let tiles = tiles_to_count_array("5677m34p45579s666z");
+        let tiles = MahjongTileCountArray::from_text("5677m34p45579s666z");
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
         // 567m - 7m - 34p - 455s - 79s - 666z
@@ -2747,7 +2699,7 @@ mod tests {
     fn wwyd_kutsuki_iishanten() {
         // examples from youtube video (recording of a presentation/lesson): https://youtu.be/TulF31VKJ94?si=baGLLhyg-Mr2cbqd
         // 1st example (timestamp 1:33:59)
-        let tiles = tiles_to_count_array("2344567m556p6678s");
+        let tiles = MahjongTileCountArray::from_text("2344567m556p6678s");
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
 
@@ -2767,7 +2719,7 @@ mod tests {
         assert_ukiere_tiles_after_discard_match(tiles, &expected_ukiere_tiles_after_discard);
 
         // 2nd example (timestamp 1:40:29)
-        let tiles = tiles_to_count_array("2446888m4678999p");
+        let tiles = MahjongTileCountArray::from_text("2446888m4678999p");
         assert_eq!(get_shanten(tiles), 1);
         assert_eq!(get_shanten_optimized(tiles), 1);
 
@@ -2791,7 +2743,7 @@ mod tests {
     #[test]
     fn tanki_tenpai_upgrade() {
         // example from riichi book 1, section 3.2.5 (Pairs (toitsu) > Building the head)
-        let tiles = tiles_to_count_array("789m234567p3457s");
+        let tiles = MahjongTileCountArray::from_text("789m234567p3457s");
         // currently, the hand is tenpai, with tanki wait on 7s
         assert_eq!(get_shanten(tiles), 0);
         assert_eq!(get_shanten_optimized(tiles), 0);
@@ -2835,7 +2787,7 @@ mod tests {
         let ukiere_tiles = get_tile_ids_from_string("147p");
         // remove the original tiles in hand, plus the next tile that is drawn
         let mut visible_tile_ids = Vec::new();
-        let tiles_as_ids = tile_count_array_to_tile_ids(tiles);
+        let tiles_as_ids = tiles.to_tile_ids();
         visible_tile_ids.extend_from_slice(&tiles_as_ids.as_slice());
         visible_tile_ids.push(MahjongTileId::from_text("1p").unwrap());
         // println!(
@@ -2896,11 +2848,11 @@ mod tests {
         shanten_ukiere_after_each_discard: &Vec<(MahjongTileId, i8, Vec<MahjongTileId>, u16)>,
         other_visible_tiles: &Vec<MahjongTileId>,
     ) {
-        if get_total_tiles_from_count_array(tile_count_array) != 14 {
+        if tile_count_array.total_tiles() != 14 {
             // TODO eventually will need to handle the case when there are more tiles due to quads
             panic!("invalid number of tiles")
         }
-        let original_tiles = tile_count_array_to_tile_ids(tile_count_array);
+        let original_tiles = tile_count_array.to_tile_ids();
         println!(
             "shanten + ukiere after each discard: {}",
             tile_ids_to_string(&original_tiles)
@@ -3109,7 +3061,7 @@ mod tests {
         // my program's analysis outputs: cut 4s => 17 ukiere: 147p679s
         // but this is wrong: https://tenhou.net/2/?q=345m1156p4666778s - it's missing 58s as additional ukiere tiles
         // cut 4s => 24 ukiere: 147p56789s (my program's analysis of ukiere after cut 7s is correct: 147p569s)
-        let tiles_after_draw = tiles_to_count_array("345m1156p4666778s");
+        let tiles_after_draw = MahjongTileCountArray::from_text("345m1156p4666778s");
         let shanten_after_discard =
             get_best_shanten_after_discard(tiles_after_draw, &get_shanten_optimized);
         assert_eq!(shanten_after_discard, 1);
@@ -3156,7 +3108,7 @@ mod tests {
     #[test]
     fn wwyd_hand_game_example() {
         // east-1, seat: east, (25k points all), dora indicator: 1m (dora: 2m)
-        let tiles_after_draw = tiles_to_count_array("5789s357p34667m11z");
+        let tiles_after_draw = MahjongTileCountArray::from_text("5789s357p34667m11z");
         let shanten_after_discard =
             get_best_shanten_after_discard(tiles_after_draw, &get_shanten_optimized);
         let other_visible_tiles = Vec::new();
@@ -3202,7 +3154,7 @@ mod tests {
 
         // next turn: after discarding 3p and calling 1z
         println!("check after discard 3p and calling 1z");
-        let tiles_after_call = tiles_to_count_array("5789s57p34667m111z");
+        let tiles_after_call = MahjongTileCountArray::from_text("5789s57p34667m111z");
         let shanten_after_discard =
             get_best_shanten_after_discard(tiles_after_call, &get_shanten_optimized);
         let other_visible_tiles = get_tile_ids_from_string("3p");
@@ -3314,7 +3266,7 @@ mod tests {
     #[test]
     fn wwyd_tenhou_hand_east1_turn8() {
         // east-1, seat: east, (25k points all), dora indicator: 6s (dora: 7s)
-        let tiles_after_draw = tiles_to_count_array("345m11256p46778s6s");
+        let tiles_after_draw = MahjongTileCountArray::from_text("345m11256p46778s6s");
         let shanten_after_discard =
             get_best_shanten_after_discard(tiles_after_draw, &get_shanten_optimized);
         assert_eq!(shanten_after_discard, 1);
@@ -3369,7 +3321,7 @@ mod tests {
     fn wwyd_tenhou_hand_east1_turn7() {
         // I think there was a bigger mistake on the previous turn/discard decision in this same hand:
         // 345m11256p46778s6m
-        let tiles_after_draw = tiles_to_count_array("345m11256p46778s6m");
+        let tiles_after_draw = MahjongTileCountArray::from_text("345m11256p46778s6m");
         let shanten_after_discard =
             get_best_shanten_after_discard(tiles_after_draw, &get_shanten_optimized);
         assert_eq!(shanten_after_discard, 2);
@@ -3405,7 +3357,7 @@ mod tests {
     #[test]
     fn wwyd_solitaire_hand_turn7() {
         // dora indicator: 5m (dora 6m) - discarded so far: 3z5z7z1z4z9p
-        let tiles_after_draw = tiles_to_count_array("46p255567s33478m4s");
+        let tiles_after_draw = MahjongTileCountArray::from_text("46p255567s33478m4s");
         let shanten_after_discard =
             get_best_shanten_after_discard(tiles_after_draw, &get_shanten_optimized);
         assert_eq!(shanten_after_discard, 2);
@@ -3468,7 +3420,7 @@ mod tests {
         // the other thing is: it's so early in the hand, it seems unlikely that kamicha (player to my left) would discard a 6m for me to call
         // -> overall, I think cutting 7m is better - I cannot guarantee yaku if I open the hand (unless I specifically call 6m for sanshoku,
         // and kamicha probably shouldn't drop 6m this early into the hand)
-        let tiles_after_draw = tiles_to_count_array("4557m2357p23567s6p");
+        let tiles_after_draw = MahjongTileCountArray::from_text("4557m2357p23567s6p");
         let shanten_after_discard =
             get_best_shanten_after_discard(tiles_after_draw, &get_shanten_optimized);
         assert_eq!(shanten_after_discard, 1);
@@ -3513,7 +3465,7 @@ mod tests {
         // south discards: 4z1p1s2p9p
         // west  discards: 9m8m9s6m2s
         // north discards: 3p8m5m8s2s
-        let tiles_after_draw = tiles_to_count_array("2246778m234677p5p");
+        let tiles_after_draw = MahjongTileCountArray::from_text("2246778m234677p5p");
         let shanten_after_discard =
             get_best_shanten_after_discard(tiles_after_draw, &get_shanten_optimized);
         assert_eq!(shanten_after_discard, 1);

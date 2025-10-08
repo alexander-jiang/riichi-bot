@@ -54,6 +54,7 @@ impl From<MahjongTileNumberedSuit> for char {
 }
 
 pub const NUM_DISTINCT_TILE_VALUES: u8 = 34;
+pub const FIRST_MANZU_ID: u8 = 0;
 pub const FIRST_PINZU_ID: u8 = 9;
 pub const FIRST_SOUZU_ID: u8 = 18;
 pub const FIRST_WIND_ID: u8 = 27;
@@ -402,35 +403,34 @@ pub fn get_tile_text_from_u8(tile_id: u8) -> String {
 // ##### CONVERSION FUNCTIONS #####
 // Individual tiles can be represented as:
 // - `MahjongTile` objects, which distinguish between red-fives and non-red-fives (useful for scoring, but not as useful for shanten/tenpai analysis)
-// - `MahjongTileValue` objects, which ... i'm not sure why we have...
 // - tile_id values (`u8` or `MahjongTileId`, which are interchangeable), which do not distinguish between red-fives and non-red-fives
 // - String tile representation in MSPZ notation e.g. "1z" -> east wind, "3p" -> 3-pin (can represent red fives as "0" i.e. "0s" means red-5-sou vs "5s" means non-red-5-sou)
 // Groups/sets of tiles (e.g. a meld, a hand, etc.) can be represented as:
 // - a collection (e.g. `Vec`) of any of the above, but usually either `Vec<MahjongTile>` or `Vec<MahjongTileId>` -- note that it
 //   doesn't have to be a `Vec`, what we really want is a multi-set (i.e. duplicates are allowed and order doesn't
 //   matter i.e. [1s, 2s, 3s] should be equal to [3s, 1s, 2s], for gameplay purposes, we can have multiple tiles of the same value/type)
-// - a "count array" i.e. a `[u8; 34]` array, where the value at index i represents the number of tiles of tile_id = i. For example, [1, 2, 0, 0, ..., 0] means [1m, 2m, 2m]
+// - a "count array": `MahjongTileCountArray` i.e. a `[u8; 34]` array, where the value at index i represents the number of tiles of tile_id = i. For example, [1, 2, 0, 0, ..., 0] means [1m, 2m, 2m]
 // - a condensed String representation in MSPZ notation e.g. "123s444p555z" -> [1s, 2s, 3s, 4p, 4p, 4p, 5z, 5z, 5z]
 
 /// utility function to generate a list of `MahjongTile` objects from a string
 pub fn get_tiles_from_string(tile_string: &str) -> Vec<MahjongTile> {
     let mut tiles = Vec::new();
-    let mut tile_ranks_so_far: Vec<char> = Vec::new();
+    let mut rank_chars: Vec<char> = Vec::new();
     let tile_suit_chars = vec!['m', 'p', 's', 'z'];
     for current_tile_string_char in tile_string.chars() {
         if tile_suit_chars.contains(&current_tile_string_char) {
-            // potential optimization: is it faster to tile_suit_chars.contains(...) vs. doing == for each possible char
-            for tile_rank in tile_ranks_so_far {
+            // TODO potential optimization: is it faster to tile_suit_chars.contains(...) vs. doing == for each possible char
+            for rank_char in rank_chars {
                 let mut single_tile_string = String::new();
-                single_tile_string.push(tile_rank);
+                single_tile_string.push(rank_char);
                 single_tile_string.push(current_tile_string_char);
                 let tile = MahjongTile::from_text(single_tile_string.as_str()).unwrap();
                 tiles.push(tile);
             }
-            tile_ranks_so_far = vec![];
+            rank_chars = Vec::new();
         } else {
             // assume if it's not a tile suit char, then it's a tile rank
-            tile_ranks_so_far.push(current_tile_string_char);
+            rank_chars.push(current_tile_string_char);
         }
     }
     tiles
@@ -440,23 +440,27 @@ pub fn get_tiles_from_string(tile_string: &str) -> Vec<MahjongTile> {
 pub fn get_tile_ids_from_string(tiles_string: &str) -> Vec<MahjongTileId> {
     let mut tile_ids = Vec::new();
     let mut rank_chars: Vec<char> = Vec::new();
-    for char in tiles_string.chars() {
-        if char == 'm' || char == 's' || char == 'p' || char == 'z' {
+    for current_tile_string_char in tiles_string.chars() {
+        if current_tile_string_char == 'm'
+            || current_tile_string_char == 's'
+            || current_tile_string_char == 'p'
+            || current_tile_string_char == 'z'
+        {
             if rank_chars.is_empty() {
                 panic!("expected some numbers/ranks to come before the suit character")
             }
             for rank_char in rank_chars {
                 let mut tile_string = String::new();
-                // println!("found tile {}{}", rank_char, char);
+                // println!("found tile {}{}", rank_char, current_tile_string_char);
                 tile_string.push(rank_char);
-                tile_string.push(char);
+                tile_string.push(current_tile_string_char);
                 let tile_id = MahjongTileId::from_text(&tile_string).unwrap();
                 tile_ids.push(tile_id);
             }
             rank_chars = Vec::new();
         } else {
             // assume if it's not a tile suit char, then it's a tile rank
-            rank_chars.push(char);
+            rank_chars.push(current_tile_string_char);
         }
     }
     tile_ids
@@ -464,6 +468,10 @@ pub fn get_tile_ids_from_string(tiles_string: &str) -> Vec<MahjongTileId> {
 
 pub fn tile_ids_to_strings(tile_ids: &Vec<MahjongTileId>) -> Vec<String> {
     tile_ids.iter().map(|tile_id| tile_id.to_text()).collect()
+}
+
+pub fn tile_ids_to_string(tile_ids: &Vec<MahjongTileId>) -> String {
+    MahjongTileCountArray::from_tile_ids(tile_ids).to_text()
 }
 
 /// A compact representation of a set of tiles: stored as a fixed-length array of 34 elements, where
@@ -475,50 +483,100 @@ pub struct MahjongTileCountArray(pub [u8; 34]);
 
 impl Default for MahjongTileCountArray {
     fn default() -> Self {
-        MahjongTileCountArray([0; 34])
+        MahjongTileCountArray([0u8; 34])
+    }
+}
+
+impl MahjongTileCountArray {
+    // constructors
+    pub fn from_tile_ids(tile_ids: &Vec<MahjongTileId>) -> Self {
+        let mut tile_count_array = [0u8; 34];
+        for tile_id in tile_ids {
+            tile_count_array[usize::from(*tile_id)] += 1;
+        }
+        Self(tile_count_array)
+    }
+
+    pub fn from_text<S: AsRef<str>>(tiles_string: S) -> Self {
+        let tiles_string: &str = tiles_string.as_ref();
+        let tile_ids = get_tile_ids_from_string(tiles_string);
+        Self::from_tile_ids(&tile_ids)
+    }
+
+    // conversions
+    pub fn to_text(&self) -> String {
+        let mut tiles_string = String::new();
+        let tile_id_bounds_and_suit_char: Vec<(u8, u8, char)> = vec![
+            (FIRST_MANZU_ID, FIRST_MANZU_ID + 9, 'm'),
+            (FIRST_PINZU_ID, FIRST_PINZU_ID + 9, 'p'),
+            (FIRST_SOUZU_ID, FIRST_SOUZU_ID + 9, 's'),
+            (FIRST_HONOR_ID, FIRST_HONOR_ID + 7, 'z'),
+        ];
+        for (tile_id_start_bound, tile_id_end_bound, tile_suit_char) in tile_id_bounds_and_suit_char
+        {
+            let mut has_tile_in_suit: bool = false;
+            for tile_id in tile_id_start_bound..tile_id_end_bound {
+                for _tile_instance in 0..self.0[usize::from(tile_id)] {
+                    let tile_rank_string = (tile_id - tile_id_start_bound + 1).to_string();
+                    assert!(tile_rank_string.len() == 1);
+                    tiles_string.push_str(&tile_rank_string);
+                    has_tile_in_suit = true;
+                }
+            }
+            if has_tile_in_suit {
+                tiles_string.push(tile_suit_char);
+            }
+        }
+        tiles_string
+    }
+
+    // utility functions:
+    // what are some common functions e.g. add tile id X to the count array, check if N copies of tile id X are in the count array, etc.
+    // see shanten.rs - can likely move some of those functions over to this file
+    pub fn get_tile_id_count(&self, tile_id: &MahjongTileId) -> u8 {
+        self.0[usize::from(*tile_id)]
+    }
+
+    pub fn to_tile_ids(&self) -> Vec<MahjongTileId> {
+        let mut tile_ids = Vec::new();
+        for tile_id in 0..NUM_DISTINCT_TILE_VALUES {
+            let tile_idx = usize::from(tile_id);
+            if self.0[tile_idx] > 0 {
+                for _i in 0..self.0[tile_idx] {
+                    tile_ids.push(MahjongTileId::new(tile_id));
+                }
+            }
+        }
+        tile_ids
+    }
+
+    pub fn to_distinct_tile_ids(&self) -> Vec<MahjongTileId> {
+        let mut distinct_tile_ids = Vec::new();
+        for tile_id in 0..NUM_DISTINCT_TILE_VALUES {
+            let tile_idx: usize = usize::from(tile_id);
+            if self.0[tile_idx] > 0 {
+                distinct_tile_ids.push(MahjongTileId::new(tile_id));
+            }
+        }
+        distinct_tile_ids
+    }
+
+    pub fn total_tiles(&self) -> usize {
+        let mut total_tiles: usize = 0;
+        for tile_idx in 0..self.0.len() {
+            total_tiles += usize::from(self.0[tile_idx]);
+        }
+        total_tiles
+    }
+}
+
+impl fmt::Display for MahjongTileCountArray {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.to_text())
     }
 }
 
 pub const FOUR_OF_EACH_TILE_COUNT_ARRAY: MahjongTileCountArray = MahjongTileCountArray([4u8; 34]);
-
-// what are some common functions e.g. add tile id X to the count array, check if N copies of tile id X are in the count array, etc.
-// see shanten.rs - can likely move some of those functions over to this file
-
-pub fn get_total_tiles_from_count_array(tile_count_array: MahjongTileCountArray) -> usize {
-    let mut total_tiles: usize = 0;
-    for tile_idx in 0..tile_count_array.0.len() {
-        total_tiles += usize::from(tile_count_array.0[tile_idx]);
-    }
-    total_tiles
-}
-
-pub fn get_tile_ids_from_count_array(
-    tile_count_array: MahjongTileCountArray,
-) -> Vec<MahjongTileId> {
-    let mut tile_ids = vec![];
-    for tile_id in 0..NUM_DISTINCT_TILE_VALUES {
-        let tile_idx = usize::from(tile_id);
-        if tile_count_array.0[tile_idx] > 0 {
-            for _i in 0..tile_count_array.0[tile_idx] {
-                tile_ids.push(MahjongTileId::new(tile_id));
-            }
-        }
-    }
-    tile_ids
-}
-
-pub fn get_distinct_tile_ids_from_count_array(
-    tile_count_array: MahjongTileCountArray,
-) -> Vec<MahjongTileId> {
-    let mut distinct_tile_ids = vec![];
-    for tile_id in 0..NUM_DISTINCT_TILE_VALUES {
-        let tile_idx = usize::from(tile_id);
-        if tile_count_array.0[tile_idx] > 0 {
-            distinct_tile_ids.push(MahjongTileId::new(tile_id));
-        }
-    }
-    distinct_tile_ids
-}
 
 #[cfg(test)]
 mod tests {
@@ -1012,33 +1070,222 @@ mod tests {
     }
 
     #[test]
-    fn test_get_total_tiles_from_count_array() {
-        let empty_tile_count_array: MahjongTileCountArray = Default::default();
-        assert_eq!(get_total_tiles_from_count_array(empty_tile_count_array), 0);
+    fn test_mahjong_tile_count_array_from_tile_ids() {
+        let tile_ids = vec![MahjongTileId::new_number_tile(
+            1,
+            MahjongTileNumberedSuit::Man,
+        )];
+        let one_tile_count_array = MahjongTileCountArray::from_tile_ids(&tile_ids);
+        let mut expected_count_array = [0u8; 34];
+        expected_count_array[usize::from(FIRST_MANZU_ID)] = 1;
+        assert_eq!(one_tile_count_array.0, expected_count_array);
 
+        let multiple_tile_ids = vec![
+            MahjongTileId::new_number_tile(8, MahjongTileNumberedSuit::Man),
+            MahjongTileId::new_number_tile(3, MahjongTileNumberedSuit::Pin),
+            MahjongTileId::new_honor_tile(4),
+        ];
+        let multiple_tile_count_array = MahjongTileCountArray::from_tile_ids(&multiple_tile_ids);
+        let mut expected_count_array = [0u8; 34];
+        expected_count_array[usize::from(FIRST_MANZU_ID + 7)] = 1;
+        expected_count_array[usize::from(FIRST_PINZU_ID + 2)] = 1;
+        expected_count_array[usize::from(FIRST_HONOR_ID + 3)] = 1;
+        assert_eq!(multiple_tile_count_array.0, expected_count_array);
+
+        let multi_with_dupes_tile_ids = vec![
+            MahjongTileId::new_number_tile(6, MahjongTileNumberedSuit::Sou),
+            MahjongTileId::new_number_tile(6, MahjongTileNumberedSuit::Sou),
+            MahjongTileId::new_honor_tile(7),
+            MahjongTileId::new_honor_tile(7),
+            MahjongTileId::new_honor_tile(7),
+        ];
+        let multi_with_dupes_count_array =
+            MahjongTileCountArray::from_tile_ids(&multi_with_dupes_tile_ids);
+        let mut expected_count_array = [0u8; 34];
+        expected_count_array[usize::from(FIRST_SOUZU_ID + 5)] = 2;
+        expected_count_array[usize::from(FIRST_HONOR_ID + 6)] = 3;
+        assert_eq!(multi_with_dupes_count_array.0, expected_count_array);
+    }
+
+    #[test]
+    fn test_mahjong_tile_count_array_from_text() {
+        let tile_ids = vec![MahjongTileId::new_number_tile(
+            1,
+            MahjongTileNumberedSuit::Man,
+        )];
+        let one_tile_count_array = MahjongTileCountArray::from_tile_ids(&tile_ids);
+        let tiles_string = "1m".to_string();
         assert_eq!(
-            get_total_tiles_from_count_array(FOUR_OF_EACH_TILE_COUNT_ARRAY),
-            4 * 34
+            one_tile_count_array,
+            MahjongTileCountArray::from_text(tiles_string)
         );
+
+        let multiple_tile_ids = vec![
+            MahjongTileId::new_number_tile(8, MahjongTileNumberedSuit::Man),
+            MahjongTileId::new_number_tile(3, MahjongTileNumberedSuit::Pin),
+            MahjongTileId::new_honor_tile(4),
+        ];
+        let multiple_tile_count_array = MahjongTileCountArray::from_tile_ids(&multiple_tile_ids);
+        let tiles_string = "8m3p4z".to_string();
+        assert_eq!(
+            multiple_tile_count_array,
+            MahjongTileCountArray::from_text(tiles_string)
+        );
+
+        let multi_with_dupes_tile_ids = vec![
+            MahjongTileId::new_number_tile(6, MahjongTileNumberedSuit::Sou),
+            MahjongTileId::new_number_tile(6, MahjongTileNumberedSuit::Sou),
+            MahjongTileId::new_honor_tile(7),
+            MahjongTileId::new_honor_tile(7),
+            MahjongTileId::new_honor_tile(7),
+        ];
+        let multi_with_dupes_count_array =
+            MahjongTileCountArray::from_tile_ids(&multi_with_dupes_tile_ids);
+        let tiles_string = "66s777z".to_string();
+        assert_eq!(
+            multi_with_dupes_count_array,
+            MahjongTileCountArray::from_text(tiles_string)
+        );
+    }
+
+    #[test]
+    fn test_mahjong_tile_count_array_to_text() {
+        let tile_ids = vec![MahjongTileId::new_number_tile(
+            1,
+            MahjongTileNumberedSuit::Man,
+        )];
+        let one_tile_count_array = MahjongTileCountArray::from_tile_ids(&tile_ids);
+        let expected_text = "1m".to_string();
+        assert_eq!(one_tile_count_array.to_text(), expected_text);
+
+        let multiple_tile_ids = vec![
+            MahjongTileId::new_number_tile(8, MahjongTileNumberedSuit::Man),
+            MahjongTileId::new_number_tile(3, MahjongTileNumberedSuit::Pin),
+            MahjongTileId::new_honor_tile(4),
+        ];
+        let multiple_tile_count_array = MahjongTileCountArray::from_tile_ids(&multiple_tile_ids);
+        let expected_text = "8m3p4z".to_string();
+        assert_eq!(multiple_tile_count_array.to_text(), expected_text);
+
+        let multi_with_dupes_tile_ids = vec![
+            MahjongTileId::new_number_tile(6, MahjongTileNumberedSuit::Sou),
+            MahjongTileId::new_number_tile(6, MahjongTileNumberedSuit::Sou),
+            MahjongTileId::new_honor_tile(7),
+            MahjongTileId::new_honor_tile(7),
+            MahjongTileId::new_honor_tile(7),
+        ];
+        let multi_with_dupes_count_array =
+            MahjongTileCountArray::from_tile_ids(&multi_with_dupes_tile_ids);
+        let expected_text = "66s777z".to_string();
+        assert_eq!(multi_with_dupes_count_array.to_text(), expected_text);
+    }
+
+    #[test]
+    fn test_tile_ids_to_string() {
+        let tile_ids = vec![MahjongTileId::new_number_tile(
+            1,
+            MahjongTileNumberedSuit::Man,
+        )];
+        let expected_text = "1m".to_string();
+        assert_eq!(tile_ids_to_string(&tile_ids), expected_text);
+
+        let multiple_tile_ids = vec![
+            MahjongTileId::new_number_tile(8, MahjongTileNumberedSuit::Man),
+            MahjongTileId::new_number_tile(3, MahjongTileNumberedSuit::Pin),
+            MahjongTileId::new_honor_tile(4),
+        ];
+        let expected_text = "8m3p4z".to_string();
+        assert_eq!(tile_ids_to_string(&multiple_tile_ids), expected_text);
+
+        let multi_with_dupes_tile_ids = vec![
+            MahjongTileId::new_number_tile(6, MahjongTileNumberedSuit::Sou),
+            MahjongTileId::new_number_tile(6, MahjongTileNumberedSuit::Sou),
+            MahjongTileId::new_honor_tile(7),
+            MahjongTileId::new_honor_tile(7),
+            MahjongTileId::new_honor_tile(7),
+        ];
+        let expected_text = "66s777z".to_string();
+        assert_eq!(
+            tile_ids_to_string(&multi_with_dupes_tile_ids),
+            expected_text
+        );
+    }
+
+    #[test]
+    fn test_mahjong_tile_count_array_get_tile_id_count() {
+        let tile_ids = vec![MahjongTileId::new_number_tile(
+            1,
+            MahjongTileNumberedSuit::Man,
+        )];
+        let one_tile_count_array = MahjongTileCountArray::from_tile_ids(&tile_ids);
+        assert_eq!(
+            one_tile_count_array.get_tile_id_count(&MahjongTileId(FIRST_MANZU_ID)),
+            1
+        );
+
+        let multiple_tile_ids = vec![
+            MahjongTileId::new_number_tile(8, MahjongTileNumberedSuit::Man),
+            MahjongTileId::new_number_tile(3, MahjongTileNumberedSuit::Pin),
+            MahjongTileId::new_honor_tile(4),
+        ];
+        let multiple_tile_count_array = MahjongTileCountArray::from_tile_ids(&multiple_tile_ids);
+        assert_eq!(
+            multiple_tile_count_array.get_tile_id_count(&MahjongTileId(FIRST_MANZU_ID + 7)),
+            1
+        );
+        assert_eq!(
+            multiple_tile_count_array.get_tile_id_count(&MahjongTileId(FIRST_PINZU_ID + 2)),
+            1
+        );
+        assert_eq!(
+            multiple_tile_count_array.get_tile_id_count(&MahjongTileId(FIRST_HONOR_ID + 3)),
+            1
+        );
+
+        let multi_with_dupes_tile_ids = vec![
+            MahjongTileId::new_number_tile(6, MahjongTileNumberedSuit::Sou),
+            MahjongTileId::new_number_tile(6, MahjongTileNumberedSuit::Sou),
+            MahjongTileId::new_honor_tile(7),
+            MahjongTileId::new_honor_tile(7),
+            MahjongTileId::new_honor_tile(7),
+        ];
+        let multi_with_dupes_count_array =
+            MahjongTileCountArray::from_tile_ids(&multi_with_dupes_tile_ids);
+        assert_eq!(
+            multi_with_dupes_count_array.get_tile_id_count(&MahjongTileId(FIRST_SOUZU_ID + 5)),
+            2
+        );
+        assert_eq!(
+            multi_with_dupes_count_array.get_tile_id_count(&MahjongTileId(FIRST_HONOR_ID + 6)),
+            3
+        );
+    }
+
+    #[test]
+    fn test_mahjong_tile_count_array_total_tiles() {
+        let empty_tile_count_array: MahjongTileCountArray = Default::default();
+        assert_eq!(empty_tile_count_array.total_tiles(), 0);
+
+        assert_eq!(FOUR_OF_EACH_TILE_COUNT_ARRAY.total_tiles(), 4 * 34);
 
         let mut tile_count_array: MahjongTileCountArray = Default::default();
         tile_count_array.0[usize::from(MahjongTileId::from_text("3m").unwrap())] = 2;
         tile_count_array.0[usize::from(MahjongTileId::from_text("2p").unwrap())] = 1;
         tile_count_array.0[usize::from(MahjongTileId::from_text("4s").unwrap())] = 1;
         tile_count_array.0[usize::from(MahjongTileId::from_text("6z").unwrap())] = 2;
-        assert_eq!(get_total_tiles_from_count_array(tile_count_array), 6);
+        assert_eq!(tile_count_array.total_tiles(), 6);
     }
 
     #[test]
-    fn test_get_tile_ids_from_count_array() {
+    fn test_mahjong_tile_count_array_to_tile_ids() {
         let empty_tile_count_array: MahjongTileCountArray = Default::default();
-        let empty_tile_ids = get_tile_ids_from_count_array(empty_tile_count_array);
+        let empty_tile_ids = empty_tile_count_array.to_tile_ids();
         assert!(empty_tile_ids.is_empty());
 
         let mut tile_count_array: MahjongTileCountArray = Default::default();
         tile_count_array.0[usize::from(MahjongTileId::from_text("3m").unwrap())] = 2;
         tile_count_array.0[usize::from(MahjongTileId::from_text("2p").unwrap())] = 1;
-        let tile_ids = get_tile_ids_from_count_array(tile_count_array);
+        let tile_ids = tile_count_array.to_tile_ids();
         assert_eq!(tile_ids.len(), 3);
         let matching_3m_tiles: Vec<MahjongTileId> = tile_ids
             .iter()
@@ -1055,15 +1302,15 @@ mod tests {
     }
 
     #[test]
-    fn test_get_distinct_tile_ids_from_count_array() {
+    fn test_mahjong_tile_count_array_to_distinct_tile_ids() {
         let empty_tile_count_array: MahjongTileCountArray = Default::default();
-        let empty_tile_ids = get_distinct_tile_ids_from_count_array(empty_tile_count_array);
+        let empty_tile_ids = empty_tile_count_array.to_distinct_tile_ids();
         assert!(empty_tile_ids.is_empty());
 
         let mut tile_count_array: MahjongTileCountArray = Default::default();
         tile_count_array.0[usize::from(MahjongTileId::from_text("3m").unwrap())] = 2;
         tile_count_array.0[usize::from(MahjongTileId::from_text("2p").unwrap())] = 1;
-        let distinct_tile_ids = get_distinct_tile_ids_from_count_array(tile_count_array);
+        let distinct_tile_ids = tile_count_array.to_distinct_tile_ids();
         assert_eq!(distinct_tile_ids.len(), 2);
         assert!(distinct_tile_ids.contains(&MahjongTileId::from_text("3m").unwrap()));
         assert!(distinct_tile_ids.contains(&MahjongTileId::from_text("2p").unwrap()));
