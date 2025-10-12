@@ -1496,8 +1496,7 @@ pub fn get_kokushi_shanten(tile_count_array: MahjongTileCountArray) -> i8 {
     let mut num_kokushi_tiles = 0;
     let mut has_kokushi_pair = false;
     for kokushi_tile_id in kokushi_tile_ids.iter() {
-        let kokushi_tile_idx = usize::from(*kokushi_tile_id);
-        let kokushi_tile_count = tile_count_array.0[kokushi_tile_idx];
+        let kokushi_tile_count = tile_count_array.get_tile_id_count(kokushi_tile_id);
         if kokushi_tile_count >= 1 {
             num_kokushi_tiles += 1;
         }
@@ -1517,8 +1516,7 @@ pub fn get_kokushi_ukiere(tile_count_array: MahjongTileCountArray) -> Vec<Mahjon
     let kokushi_tile_ids = get_tile_ids_from_string("19m19p19s1234567z");
     let mut has_kokushi_pair = false;
     for kokushi_tile_id in kokushi_tile_ids.iter() {
-        let kokushi_tile_idx = usize::from(*kokushi_tile_id);
-        let kokushi_tile_count = tile_count_array.0[kokushi_tile_idx];
+        let kokushi_tile_count = tile_count_array.get_tile_id_count(kokushi_tile_id);
         if kokushi_tile_count == 0 {
             missing_kokushi_tiles.push(*kokushi_tile_id);
         } else if kokushi_tile_count >= 2 {
