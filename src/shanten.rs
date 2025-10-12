@@ -31,8 +31,9 @@ impl MeldType {
 
 #[derive(Clone)]
 pub struct TileMeld {
-    meld_type: MeldType,
-    tile_ids: Vec<MahjongTileId>,
+    pub meld_type: MeldType,
+    pub tile_ids: Vec<MahjongTileId>,
+    pub is_closed: bool,
 }
 
 fn tile_ids_are_all_same(tile_ids: &Vec<MahjongTileId>) -> bool {
@@ -125,7 +126,7 @@ fn tile_ids_are_penchan(tile_ids: &Vec<MahjongTileId>) -> bool {
 impl TileMeld {
     /// Constructor for TileMeld which also validates the meld and sorts the tile_ids,
     /// which is useful for optimizing some future steps.
-    fn new(tile_ids: Vec<MahjongTileId>) -> Self {
+    pub fn new(tile_ids: Vec<MahjongTileId>, is_closed: bool) -> Self {
         let meld_type = match tile_ids.len() {
             1 => MeldType::SingleTile,
             2 => {
@@ -168,14 +169,23 @@ impl TileMeld {
         TileMeld {
             meld_type: meld_type,
             tile_ids: sorted_tile_ids,
+            is_closed,
         }
     }
 
-    fn is_complete(&self) -> bool {
+    pub fn new_closed(tile_ids: Vec<MahjongTileId>) -> Self {
+        Self::new(tile_ids, true)
+    }
+
+    pub fn new_open(tile_ids: Vec<MahjongTileId>) -> Self {
+        Self::new(tile_ids, false)
+    }
+
+    pub fn is_complete(&self) -> bool {
         self.meld_type.is_complete()
     }
 
-    fn tile_ids_to_complete_group(&self) -> Vec<MahjongTileId> {
+    pub fn tile_ids_to_complete_group(&self) -> Vec<MahjongTileId> {
         // assumes the tile_ids are sorted
         match self.meld_type {
             MeldType::SingleTile => {
@@ -236,8 +246,8 @@ impl TileMeld {
 
 #[derive(Clone)]
 pub struct HandInterpretation {
-    total_tile_count_array: MahjongTileCountArray,
-    groups: Vec<TileMeld>,
+    pub total_tile_count_array: MahjongTileCountArray,
+    pub groups: Vec<TileMeld>,
 }
 
 impl fmt::Display for HandInterpretation {
@@ -455,7 +465,7 @@ pub fn get_hand_interpretations(
         for _i in 0..honor_tile_count {
             meld_tile_ids.push(MahjongTileId::new(tile_id));
         }
-        let new_meld = TileMeld::new(meld_tile_ids);
+        let new_meld = TileMeld::new_closed(meld_tile_ids);
         honor_tile_melds.push(new_meld);
         updated_tile_count_array.0[tile_idx] = 0;
 
@@ -560,7 +570,7 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
         if tile_count_array.0[tile_idx] >= 3 {
             // break out a triplet or a pair
             let mut new_state_after_triplet = partial_interpretation.clone();
-            let tile_meld = TileMeld::new(vec![
+            let tile_meld = TileMeld::new_closed(vec![
                 MahjongTileId::new(tile_id),
                 MahjongTileId::new(tile_id),
                 MahjongTileId::new(tile_id),
@@ -574,7 +584,7 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
             // );
 
             let mut new_state_after_pair = partial_interpretation.clone();
-            let tile_meld = TileMeld::new(vec![
+            let tile_meld = TileMeld::new_closed(vec![
                 MahjongTileId::new(tile_id),
                 MahjongTileId::new(tile_id),
             ]);
@@ -590,7 +600,7 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
         } else if tile_count_array.0[tile_idx] == 2 {
             // break out a pair and then let it continue trying to add as a single
             let mut new_state_after_pair = partial_interpretation.clone();
-            let tile_meld = TileMeld::new(vec![
+            let tile_meld = TileMeld::new_closed(vec![
                 MahjongTileId::new(tile_id),
                 MahjongTileId::new(tile_id),
             ]);
@@ -615,7 +625,7 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
         if can_make_sequence {
             let mut new_state_after_sequence = partial_interpretation.clone();
             // if not iterating through the tile_ids from low to high, these tile ids may not be the correct ones to form the sequence
-            let tile_meld = TileMeld::new(vec![
+            let tile_meld = TileMeld::new_closed(vec![
                 MahjongTileId::new(tile_id),
                 MahjongTileId::new(tile_id + 1),
                 MahjongTileId::new(tile_id + 2),
@@ -637,7 +647,7 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
         if can_make_ryanmen {
             let mut new_state_after_ryanmen = partial_interpretation.clone();
             // if not iterating through the tile_ids from low to high, these tile ids may not be the correct ones to form the sequence
-            let tile_meld = TileMeld::new(vec![
+            let tile_meld = TileMeld::new_closed(vec![
                 MahjongTileId::new(tile_id),
                 MahjongTileId::new(tile_id + 1),
             ]);
@@ -656,7 +666,7 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
         if can_make_penchan {
             let mut new_state_after_penchan = partial_interpretation.clone();
             // if not iterating through the tile_ids from low to high, these tile ids may not be the correct ones to form the sequence
-            let tile_meld = TileMeld::new(vec![
+            let tile_meld = TileMeld::new_closed(vec![
                 MahjongTileId::new(tile_id),
                 MahjongTileId::new(tile_id + 1),
             ]);
@@ -676,7 +686,7 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
         // e.g. 2344
         if can_make_kanchan && !can_make_sequence {
             let mut new_state_after_kanchan = partial_interpretation.clone();
-            let tile_meld = TileMeld::new(vec![
+            let tile_meld = TileMeld::new_closed(vec![
                 MahjongTileId::new(tile_id),
                 MahjongTileId::new(tile_id + 2),
             ]);
@@ -693,7 +703,7 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
         }
 
         let mut new_state_after_isolated = partial_interpretation.clone();
-        let tile_meld = TileMeld::new(vec![MahjongTileId::new(tile_id)]);
+        let tile_meld = TileMeld::new_closed(vec![MahjongTileId::new(tile_id)]);
         new_state_after_isolated.remaining_tile_count_array.0[tile_idx] =
             tile_count_array.0[tile_idx] - 1;
         new_state_after_isolated.groups.push(tile_meld);
@@ -733,7 +743,7 @@ pub fn get_hand_interpretations_min_shanten(
         for _i in 0..honor_tile_count {
             meld_tile_ids.push(MahjongTileId::new(tile_id));
         }
-        let new_meld = TileMeld::new(meld_tile_ids);
+        let new_meld = TileMeld::new_closed(meld_tile_ids);
         honor_tile_melds.push(new_meld);
         updated_tile_count_array.0[tile_idx] = 0;
 
@@ -851,7 +861,7 @@ pub fn get_suit_melds_min_shanten(
         if tile_count_array.0[tile_idx] >= 3 {
             // break out a triplet or a pair
             let mut new_state_after_triplet = partial_interpretation.clone();
-            let tile_meld = TileMeld::new(vec![
+            let tile_meld = TileMeld::new_closed(vec![
                 MahjongTileId::new(tile_id),
                 MahjongTileId::new(tile_id),
                 MahjongTileId::new(tile_id),
@@ -865,7 +875,7 @@ pub fn get_suit_melds_min_shanten(
             // );
 
             let mut new_state_after_pair = partial_interpretation.clone();
-            let tile_meld = TileMeld::new(vec![
+            let tile_meld = TileMeld::new_closed(vec![
                 MahjongTileId::new(tile_id),
                 MahjongTileId::new(tile_id),
             ]);
@@ -881,7 +891,7 @@ pub fn get_suit_melds_min_shanten(
         } else if tile_count_array.0[tile_idx] == 2 {
             // break out a pair and then let it continue trying to add as a single
             let mut new_state_after_pair = partial_interpretation.clone();
-            let tile_meld = TileMeld::new(vec![
+            let tile_meld = TileMeld::new_closed(vec![
                 MahjongTileId::new(tile_id),
                 MahjongTileId::new(tile_id),
             ]);
@@ -906,7 +916,7 @@ pub fn get_suit_melds_min_shanten(
         if can_make_sequence {
             let mut new_state_after_sequence = partial_interpretation.clone();
             // if not iterating through the tile_ids from low to high, these tile ids may not be the correct ones to form the sequence
-            let tile_meld = TileMeld::new(vec![
+            let tile_meld = TileMeld::new_closed(vec![
                 MahjongTileId::new(tile_id),
                 MahjongTileId::new(tile_id + 1),
                 MahjongTileId::new(tile_id + 2),
@@ -928,7 +938,7 @@ pub fn get_suit_melds_min_shanten(
         if can_make_ryanmen {
             let mut new_state_after_ryanmen = partial_interpretation.clone();
             // if not iterating through the tile_ids from low to high, these tile ids may not be the correct ones to form the sequence
-            let tile_meld = TileMeld::new(vec![
+            let tile_meld = TileMeld::new_closed(vec![
                 MahjongTileId::new(tile_id),
                 MahjongTileId::new(tile_id + 1),
             ]);
@@ -947,7 +957,7 @@ pub fn get_suit_melds_min_shanten(
         if can_make_penchan {
             let mut new_state_after_penchan = partial_interpretation.clone();
             // if not iterating through the tile_ids from low to high, these tile ids may not be the correct ones to form the sequence
-            let tile_meld = TileMeld::new(vec![
+            let tile_meld = TileMeld::new_closed(vec![
                 MahjongTileId::new(tile_id),
                 MahjongTileId::new(tile_id + 1),
             ]);
@@ -967,7 +977,7 @@ pub fn get_suit_melds_min_shanten(
         // e.g. 2344
         if can_make_kanchan && !can_make_sequence {
             let mut new_state_after_kanchan = partial_interpretation.clone();
-            let tile_meld = TileMeld::new(vec![
+            let tile_meld = TileMeld::new_closed(vec![
                 MahjongTileId::new(tile_id),
                 MahjongTileId::new(tile_id + 2),
             ]);
@@ -984,7 +994,7 @@ pub fn get_suit_melds_min_shanten(
         }
 
         let mut new_state_after_isolated = partial_interpretation.clone();
-        let tile_meld = TileMeld::new(vec![MahjongTileId::new(tile_id)]);
+        let tile_meld = TileMeld::new_closed(vec![MahjongTileId::new(tile_id)]);
         new_state_after_isolated.remaining_tile_count_array.0[tile_idx] =
             tile_count_array.0[tile_idx] - 1;
         new_state_after_isolated.groups.push(tile_meld);
@@ -1900,27 +1910,30 @@ mod tests {
 
     #[test]
     fn test_tile_ids_to_complete_group() {
-        let single_terminal_tile = TileMeld::new(vec![MahjongTileId::from_text("1m").unwrap()]);
+        let single_terminal_tile =
+            TileMeld::new_closed(vec![MahjongTileId::from_text("1m").unwrap()]);
         let ukiere_tile_ids = single_terminal_tile.tile_ids_to_complete_group();
         let expected_ukiere_tile_ids = get_tile_ids_from_string("123m");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
-        let single_middle_tile = TileMeld::new(vec![MahjongTileId::from_text("8p").unwrap()]);
+        let single_middle_tile =
+            TileMeld::new_closed(vec![MahjongTileId::from_text("8p").unwrap()]);
         let ukiere_tile_ids = single_middle_tile.tile_ids_to_complete_group();
         let expected_ukiere_tile_ids = get_tile_ids_from_string("6789p");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
-        let single_middle_tile = TileMeld::new(vec![MahjongTileId::from_text("3s").unwrap()]);
+        let single_middle_tile =
+            TileMeld::new_closed(vec![MahjongTileId::from_text("3s").unwrap()]);
         let ukiere_tile_ids = single_middle_tile.tile_ids_to_complete_group();
         let expected_ukiere_tile_ids = get_tile_ids_from_string("12345s");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
-        let single_honor_tile = TileMeld::new(vec![MahjongTileId::from_text("6z").unwrap()]);
+        let single_honor_tile = TileMeld::new_closed(vec![MahjongTileId::from_text("6z").unwrap()]);
         let ukiere_tile_ids = single_honor_tile.tile_ids_to_complete_group();
         let expected_ukiere_tile_ids = get_tile_ids_from_string("6z");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
-        let pair = TileMeld::new(vec![
+        let pair = TileMeld::new_closed(vec![
             MahjongTileId::from_text("2z").unwrap(),
             MahjongTileId::from_text("2z").unwrap(),
         ]);
@@ -1928,7 +1941,7 @@ mod tests {
         let expected_ukiere_tile_ids = get_tile_ids_from_string("2z");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
-        let ryanmen = TileMeld::new(vec![
+        let ryanmen = TileMeld::new_closed(vec![
             MahjongTileId::from_text("3p").unwrap(),
             MahjongTileId::from_text("4p").unwrap(),
         ]);
@@ -1936,7 +1949,7 @@ mod tests {
         let expected_ukiere_tile_ids = get_tile_ids_from_string("25p");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
-        let kanchan = TileMeld::new(vec![
+        let kanchan = TileMeld::new_closed(vec![
             MahjongTileId::from_text("7m").unwrap(),
             MahjongTileId::from_text("9m").unwrap(),
         ]);
@@ -1944,7 +1957,7 @@ mod tests {
         let expected_ukiere_tile_ids = get_tile_ids_from_string("8m");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
-        let penchan = TileMeld::new(vec![
+        let penchan = TileMeld::new_closed(vec![
             MahjongTileId::from_text("8p").unwrap(),
             MahjongTileId::from_text("9p").unwrap(),
         ]);
@@ -3079,12 +3092,12 @@ mod tests {
         let hand_interpretation = HandInterpretation {
             total_tile_count_array: tiles_after_discard_4s,
             groups: vec![
-                TileMeld::new(get_tile_ids_from_string("345m")),
-                TileMeld::new(get_tile_ids_from_string("11p")),
-                TileMeld::new(get_tile_ids_from_string("56p")),
-                TileMeld::new(get_tile_ids_from_string("6s")),
-                TileMeld::new(get_tile_ids_from_string("67s")),
-                TileMeld::new(get_tile_ids_from_string("678s")),
+                TileMeld::new_closed(get_tile_ids_from_string("345m")),
+                TileMeld::new_closed(get_tile_ids_from_string("11p")),
+                TileMeld::new_closed(get_tile_ids_from_string("56p")),
+                TileMeld::new_closed(get_tile_ids_from_string("6s")),
+                TileMeld::new_closed(get_tile_ids_from_string("67s")),
+                TileMeld::new_closed(get_tile_ids_from_string("678s")),
             ],
         };
         assert_tile_ids_match(
