@@ -1410,13 +1410,19 @@ pub fn get_ukiere(tile_count_array: MahjongTileCountArray) -> Vec<MahjongTileId>
     let chiitoi_shanten = get_chiitoi_shanten(tile_count_array);
     let kokushi_shanten = get_kokushi_shanten(tile_count_array);
 
-    generate_ukiere_tiles(
+    let ukiere_tiles = generate_ukiere_tiles(
         tile_count_array,
         standard_shanten,
         chiitoi_shanten,
         kokushi_shanten,
         &interpretations,
-    )
+    );
+
+    // edge case: remove any ukiere tiles if the hand already includes 4 copies of the tile
+    ukiere_tiles
+        .into_iter()
+        .filter(|ukiere_tile_id| tile_count_array.get_tile_id_count(ukiere_tile_id) < 4)
+        .collect()
 }
 
 pub fn get_ukiere_optimized(tile_count_array: MahjongTileCountArray) -> Vec<MahjongTileId> {
@@ -1426,13 +1432,19 @@ pub fn get_ukiere_optimized(tile_count_array: MahjongTileCountArray) -> Vec<Mahj
 
     let interpretations = get_hand_interpretations_min_shanten(tile_count_array, special_shanten);
     let standard_shanten = get_shanten_helper(&interpretations);
-    generate_ukiere_tiles(
+    let ukiere_tiles = generate_ukiere_tiles(
         tile_count_array,
         standard_shanten,
         chiitoi_shanten,
         kokushi_shanten,
         &interpretations,
-    )
+    );
+
+    // edge case: remove any ukiere tiles if the hand already includes 4 copies of the tile
+    ukiere_tiles
+        .into_iter()
+        .filter(|ukiere_tile_id| tile_count_array.get_tile_id_count(ukiere_tile_id) < 4)
+        .collect()
 }
 
 pub fn get_ukiere_helper(
@@ -3509,6 +3521,246 @@ mod tests {
     }
 
     // hand: "234678s2345577p6z" - tenpai (57p shanpon) - but how many upgrade tiles? and how much value does it add?
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q1() {
+        // https://mahjong-ny.com/features/sample-pro-test/
+        // 1) 2345666s111777z
+        let tile_count_array = MahjongTileCountArray::from_text("2345666s111777z");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("147s25s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q2() {
+        // 2) 6777788s555666z
+        let tile_count_array = MahjongTileCountArray::from_text("6777788s555666z");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("58s69s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q3() {
+        // 3) 3334555678s333z
+        let tile_count_array = MahjongTileCountArray::from_text("3334555678s333z");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("245s369s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q4() {
+        // 4) 2345566778899s
+        let tile_count_array = MahjongTileCountArray::from_text("2345566778899s");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("56s89s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q5() {
+        // 5) 2334455677789s
+        let tile_count_array = MahjongTileCountArray::from_text("2334455677789s");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("147s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q6() {
+        // 6) 3334445555s777z
+        let tile_count_array = MahjongTileCountArray::from_text("3334445555s777z");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("2346s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q7() {
+        // 7) 2333344445678s
+        let tile_count_array = MahjongTileCountArray::from_text("2333344445678s");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("125689s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q8() {
+        // 8) 1233455566678s
+        let tile_count_array = MahjongTileCountArray::from_text("1233455566678s");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("2569s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q9() {
+        // 9) 2333344445566s
+        let tile_count_array = MahjongTileCountArray::from_text("2333344445566s");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("12567s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q10() {
+        // 10) 1233334556677s
+        let tile_count_array = MahjongTileCountArray::from_text("1233334556677s");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("147s258s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q11() {
+        // 11) 11112345s22555z
+        let tile_count_array = MahjongTileCountArray::from_text("11112345s22555z");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("36s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q12() {
+        // 12) 12223344567s44z
+        let tile_count_array = MahjongTileCountArray::from_text("12223344567s44z");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("3s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q13() {
+        // 13) 2233445667899s
+        let tile_count_array = MahjongTileCountArray::from_text("2233445667899s");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("147s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q14() {
+        // 14) 2223366677788s
+        let tile_count_array = MahjongTileCountArray::from_text("2223366677788s");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("358s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q15() {
+        // 15) 1112223466678s
+        let tile_count_array = MahjongTileCountArray::from_text("1112223466678s");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("2569s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q16() {
+        // 16) 3334445667788s
+        let tile_count_array = MahjongTileCountArray::from_text("3334445667788s");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("345689s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q17() {
+        // 17) 3344555666789s
+        let tile_count_array = MahjongTileCountArray::from_text("3344555666789s");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("23457s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q18() {
+        // 18) 1111223345678s
+        let tile_count_array = MahjongTileCountArray::from_text("1111223345678s");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("258s369s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q19() {
+        // 19) 3444555566678s
+        let tile_count_array = MahjongTileCountArray::from_text("3444555566678s");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("24689s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part2_wait_determination_q20() {
+        // 20) 2333344555567s
+        let tile_count_array = MahjongTileCountArray::from_text("2333344555567s");
+        let ukiere_tile_ids = get_ukiere_optimized(tile_count_array);
+        assert_eq!(
+            MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids),
+            MahjongTileCountArray::from_text("124678s")
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part3_tenpai() {
+        // https://mahjong-ny.com/features/sample-pro-test/
+        // 44557m2446p3466s
+        let tile_count_array = MahjongTileCountArray::from_text("44557m2446p3466s");
+        let shanten = get_shanten_optimized(tile_count_array);
+        assert_eq!(shanten, 2); // 2-shanten for chiitoi
+
+        // 135m12224p2356s1z
+        let tile_count_array = MahjongTileCountArray::from_text("135m12224p2356s1z");
+        let shanten = get_shanten_optimized(tile_count_array);
+        assert_eq!(shanten, 3); // 3-shanten
+
+        // 199m689p169s3356z
+        let tile_count_array = MahjongTileCountArray::from_text("199m689p169s3356z");
+        let shanten = get_shanten_optimized(tile_count_array);
+        assert_eq!(shanten, 4); // 4-shanten for thirteen orphans
+    }
 }
 
 // 3445799m13p3456s4m - 1-shanten, cut 3s/6s results in 15 ukiere (4689m2p)
