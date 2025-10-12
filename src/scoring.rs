@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 
 use crate::mahjong_tile::{MahjongTileCountArray, MahjongTileId, MahjongWindOrder};
-use crate::shanten::{get_hand_interpretations, HandInterpretation, MeldType, TileMeld};
+use crate::shanten::{
+    get_hand_interpretations_min_shanten, HandInterpretation, MeldType, TileMeld,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RiichiInfo {
@@ -31,6 +33,16 @@ pub enum WinningTileSource {
     RobbingKan, // winning by robbing a kan is the yaku "chankan"
 }
 
+impl WinningTileSource {
+    /// Whether the winning tile keeps the hand / tile group closed (only self-draw from live wall or draw from dead-wall after kan are closed)
+    pub fn is_closed(&self) -> bool {
+        match self {
+            Self::SelfDraw { .. } | Self::AfterKan => true,
+            Self::Discard { .. } | Self::RobbingKan => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WinningTileInfo {
     source: WinningTileSource,
@@ -45,9 +57,6 @@ pub struct HandInfo {
     honba_counter: u16, // this number +1 is the "repeat"/renchan number e.g. east round, 2nd dealer, 1 honba -> East-2, 1st bonus round
     dora_tiles: Vec<MahjongTileId>,
 }
-
-// Box<Yaku> as Yaku is a trait (which doesn't have a defined size), so Box<Yaku> is like a pointer
-const YAKU_LIST: Vec<Box<dyn Yaku>> = vec![];
 
 pub trait Yaku {
     /// Returns the number of han earned from this yaku (0 if the hand is not eligible for yaku).
@@ -210,6 +219,47 @@ impl Yaku for PinfuYaku {
     }
 }
 
+pub struct MenzenTsumoYaku;
+impl Yaku for MenzenTsumoYaku {
+    fn han_value(
+        &self,
+        _hand_interpretation: &HandInterpretation,
+        _winning_tile: MahjongTileId,
+        hand_info: &HandInfo,
+        winning_tile_info: &WinningTileInfo,
+    ) -> u8 {
+        // menzen tsumo means the hand was closed and it won by self-draw (including draw from dead-wall after kan i.e. rinshan kaihou)
+        if hand_info.hand_state == HandState::Open || !winning_tile_info.source.is_closed() {
+            0
+        } else {
+            1
+        }
+    }
+}
+
+pub struct TanyaoYaku;
+impl Yaku for TanyaoYaku {
+    fn han_value(
+        &self,
+        hand_interpretation: &HandInterpretation,
+        winning_tile: MahjongTileId,
+        _hand_info: &HandInfo,
+        _winning_tile_info: &WinningTileInfo,
+    ) -> u8 {
+        // every tile (including winning tile) is a simple tile (i.e. not a terminal or an honor tile, i.e. only numbered tiles from 2-8 are allowed)
+        let mut total_tile_count_array = hand_interpretation.clone().total_tile_count_array;
+        total_tile_count_array.0[usize::from(winning_tile)] += 1;
+
+        let total_tile_ids = total_tile_count_array.to_tile_ids();
+        for tile_id in total_tile_ids.iter() {
+            if !tile_id.is_simple_tile() {
+                return 0;
+            }
+        }
+        1
+    }
+}
+
 /// note: maximum possible fu is 110 fu, so using a u8 to represent fu is okay
 pub fn compute_han_and_fu(
     hand_tiles: MahjongTileCountArray,
@@ -219,7 +269,7 @@ pub fn compute_han_and_fu(
 ) -> (u8, u8) {
     // First, get the possible hand shape interpretations
     // TODO eliminate some interpretations based on winning tile (some interpretations aren't possible)
-    let interpretations = get_hand_interpretations(hand_tiles);
+    let interpretations = get_hand_interpretations_min_shanten(hand_tiles, 0);
     let mut max_scoring_han_fu = (0u8, 0u8);
     for interpretation in interpretations {
         // for each hand shape interpretation, compute han and fu
@@ -231,12 +281,28 @@ pub fn compute_han_and_fu(
         );
         // then pick the hand shape interpretation with the highest score (sort by han, then fu)
         if interpretation_scoring.0 > max_scoring_han_fu.0
-            && interpretation_scoring.1 > max_scoring_han_fu.1
+            || (interpretation_scoring.0 == max_scoring_han_fu.0
+                && interpretation_scoring.1 > max_scoring_han_fu.1)
         {
             max_scoring_han_fu = interpretation_scoring;
         }
     }
+    println!(
+        "overall hand scoring result: {} han, {} fu",
+        max_scoring_han_fu.0, max_scoring_han_fu.1
+    );
     max_scoring_han_fu
+}
+
+pub fn get_yaku_list() -> Vec<Box<dyn Yaku>> {
+    // Box<dyn Yaku> as Yaku is a trait (which doesn't have a defined size), so Box<dyn Yaku> is like a pointer
+    vec![
+        Box::new(RiichiYaku),
+        Box::new(PinfuYaku),
+        Box::new(YakuhaiYaku),
+        Box::new(MenzenTsumoYaku),
+        Box::new(TanyaoYaku),
+    ]
 }
 
 pub fn compute_han_and_fu_hand_interpretation(
@@ -245,9 +311,13 @@ pub fn compute_han_and_fu_hand_interpretation(
     hand_info: &HandInfo,
     winning_tile_info: &WinningTileInfo,
 ) -> (u8, u8) {
+    println!(
+        "computing han and fu for hand interpretation: {}, winning tile {}",
+        hand_interpretation, winning_tile
+    );
     // for each yaku, does this hand meet the conditions for yaku? if so, add the correct number of han
     let mut total_han = 0;
-    for yaku in YAKU_LIST {
+    for yaku in get_yaku_list() {
         total_han += yaku.han_value(
             hand_interpretation,
             winning_tile,
@@ -255,6 +325,20 @@ pub fn compute_han_and_fu_hand_interpretation(
             winning_tile_info,
         );
     }
+    if total_han == 0 {
+        // if you don't have at least 1 han from yaku, don't bother
+        return (0, 0);
+    }
+
+    // add han from dora
+    let mut han_from_dora = 0;
+    let mut total_hand_tiles = hand_interpretation.total_tile_count_array;
+    total_hand_tiles.0[usize::from(winning_tile)] += 1;
+    for dora_tile in hand_info.dora_tiles.iter() {
+        han_from_dora += total_hand_tiles.get_tile_id_count(dora_tile);
+    }
+    total_han += han_from_dora;
+    // TODO what about red fives?? (red fives aren't considered in the MahjongTileCountArray)
 
     let mut fu = compute_raw_fu(
         hand_interpretation,
@@ -268,6 +352,10 @@ pub fn compute_han_and_fu_hand_interpretation(
         fu += 10 - fu_remainder;
     }
 
+    println!(
+        "-> hand interpretation scoring result: {} han, {} fu",
+        total_han, fu
+    );
     (total_han, fu)
 }
 
@@ -327,58 +415,47 @@ pub fn compute_raw_fu(
     // check hand shape + wait type
     let mut pair_so_far = None;
     for tile_group in hand_interpretation.groups.iter() {
-        if tile_group.is_complete() {
-            // check for triplets or quadruplets (need to check shanpon wait separately, as neither pair in the shanpon wait is considered a complete group)
-            if tile_group.meld_type == MeldType::Triplet
-                || tile_group.meld_type == MeldType::Quadruplet
-            {
-                let meld_fu = compute_fu_for_triplet_or_quad(tile_group);
-                fu += meld_fu;
-            }
-        } else {
-            // check wait type (a kanchan, penchan, or tanki wait is worth +2 fu)
-            if tile_group.meld_type == MeldType::Pair {
-                if pair_so_far.is_none() {
+        // check for triplets or quadruplets (need to check shanpon wait separately, as neither pair in the shanpon wait is considered a complete group)
+        if tile_group.meld_type == MeldType::Triplet || tile_group.meld_type == MeldType::Quadruplet
+        {
+            let meld_fu = compute_fu_for_triplet_or_quad(tile_group);
+            fu += meld_fu;
+            continue;
+        }
+
+        if tile_group.meld_type == MeldType::Pair {
+            if pair_so_far.is_none() {
+                pair_so_far = Some(tile_group.clone());
+            } else {
+                // it's a shanpon wait, need to compute the fu from the triplet completed by winning tile
+                // and leave the pair_so_far updated to the pair of the hand (not the triplet)
+
+                // which pair was completed for the win?
+                let mut completed_shanpon_pair = pair_so_far.clone().unwrap();
+                if completed_shanpon_pair.tile_ids.contains(&winning_tile) {
+                    // the previous value of `pair_so_far` is the completed triplet, so switch the pair of the hand to `tile_group`
                     pair_so_far = Some(tile_group.clone());
                 } else {
-                    // it's a shanpon wait, need to compute the fu from the triplet completed by winning tile
-                    // and leave the pair_so_far updated to the pair of the hand (not the triplet)
-
-                    // which pair was completed for the win?
-                    let mut completed_shanpon_pair = pair_so_far.clone().unwrap();
-                    if completed_shanpon_pair.tile_ids.contains(&winning_tile) {
-                        // the previous value of `pair_so_far` is the completed triplet, so switch the pair of the hand to `tile_group`
-                        pair_so_far = Some(tile_group.clone());
-                    } else {
-                        // `tile_group` is the completed triplet, so the previous value of `pair_so_far` is indeed the pair of the hand
-                        completed_shanpon_pair = tile_group.clone();
-                    }
-                    let mut new_tile_ids = completed_shanpon_pair.tile_ids.clone();
-                    new_tile_ids.push(*completed_shanpon_pair.tile_ids.get(0).unwrap());
-                    let is_completed_shanpon_triplet_closed = match winning_tile_info.source {
-                        WinningTileSource::SelfDraw { .. } | WinningTileSource::AfterKan => true,
-                        WinningTileSource::Discard { .. } | WinningTileSource::RobbingKan => false,
-                    };
-                    let completed_shanpon_triplet =
-                        TileMeld::new(new_tile_ids, is_completed_shanpon_triplet_closed);
-
-                    let meld_fu = compute_fu_for_triplet_or_quad(&completed_shanpon_triplet);
-                    fu += meld_fu;
+                    // `tile_group` is the completed triplet, so the previous value of `pair_so_far` is indeed the pair of the hand
+                    completed_shanpon_pair = tile_group.clone();
                 }
-            } else {
-                if tile_group.meld_type == MeldType::Kanchan
-                    || tile_group.meld_type == MeldType::Penchan
-                    || tile_group.meld_type == MeldType::SingleTile
-                {
-                    fu += 2;
-                } else if tile_group.meld_type == MeldType::Ryanmen {
-                    // ryanmen wait is worth 0 fu
-                    fu += 0;
-                } else {
-                    // unexpected wait??
-                    return 0;
-                }
+                let mut new_tile_ids = completed_shanpon_pair.tile_ids.clone();
+                new_tile_ids.push(*completed_shanpon_pair.tile_ids.get(0).unwrap());
+                let is_completed_shanpon_triplet_closed = winning_tile_info.source.is_closed();
+                let completed_shanpon_triplet =
+                    TileMeld::new(new_tile_ids, is_completed_shanpon_triplet_closed);
+
+                let meld_fu = compute_fu_for_triplet_or_quad(&completed_shanpon_triplet);
+                fu += meld_fu;
             }
+        } else if tile_group.meld_type == MeldType::Kanchan
+            || tile_group.meld_type == MeldType::Penchan
+            || tile_group.meld_type == MeldType::SingleTile
+        {
+            // check wait type (a kanchan, penchan, or tanki wait is worth +2 fu)
+            fu += 2;
+        } else if tile_group.meld_type == MeldType::Ryanmen {
+            // ryanmen wait is worth 0 fu
         }
     }
 
@@ -392,8 +469,8 @@ pub fn compute_raw_fu(
     }
 
     // Lastly, check winning condition (we do this check last because we can check for "open pinfu")
-    match winning_tile_info.source {
-        WinningTileSource::Discard { .. } | WinningTileSource::RobbingKan => {
+    match winning_tile_info.source.is_closed() {
+        false => {
             match hand_info.hand_state {
                 HandState::Closed { .. } => {
                     fu += 10;
@@ -406,15 +483,24 @@ pub fn compute_raw_fu(
                 }
             }
         }
-        WinningTileSource::SelfDraw { .. } | WinningTileSource::AfterKan => {
-            // winning by tsumo is always +2 fu (whether the hand is open or closed)
-            fu += 2;
+        true => {
+            // winning by tsumo is +2 fu (whether the hand is open or closed) - unless the hand is scored for pinfu
+            if PinfuYaku.han_value(
+                hand_interpretation,
+                winning_tile,
+                hand_info,
+                winning_tile_info,
+            ) == 0
+            {
+                fu += 2;
+            }
         }
     }
 
     fu
 }
 
+// TODO we can look this up in an array
 fn compute_base_points(han: u8, fu: u8) -> u32 {
     match (han, fu) {
         // don't need fu to compute base points for mangan or higher
@@ -428,6 +514,7 @@ fn compute_base_points(han: u8, fu: u8) -> u32 {
     }
 }
 
+// TODO we can look this up in a table
 pub fn compute_ron_score(han: u8, fu: u8, hand_info: &HandInfo) -> u32 {
     let base_points = compute_base_points(han, fu);
 
@@ -438,6 +525,7 @@ pub fn compute_ron_score(han: u8, fu: u8, hand_info: &HandInfo) -> u32 {
     }
 }
 
+// TODO we can look this up in a table
 pub fn compute_tsumo_score(han: u8, fu: u8, hand_info: &HandInfo) -> (u32, u32, u32) {
     let base_points = compute_base_points(han, fu);
 
