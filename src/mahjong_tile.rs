@@ -631,6 +631,18 @@ impl MahjongTileCountArray {
         }
         total_tiles
     }
+
+    pub fn add_tile_ids(&self, tile_ids_to_add: Vec<MahjongTileId>) -> Self {
+        let mut new_tile_count_array = self.clone();
+        for tile_id in tile_ids_to_add.iter() {
+            if new_tile_count_array.0[usize::from(*tile_id)] == 4 {
+                // don't allow more than 4 copies
+                continue;
+            }
+            new_tile_count_array.0[usize::from(*tile_id)] += 1;
+        }
+        new_tile_count_array
+    }
 }
 
 impl fmt::Display for MahjongTileCountArray {
