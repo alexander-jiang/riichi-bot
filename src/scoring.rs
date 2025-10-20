@@ -4,8 +4,11 @@ use crate::mahjong_tile::{
     MahjongTileCountArray, MahjongTileId, MahjongTileNumberedSuit, MahjongWindOrder,
 };
 use crate::shanten::{
-    get_hand_interpretations_min_shanten, HandInterpretation, MeldType, TileMeld,
+    get_chiitoi_shanten, get_hand_interpretations_min_shanten, get_kokushi_shanten,
+    HandInterpretation, MeldType, TileMeld,
 };
+
+const CHIITOI_FU: u8 = 25;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RiichiInfo {
@@ -94,11 +97,34 @@ impl Yaku for RiichiYaku {
 
 fn get_total_groups(
     hand_interpretation: &HandInterpretation,
-    tile_melds: &Vec<TileMeld>,
+    _tile_melds: &Vec<TileMeld>,
 ) -> Vec<TileMeld> {
-    let mut total_groups = hand_interpretation.groups.clone();
-    total_groups.extend(tile_melds.clone());
-    total_groups
+    // let mut total_groups = hand_interpretation.groups.clone();
+    // total_groups.extend(tile_melds.clone());
+    // println!(
+    //     "total groups = [{}]",
+    //     total_groups
+    //         .iter()
+    //         .map(|arg0| ToString::to_string(arg0))
+    //         .collect::<Vec<String>>()
+    //         .join(", ")
+    // );
+    // total_groups
+    hand_interpretation.groups.clone()
+}
+
+fn get_total_num_pairs_before_winning_tile(
+    hand_interpretation: &HandInterpretation,
+    melded_tiles: &Vec<TileMeld>,
+) -> u8 {
+    let mut num_pairs = 0;
+    let total_groups = get_total_groups(hand_interpretation, melded_tiles);
+    for tile_group in total_groups.iter() {
+        if tile_group.meld_type == MeldType::Pair {
+            num_pairs += 1;
+        }
+    }
+    num_pairs
 }
 
 pub struct YakuhaiYaku;
@@ -107,11 +133,12 @@ impl Yaku for YakuhaiYaku {
         &self,
         hand_interpretation: &HandInterpretation,
         melded_tiles: &Vec<TileMeld>,
-        _winning_tile: MahjongTileId,
+        winning_tile: MahjongTileId,
         hand_info: &HandInfo,
         _winning_tile_info: &WinningTileInfo,
     ) -> u8 {
         let mut yakuhai_han = 0;
+        let num_pairs = get_total_num_pairs_before_winning_tile(hand_interpretation, melded_tiles);
         // check for a triplet or quadruplet of a yakuhai tile (dragon, seat wind, or round wind)
         let total_groups = get_total_groups(hand_interpretation, melded_tiles);
         for tile_group in total_groups.iter() {
@@ -121,20 +148,41 @@ impl Yaku for YakuhaiYaku {
                 let tile_id = tile_group.tile_ids.get(0).unwrap();
                 if tile_id.is_dragon_tile() {
                     yakuhai_han += 1;
+                    println!("group of {} is worth 1 han from yakuhai", *tile_id);
                     continue;
                 }
                 if tile_id.is_wind_tile() {
-                    let tile_wind = tile_id.get_wind().unwrap();
-                    // Note that if the wind is both the round and seat wind, this counts for 2 han
-                    if tile_wind == hand_info.round_wind {
+                    if YakuhaiYaku::is_double_yakuhai_tile(*tile_id, hand_info) {
+                        yakuhai_han += 2;
+                        println!("group of {} is worth 2 han from yakuhai", *tile_id);
+                    } else if YakuhaiYaku::is_yakuhai_tile(*tile_id, hand_info) {
                         yakuhai_han += 1;
+                        println!("group of {} is worth 1 han from yakuhai", *tile_id);
                     }
-                    if tile_wind == hand_info.seat_wind {
+                    continue;
+                }
+            } else if num_pairs == 2 && tile_group.meld_type == MeldType::Pair {
+                // shanpon wait, then check if the winning tile completes a yakuhai triplet
+                let pair_tile_id = tile_group.tile_ids.get(0).unwrap();
+                if winning_tile == *pair_tile_id {
+                    if YakuhaiYaku::is_double_yakuhai_tile(winning_tile, hand_info) {
+                        yakuhai_han += 2;
+                        println!(
+                            "completing triplet of {} (from shanpon) is worth 2 han from yakuhai",
+                            winning_tile
+                        );
+                    } else if YakuhaiYaku::is_yakuhai_tile(winning_tile, hand_info) {
                         yakuhai_han += 1;
+                        println!(
+                            "completing triplet of {} (from shanpon) is worth 1 han from yakuhai",
+                            winning_tile
+                        );
                     }
+                    continue;
                 }
             }
         }
+        println!("Hand has {yakuhai_han} han from yakuhai");
         yakuhai_han
     }
 }
@@ -253,6 +301,25 @@ impl Yaku for MenzenTsumoYaku {
     }
 }
 
+pub struct RinshanYaku;
+impl Yaku for RinshanYaku {
+    fn han_value(
+        &self,
+        _hand_interpretation: &HandInterpretation,
+        _melded_tiles: &Vec<TileMeld>,
+        _winning_tile: MahjongTileId,
+        _hand_info: &HandInfo,
+        winning_tile_info: &WinningTileInfo,
+    ) -> u8 {
+        // rinshan kaihou means the winning tile was the tile that was drawn immediately after declaring a kan
+        if winning_tile_info.source == WinningTileSource::AfterKan {
+            1
+        } else {
+            0
+        }
+    }
+}
+
 pub struct TanyaoYaku;
 impl Yaku for TanyaoYaku {
     fn han_value(
@@ -297,6 +364,7 @@ impl Yaku for ChiitoiYaku {
         _winning_tile_info: &WinningTileInfo,
     ) -> u8 {
         if ChiitoiYaku::is_chiitoi_hand(hand_interpretation, melded_tiles, winning_tile) {
+            println!("chiitoi hand: {}", hand_interpretation);
             2
         } else {
             0
@@ -396,7 +464,7 @@ impl Yaku for HonitsuYaku {
                 HandState::Open => 2,
             }
         } else {
-            println!("hand is neither chinitsu nor honitsu");
+            // println!("hand is neither chinitsu nor honitsu");
             0
         }
     }
@@ -507,8 +575,49 @@ pub fn compute_han_and_fu(
 ) -> (u8, u8) {
     // First, get the possible hand shape interpretations
     // TODO eliminate some interpretations based on winning tile (some interpretations aren't possible)
-    // TODO the `get_hand_interpretations_min_shanten` doesn't include chiitoi (seven pairs) or kokushi (thirteen orphans)
-    let interpretations = get_hand_interpretations_min_shanten(hand_tiles, &melded_tiles, 0);
+    let mut interpretations = get_hand_interpretations_min_shanten(hand_tiles, &melded_tiles, 0);
+
+    // check chiitoi and kokushi separately (as the `get_hand_interpretations_min_shanten` doesn't include chiitoi (seven pairs) or kokushi (thirteen orphans))
+    let total_tile_count_array = hand_tiles.clone().add_tile_ids(vec![winning_tile]);
+    let chiitoi_shanten = get_chiitoi_shanten(total_tile_count_array, &melded_tiles);
+    if chiitoi_shanten == -1 {
+        let mut chiitoi_groups = Vec::new();
+        for tile_id in total_tile_count_array.to_distinct_tile_ids() {
+            chiitoi_groups.push(TileMeld {
+                meld_type: MeldType::Pair,
+                tile_ids: vec![tile_id, tile_id],
+                is_closed: true,
+            });
+        }
+        interpretations.push(HandInterpretation {
+            total_tile_count_array: total_tile_count_array,
+            groups: chiitoi_groups,
+        });
+    }
+    let kokushi_shanten = get_kokushi_shanten(total_tile_count_array, &melded_tiles);
+    if kokushi_shanten == -1 {
+        let mut kokushi_groups: Vec<TileMeld> = Vec::new();
+        for tile_id in total_tile_count_array.to_distinct_tile_ids() {
+            if total_tile_count_array.get_tile_id_count(&tile_id) == 1 {
+                kokushi_groups.push(TileMeld {
+                    meld_type: MeldType::SingleTile,
+                    tile_ids: vec![tile_id],
+                    is_closed: true,
+                });
+            } else if total_tile_count_array.get_tile_id_count(&tile_id) == 2 {
+                kokushi_groups.push(TileMeld {
+                    meld_type: MeldType::Pair,
+                    tile_ids: vec![tile_id, tile_id],
+                    is_closed: true,
+                });
+            }
+        }
+        interpretations.push(HandInterpretation {
+            total_tile_count_array: total_tile_count_array,
+            groups: kokushi_groups,
+        });
+    }
+
     let mut max_scoring_han_fu = (0u8, 0u8);
     for interpretation in interpretations {
         // for each hand shape interpretation, compute han and fu
@@ -527,6 +636,7 @@ pub fn compute_han_and_fu(
             max_scoring_han_fu = interpretation_scoring;
         }
     }
+
     println!(
         "overall hand scoring result: {} han, {} fu",
         max_scoring_han_fu.0, max_scoring_han_fu.1
@@ -550,7 +660,8 @@ pub fn get_yaku_list() -> Vec<Box<dyn Yaku>> {
         // TODO sanshoku doujun (2 han, can be open)
         Box::new(HonitsuYaku),
         Box::new(ChinitsuYaku),
-        // TODO chankan (robbing kan), haitei / houtei, rinshan
+        // TODO chankan (robbing kan), haitei / houtei
+        Box::new(RinshanYaku),
         // TODO ippatsu
         // TODO ryanpeikou (3 han, closed only), sanshoku (2 han if closed, 1 han if open)
         // TODO double riichi (2 han)
@@ -598,6 +709,12 @@ pub fn compute_han_and_fu_hand_interpretation(
     total_han += han_from_dora;
     // TODO what about red fives?? (red fives aren't considered in the MahjongTileCountArray)
 
+    // chiitoi is locked to 25 fu (no rounding)
+    if ChiitoiYaku::is_chiitoi_hand(hand_interpretation, melded_tiles, winning_tile) {
+        println!("-> hand is chiitoi: {} han, {} fu", total_han, CHIITOI_FU);
+        return (total_han, CHIITOI_FU);
+    }
+
     let mut fu = compute_raw_fu(
         hand_interpretation,
         melded_tiles,
@@ -637,6 +754,7 @@ fn compute_fu_for_triplet_or_quad(tile_meld: &TileMeld) -> u8 {
         // 4x fu for a quad (instead of a triplet)
         meld_fu = meld_fu << 2;
     }
+    println!("meld of {} is worth {} fu", *melded_tile_id, meld_fu);
     meld_fu
 }
 
@@ -650,7 +768,8 @@ pub fn compute_raw_fu(
 ) -> u8 {
     // special cases: chiitoi is always 25 fu. and thirteen orphans doesn't have a defined fu, so I will assign it 0 fu (doesn't matter as it's a yakuman)
     if ChiitoiYaku::is_chiitoi_hand(hand_interpretation, melded_tiles, winning_tile) {
-        return 25;
+        println!("chiitoi is always 25 fu");
+        return CHIITOI_FU;
     }
     // TODO move this logic into a impl ThirteenOrphansYaku
     let mut distinct_terminals_and_honors = HashSet::new();
@@ -663,6 +782,7 @@ pub fn compute_raw_fu(
         }
     }
     if distinct_terminals_and_honors.len() == 13 {
+        println!("kokushi musou (thirteen orphans) doesn't need to count fu");
         return 0;
     }
 
@@ -710,6 +830,7 @@ pub fn compute_raw_fu(
             || tile_group.meld_type == MeldType::SingleTile
         {
             // check wait type (a kanchan, penchan, or tanki wait is worth +2 fu)
+            println!("wait is kanchan, penchan or tanki: worth 2 fu");
             fu += 2;
         } else if tile_group.meld_type == MeldType::Ryanmen {
             // ryanmen wait is worth 0 fu
@@ -720,8 +841,10 @@ pub fn compute_raw_fu(
     let pair_so_far = pair_so_far.expect("Should have identified a pair");
     let pair_tile_id = pair_so_far.tile_ids.get(0).unwrap();
     if YakuhaiYaku::is_double_yakuhai_tile(*pair_tile_id, hand_info) {
+        println!("pair is yakuhai tile & double wind: worth 4 fu");
         fu += 4;
     } else if YakuhaiYaku::is_yakuhai_tile(*pair_tile_id, hand_info) {
+        println!("pair is yakuhai tile: worth 2 fu");
         fu += 2;
     }
 
@@ -730,11 +853,13 @@ pub fn compute_raw_fu(
         false => {
             match hand_info.hand_state {
                 HandState::Closed { .. } => {
+                    println!("closed hand win by ron: worth 10 fu");
                     fu += 10;
                 }
                 HandState::Open => {
                     if fu == 20 {
                         // if the hand is open, wins by ron, and has no other fu, then it gains 2 fu
+                        println!("open hand win by ron with no other fu: worth 2 fu");
                         fu += 2;
                     }
                 }
@@ -750,11 +875,13 @@ pub fn compute_raw_fu(
                 winning_tile_info,
             ) == 0
             {
+                println!("win by tsumo (and not pinfu): worth 2 fu");
                 fu += 2;
             }
         }
     }
 
+    println!("total fu (before rounding) = {fu}");
     fu
 }
 
@@ -1141,6 +1268,555 @@ mod tests {
         // Non-dealer Ron = 3 han 30 fu
         assert_eq!(
             (3, 30),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_nondealer.clone(),
+                ron.clone()
+            )
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part1_hand_scoring_q5() {
+        // https://mahjong-ny.com/features/sample-pro-test/
+        // 5) 111m111p1112s + 777z open, win on 3s, dora = 4m
+        let hand = MahjongTileCountArray::from_text("111m111p1112s");
+        let melded_tiles = vec![TileMeld {
+            meld_type: MeldType::Triplet,
+            tile_ids: get_tile_ids_from_string("777z"),
+            is_closed: false,
+        }];
+        let dora_tiles = get_tile_ids_from_string("4m");
+        let win_tile = MahjongTileId::from_text("3s").unwrap();
+
+        // winning methods (ron vs tsumo)
+        let ron = WinningTileInfo {
+            source: WinningTileSource::Discard {
+                is_last_discard: false,
+            },
+        };
+        let tsumo = WinningTileInfo {
+            source: WinningTileSource::SelfDraw {
+                is_first_draw: false,
+                is_last_draw: false,
+            },
+        };
+
+        // situations (dealer in East-1 vs. south in East-1)
+        let as_dealer = HandInfo {
+            hand_state: HandState::Open,
+            round_wind: MahjongWindOrder::East,
+            seat_wind: MahjongWindOrder::East,
+            round_number: 1,
+            honba_counter: 0,
+            dora_tiles: dora_tiles.clone(),
+        };
+        let mut as_nondealer = as_dealer.clone();
+        as_nondealer.seat_wind = MahjongWindOrder::South;
+        let as_nondealer = as_nondealer;
+
+        // Dealer Tsumo = 2 han 50 fu
+        assert_eq!(
+            (2, 50),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_dealer.clone(),
+                tsumo.clone()
+            )
+        );
+
+        // Dealer Ron = 2 han 50 fu
+        assert_eq!(
+            (2, 50),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_dealer.clone(),
+                ron.clone()
+            )
+        );
+
+        // Non-dealer Tsumo = 2 han 50 fu
+        assert_eq!(
+            (2, 50),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_nondealer.clone(),
+                tsumo.clone()
+            )
+        );
+
+        // Non-dealer Ron = 2 han 50 fu
+        assert_eq!(
+            (2, 50),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_nondealer.clone(),
+                ron.clone()
+            )
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part1_hand_scoring_q6() {
+        // https://mahjong-ny.com/features/sample-pro-test/
+        // 6) 2223344m + 678m open + 3333s closed, win on 4m, dora = 8s
+        let hand = MahjongTileCountArray::from_text("2223344m");
+        let melded_tiles = vec![
+            TileMeld {
+                meld_type: MeldType::Sequence,
+                tile_ids: get_tile_ids_from_string("678m"),
+                is_closed: false,
+            },
+            TileMeld {
+                meld_type: MeldType::Quadruplet,
+                tile_ids: get_tile_ids_from_string("3333s"),
+                is_closed: true,
+            },
+        ];
+        let dora_tiles = get_tile_ids_from_string("8s");
+        let win_tile = MahjongTileId::from_text("4m").unwrap();
+
+        // winning methods (ron vs tsumo)
+        let ron = WinningTileInfo {
+            source: WinningTileSource::Discard {
+                is_last_discard: false,
+            },
+        };
+        let tsumo = WinningTileInfo {
+            source: WinningTileSource::SelfDraw {
+                is_first_draw: false,
+                is_last_draw: false,
+            },
+        };
+
+        // situations (dealer in East-1 vs. south in East-1)
+        let as_dealer = HandInfo {
+            hand_state: HandState::Open,
+            round_wind: MahjongWindOrder::East,
+            seat_wind: MahjongWindOrder::East,
+            round_number: 1,
+            honba_counter: 0,
+            dora_tiles: dora_tiles.clone(),
+        };
+        let mut as_nondealer = as_dealer.clone();
+        as_nondealer.seat_wind = MahjongWindOrder::South;
+        let as_nondealer = as_nondealer;
+
+        // Dealer Tsumo = 3 han 50 fu
+        assert_eq!(
+            (3, 50),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_dealer.clone(),
+                tsumo.clone()
+            )
+        );
+
+        // Dealer Ron = 1 han 50 fu
+        assert_eq!(
+            (1, 50),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_dealer.clone(),
+                ron.clone()
+            )
+        );
+
+        // Non-dealer Tsumo = 3 han 50 fu
+        assert_eq!(
+            (3, 50),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_nondealer.clone(),
+                tsumo.clone()
+            )
+        );
+
+        // Non-dealer Ron = 1 han 50 fu
+        assert_eq!(
+            (1, 50),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_nondealer.clone(),
+                ron.clone()
+            )
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part1_hand_scoring_q7() {
+        // https://mahjong-ny.com/features/sample-pro-test/
+        // 7) 45567p11s + 222z open + 111z open, win on 6p, dora = 2m
+        let hand = MahjongTileCountArray::from_text("45567p11s");
+        let melded_tiles = vec![
+            TileMeld {
+                meld_type: MeldType::Triplet,
+                tile_ids: get_tile_ids_from_string("222z"),
+                is_closed: false,
+            },
+            TileMeld {
+                meld_type: MeldType::Triplet,
+                tile_ids: get_tile_ids_from_string("111z"),
+                is_closed: false,
+            },
+        ];
+        let dora_tiles = get_tile_ids_from_string("2m");
+        let win_tile = MahjongTileId::from_text("6p").unwrap();
+
+        // winning methods (ron vs tsumo)
+        let ron = WinningTileInfo {
+            source: WinningTileSource::Discard {
+                is_last_discard: false,
+            },
+        };
+        let tsumo = WinningTileInfo {
+            source: WinningTileSource::SelfDraw {
+                is_first_draw: false,
+                is_last_draw: false,
+            },
+        };
+
+        // situations (dealer in East-1 vs. south in East-1)
+        let as_dealer = HandInfo {
+            hand_state: HandState::Open,
+            round_wind: MahjongWindOrder::East,
+            seat_wind: MahjongWindOrder::East,
+            round_number: 1,
+            honba_counter: 0,
+            dora_tiles: dora_tiles.clone(),
+        };
+        let mut as_nondealer = as_dealer.clone();
+        as_nondealer.seat_wind = MahjongWindOrder::South;
+        let as_nondealer = as_nondealer;
+
+        // Dealer Tsumo = 2 han 40 fu
+        assert_eq!(
+            (2, 40),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_dealer.clone(),
+                tsumo.clone()
+            )
+        );
+
+        // Dealer Ron = 2 han 30 fu
+        assert_eq!(
+            (2, 30),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_dealer.clone(),
+                ron.clone()
+            )
+        );
+
+        // Non-dealer Tsumo = 2 han 40 fu
+        assert_eq!(
+            (2, 40),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_nondealer.clone(),
+                tsumo.clone()
+            )
+        );
+
+        // Non-dealer Ron = 2 han 30 fu
+        assert_eq!(
+            (2, 30),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_nondealer.clone(),
+                ron.clone()
+            )
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part1_hand_scoring_q8() {
+        // https://mahjong-ny.com/features/sample-pro-test/
+        // 8) 2223444777888s, win on 4s, dora = 3s
+        let hand = MahjongTileCountArray::from_text("2223444777888s");
+        let melded_tiles = Vec::new();
+        let dora_tiles = get_tile_ids_from_string("3s");
+        let win_tile = MahjongTileId::from_text("4s").unwrap();
+
+        // winning methods (ron vs tsumo)
+        let ron = WinningTileInfo {
+            source: WinningTileSource::Discard {
+                is_last_discard: false,
+            },
+        };
+        let tsumo = WinningTileInfo {
+            source: WinningTileSource::SelfDraw {
+                is_first_draw: false,
+                is_last_draw: false,
+            },
+        };
+
+        // situations (dealer in East-1 vs. south in East-1)
+        let as_dealer = HandInfo {
+            hand_state: HandState::Closed {
+                riichi_info: RiichiInfo::NoRiichi,
+            },
+            round_wind: MahjongWindOrder::East,
+            seat_wind: MahjongWindOrder::East,
+            round_number: 1,
+            honba_counter: 0,
+            dora_tiles: dora_tiles.clone(),
+        };
+        let mut as_nondealer = as_dealer.clone();
+        as_nondealer.seat_wind = MahjongWindOrder::South;
+        let as_nondealer = as_nondealer;
+
+        // Dealer Tsumo = 10 han 40 fu
+        assert_eq!(
+            (10, 40),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_dealer.clone(),
+                tsumo.clone()
+            )
+        );
+
+        // Dealer Ron = 8 han 30 fu
+        assert_eq!(
+            (8, 30),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_dealer.clone(),
+                ron.clone()
+            )
+        );
+
+        // Non-dealer Tsumo = 10 han 40 fu
+        assert_eq!(
+            (10, 40),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_nondealer.clone(),
+                tsumo.clone()
+            )
+        );
+
+        // Non-dealer Ron = 8 han 30 fu
+        assert_eq!(
+            (8, 30),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_nondealer.clone(),
+                ron.clone()
+            )
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part1_hand_scoring_q9() {
+        // https://mahjong-ny.com/features/sample-pro-test/
+        // 9) 79m678p888s66z + 1111m (closed kan), win on 8m, dora = 4p
+        let hand = MahjongTileCountArray::from_text("79m678p888s66z");
+        let melded_tiles = vec![TileMeld {
+            meld_type: MeldType::Quadruplet,
+            tile_ids: get_tile_ids_from_string("1111m"),
+            is_closed: true,
+        }];
+        let dora_tiles = get_tile_ids_from_string("4p");
+        let win_tile = MahjongTileId::from_text("8m").unwrap();
+
+        // winning methods (ron vs tsumo)
+        let ron = WinningTileInfo {
+            source: WinningTileSource::Discard {
+                is_last_discard: false,
+            },
+        };
+        let tsumo = WinningTileInfo {
+            source: WinningTileSource::SelfDraw {
+                is_first_draw: false,
+                is_last_draw: false,
+            },
+        };
+
+        // situations (dealer in East-1 vs. south in East-1)
+        let as_dealer = HandInfo {
+            hand_state: HandState::Closed {
+                riichi_info: RiichiInfo::Riichi {
+                    is_ippatsu: false,
+                    is_double_riichi: false,
+                },
+            },
+            round_wind: MahjongWindOrder::East,
+            seat_wind: MahjongWindOrder::East,
+            round_number: 1,
+            honba_counter: 0,
+            dora_tiles: dora_tiles.clone(),
+        };
+        let mut as_nondealer = as_dealer.clone();
+        as_nondealer.seat_wind = MahjongWindOrder::South;
+        let as_nondealer = as_nondealer;
+
+        // Dealer Tsumo = 2 han 70 fu
+        assert_eq!(
+            (2, 70),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_dealer.clone(),
+                tsumo.clone()
+            )
+        );
+
+        // Dealer Ron = 1 han 70 fu
+        assert_eq!(
+            (1, 70),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_dealer.clone(),
+                ron.clone()
+            )
+        );
+
+        // Non-dealer Tsumo = 2 han 70 fu
+        assert_eq!(
+            (2, 70),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_nondealer.clone(),
+                tsumo.clone()
+            )
+        );
+
+        // Non-dealer Ron = 1 han 70 fu
+        assert_eq!(
+            (1, 70),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_nondealer.clone(),
+                ron.clone()
+            )
+        );
+    }
+
+    #[test]
+    fn jpml_pro_test_part1_hand_scoring_q10() {
+        // https://mahjong-ny.com/features/sample-pro-test/
+        // 10) 4466p678s + 5555m open + 8888p open, win on 4p, dora = 4m
+        let hand = MahjongTileCountArray::from_text("4466p678s");
+        let melded_tiles = vec![
+            TileMeld {
+                meld_type: MeldType::Quadruplet,
+                tile_ids: get_tile_ids_from_string("5555m"),
+                is_closed: false,
+            },
+            TileMeld {
+                meld_type: MeldType::Quadruplet,
+                tile_ids: get_tile_ids_from_string("8888p"),
+                is_closed: false,
+            },
+        ];
+        let dora_tiles = get_tile_ids_from_string("4m");
+        let win_tile = MahjongTileId::from_text("4p").unwrap();
+
+        // winning methods (ron vs tsumo)
+        let ron = WinningTileInfo {
+            source: WinningTileSource::Discard {
+                is_last_discard: false,
+            },
+        };
+        let tsumo = WinningTileInfo {
+            source: WinningTileSource::AfterKan,
+        };
+
+        // situations (dealer in East-1 vs. south in East-1)
+        let as_dealer = HandInfo {
+            hand_state: HandState::Open,
+            round_wind: MahjongWindOrder::East,
+            seat_wind: MahjongWindOrder::East,
+            round_number: 1,
+            honba_counter: 0,
+            dora_tiles: dora_tiles.clone(),
+        };
+        let mut as_nondealer = as_dealer.clone();
+        as_nondealer.seat_wind = MahjongWindOrder::South;
+        let as_nondealer = as_nondealer;
+
+        // Dealer Tsumo = 2 han 50 fu (assuming that win by rinshan counts +2 fu just like tsumo)
+        assert_eq!(
+            (2, 50),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_dealer.clone(),
+                tsumo.clone()
+            )
+        );
+
+        // Dealer Ron = 1 han 40 fu
+        assert_eq!(
+            (1, 40),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_dealer.clone(),
+                ron.clone()
+            )
+        );
+
+        // Non-dealer Tsumo = 2 han 50 fu (assuming that win by rinshan counts +2 fu just like tsumo)
+        assert_eq!(
+            (2, 50),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_nondealer.clone(),
+                tsumo.clone()
+            )
+        );
+
+        // Non-dealer Ron = 1 han 40 fu
+        assert_eq!(
+            (1, 40),
             compute_han_and_fu(
                 hand.clone(),
                 melded_tiles.clone(),
