@@ -245,7 +245,7 @@ impl Yaku for PinfuYaku {
         _winning_tile_info: &WinningTileInfo,
     ) -> u8 {
         // pinfu must be closed
-        if hand_info.hand_state == HandState::Open {
+        if !hand_info.hand_state.is_closed() {
             return 0;
         }
 
@@ -316,7 +316,7 @@ impl Yaku for MenzenTsumoYaku {
         winning_tile_info: &WinningTileInfo,
     ) -> u8 {
         // menzen tsumo means the hand was closed and it won by self-draw (including draw from dead-wall after kan i.e. rinshan kaihou)
-        if hand_info.hand_state == HandState::Open || !winning_tile_info.source.is_closed() {
+        if !hand_info.hand_state.is_closed() || !winning_tile_info.source.is_closed() {
             0
         } else {
             1
@@ -530,6 +530,7 @@ impl Yaku for SanankouYaku {
             }
         }
         if num_closed_triplets == 3 {
+            println!("hand scores sanankou: 2 han");
             2
         } else {
             0
@@ -673,17 +674,31 @@ fn get_interpretations_with_valid_tenpai(
         let total_shanten = get_shanten_optimized(tile_count_array_with_winning_tile, melded_tiles);
         if total_shanten == -1 {
             // check if the winning tile completes the last incomplete group
-            let mut num_incomplete_groups = 0;
+            let mut num_incomplete_groups_besides_pairs = 0;
+            let mut num_pairs = 0;
             let mut num_incomplete_groups_completed_by_winning_tile = 0;
+            let mut num_pairs_completed_by_winning_tile = 0;
             for tile_meld in interpretation.groups.iter() {
-                if !tile_meld.is_complete() {
-                    num_incomplete_groups += 1;
+                if tile_meld.meld_type == MeldType::Pair {
+                    num_pairs += 1;
                     if tile_meld
                         .tile_ids_to_complete_group()
                         .contains(&winning_tile)
                     {
                         println!(
-                            "winning tile {} completes incomplete tile group {}",
+                            "winning tile {} completes incomplete pair {}",
+                            winning_tile, tile_meld
+                        );
+                        num_pairs_completed_by_winning_tile += 1;
+                    }
+                } else if !tile_meld.is_complete() {
+                    num_incomplete_groups_besides_pairs += 1;
+                    if tile_meld
+                        .tile_ids_to_complete_group()
+                        .contains(&winning_tile)
+                    {
+                        println!(
+                            "winning tile {} completes incomplete group {}",
                             winning_tile, tile_meld
                         );
                         num_incomplete_groups_completed_by_winning_tile += 1;
@@ -691,9 +706,16 @@ fn get_interpretations_with_valid_tenpai(
                 }
             }
 
-            if num_incomplete_groups >= 1
-                && num_incomplete_groups <= 2
+            if num_incomplete_groups_besides_pairs == 1
+                && num_pairs == 1
                 && num_incomplete_groups_completed_by_winning_tile == 1
+                && num_pairs_completed_by_winning_tile == 0
+            {
+                valid_interpretations.push(interpretation);
+            } else if num_incomplete_groups_besides_pairs == 0
+                && num_pairs == 2
+                && num_incomplete_groups_completed_by_winning_tile == 0
+                && num_pairs_completed_by_winning_tile == 1
             {
                 valid_interpretations.push(interpretation);
             }
@@ -991,17 +1013,14 @@ pub fn compute_raw_fu(
     // Lastly, check winning condition (we do this check last because we can check for "open pinfu")
     match winning_tile_info.source.is_closed() {
         false => {
-            match hand_info.hand_state {
-                HandState::Closed { .. } => {
-                    println!("closed hand win by ron: worth 10 fu");
-                    fu += 10;
-                }
-                HandState::Open => {
-                    if fu == 20 {
-                        // if the hand is open, wins by ron, and has no other fu, then it gains 2 fu
-                        println!("open hand win by ron with no other fu: worth 2 fu");
-                        fu += 2;
-                    }
+            if hand_info.hand_state.is_closed() {
+                println!("closed hand win by ron: worth 10 fu");
+                fu += 10;
+            } else {
+                if fu == 20 {
+                    // if the hand is open, wins by ron, and has no other fu, then it gains 2 fu
+                    println!("open hand win by ron with no other fu: worth 2 fu");
+                    fu += 2;
                 }
             }
         }
@@ -1745,9 +1764,9 @@ mod tests {
             )
         );
 
-        // Dealer Ron = 8 han 30 fu
+        // Dealer Ron = 10 han 50 fu
         assert_eq!(
-            (8, 30),
+            (10, 50),
             compute_han_and_fu(
                 hand.clone(),
                 melded_tiles.clone(),
@@ -1769,9 +1788,9 @@ mod tests {
             )
         );
 
-        // Non-dealer Ron = 8 han 30 fu
+        // Non-dealer Ron = 10 han 50 fu
         assert_eq!(
-            (8, 30),
+            (10, 50),
             compute_han_and_fu(
                 hand.clone(),
                 melded_tiles.clone(),
