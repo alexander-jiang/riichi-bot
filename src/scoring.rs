@@ -5,7 +5,7 @@ use crate::mahjong_tile::{
 };
 use crate::shanten::{
     get_chiitoi_shanten, get_hand_interpretations_min_shanten, get_kokushi_shanten,
-    HandInterpretation, MeldType, TileMeld,
+    get_shanten_optimized, HandInterpretation, MeldType, TileMeld,
 };
 
 const CHIITOI_FU: u8 = 25;
@@ -23,6 +23,15 @@ pub enum RiichiInfo {
 pub enum HandState {
     Open,
     Closed { riichi_info: RiichiInfo },
+}
+
+impl HandState {
+    pub fn is_closed(&self) -> bool {
+        match self {
+            Self::Closed { .. } => true,
+            Self::Open => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -95,30 +104,44 @@ impl Yaku for RiichiYaku {
     }
 }
 
-fn get_total_groups(
-    hand_interpretation: &HandInterpretation,
-    _tile_melds: &Vec<TileMeld>,
-) -> Vec<TileMeld> {
-    // let mut total_groups = hand_interpretation.groups.clone();
-    // total_groups.extend(tile_melds.clone());
-    // println!(
-    //     "total groups = [{}]",
-    //     total_groups
-    //         .iter()
-    //         .map(|arg0| ToString::to_string(arg0))
-    //         .collect::<Vec<String>>()
-    //         .join(", ")
-    // );
-    // total_groups
+fn get_total_groups(hand_interpretation: &HandInterpretation) -> Vec<TileMeld> {
     hand_interpretation.groups.clone()
 }
 
-fn get_total_num_pairs_before_winning_tile(
+fn get_total_groups_after_winning_tile(
     hand_interpretation: &HandInterpretation,
-    melded_tiles: &Vec<TileMeld>,
-) -> u8 {
+    winning_tile: MahjongTileId,
+    winning_tile_info: &WinningTileInfo,
+) -> Vec<TileMeld> {
+    let tile_groups = hand_interpretation.groups.clone();
+    let mut new_tile_melds = Vec::new();
+    for tile_meld in tile_groups {
+        if tile_meld.is_complete() {
+            new_tile_melds.push(tile_meld.clone());
+            continue;
+        }
+        if tile_meld
+            .tile_ids_to_complete_group()
+            .contains(&winning_tile)
+        {
+            let mut new_tile_ids = tile_meld.tile_ids;
+            new_tile_ids.push(winning_tile);
+
+            let new_is_closed = tile_meld.is_closed && winning_tile_info.source.is_closed();
+            let new_tile_meld = TileMeld::new(new_tile_ids, new_is_closed);
+            // println!(
+            //     "winning tile {} makes group: {}",
+            //     winning_tile, new_tile_meld
+            // );
+            new_tile_melds.push(new_tile_meld);
+        }
+    }
+    new_tile_melds
+}
+
+fn get_total_num_pairs_before_winning_tile(hand_interpretation: &HandInterpretation) -> u8 {
     let mut num_pairs = 0;
-    let total_groups = get_total_groups(hand_interpretation, melded_tiles);
+    let total_groups = get_total_groups(hand_interpretation);
     for tile_group in total_groups.iter() {
         if tile_group.meld_type == MeldType::Pair {
             num_pairs += 1;
@@ -132,15 +155,15 @@ impl Yaku for YakuhaiYaku {
     fn han_value(
         &self,
         hand_interpretation: &HandInterpretation,
-        melded_tiles: &Vec<TileMeld>,
+        _melded_tiles: &Vec<TileMeld>,
         winning_tile: MahjongTileId,
         hand_info: &HandInfo,
         _winning_tile_info: &WinningTileInfo,
     ) -> u8 {
         let mut yakuhai_han = 0;
-        let num_pairs = get_total_num_pairs_before_winning_tile(hand_interpretation, melded_tiles);
+        let num_pairs = get_total_num_pairs_before_winning_tile(hand_interpretation);
         // check for a triplet or quadruplet of a yakuhai tile (dragon, seat wind, or round wind)
-        let total_groups = get_total_groups(hand_interpretation, melded_tiles);
+        let total_groups = get_total_groups(hand_interpretation);
         for tile_group in total_groups.iter() {
             if tile_group.meld_type == MeldType::Triplet
                 || tile_group.meld_type == MeldType::Quadruplet
@@ -216,7 +239,7 @@ impl Yaku for PinfuYaku {
     fn han_value(
         &self,
         hand_interpretation: &HandInterpretation,
-        melded_tiles: &Vec<TileMeld>,
+        _melded_tiles: &Vec<TileMeld>,
         winning_tile: MahjongTileId,
         hand_info: &HandInfo,
         _winning_tile_info: &WinningTileInfo,
@@ -230,7 +253,7 @@ impl Yaku for PinfuYaku {
         let mut pairs: Vec<TileMeld> = Vec::new();
         let mut num_completed_sequences = 0;
         // pinfu must not include triplets or quadruplets (there must be 3 complete sequences, and a ryanmen wait)
-        let total_groups = get_total_groups(hand_interpretation, melded_tiles);
+        let total_groups = get_total_groups(hand_interpretation);
         for tile_group in total_groups.iter() {
             if tile_group.meld_type == MeldType::Triplet
                 || tile_group.meld_type == MeldType::Quadruplet
@@ -353,6 +376,39 @@ impl Yaku for TanyaoYaku {
     }
 }
 
+pub struct ChantaYaku;
+impl Yaku for ChantaYaku {
+    fn han_value(
+        &self,
+        hand_interpretation: &HandInterpretation,
+        _melded_tiles: &Vec<TileMeld>,
+        _winning_tile: MahjongTileId,
+        hand_info: &HandInfo,
+        _winning_tile_info: &WinningTileInfo,
+    ) -> u8 {
+        // every tile group (including the pair) contains a terminal or honor tile
+        let total_groups = get_total_groups(hand_interpretation);
+        for tile_meld in total_groups {
+            let mut num_terminal_or_honor_tiles = 0;
+            for tile_in_meld in tile_meld.tile_ids {
+                if tile_in_meld.is_terminal_tile() || tile_in_meld.is_honor_tile() {
+                    num_terminal_or_honor_tiles += 1;
+                    break;
+                }
+            }
+            if num_terminal_or_honor_tiles == 0 {
+                // if any group has no terminal or honor tiles, it's not chanta
+                return 0;
+            }
+        }
+        if hand_info.hand_state.is_closed() {
+            2
+        } else {
+            1
+        }
+    }
+}
+
 pub struct ChiitoiYaku;
 impl Yaku for ChiitoiYaku {
     fn han_value(
@@ -375,12 +431,12 @@ impl Yaku for ChiitoiYaku {
 impl ChiitoiYaku {
     pub fn is_chiitoi_hand(
         hand_interpretation: &HandInterpretation,
-        melded_tiles: &Vec<TileMeld>,
+        _melded_tiles: &Vec<TileMeld>,
         winning_tile: MahjongTileId,
     ) -> bool {
         // after combining the winning tile and the existing hand tiles, there must be 7 pairs (quads don't count)
         let mut num_pairs = 0;
-        let total_groups = get_total_groups(hand_interpretation, melded_tiles);
+        let total_groups = get_total_groups(hand_interpretation);
         for tile_group in total_groups.iter() {
             if tile_group.meld_type == MeldType::Pair {
                 num_pairs += 1;
@@ -417,12 +473,12 @@ impl Yaku for ToitoiYaku {
 impl ToitoiYaku {
     pub fn is_toitoi_hand(
         hand_interpretation: &HandInterpretation,
-        melded_tiles: &Vec<TileMeld>,
+        _melded_tiles: &Vec<TileMeld>,
         winning_tile: MahjongTileId,
     ) -> bool {
         // every group must be a triplet or quad
         let mut num_triplet_or_quad = 0;
-        let total_groups = get_total_groups(hand_interpretation, melded_tiles);
+        let total_groups = get_total_groups(hand_interpretation);
         for tile_group in total_groups.iter() {
             if tile_group.meld_type == MeldType::Triplet
                 || tile_group.meld_type == MeldType::Quadruplet
@@ -445,6 +501,42 @@ impl ToitoiYaku {
     }
 }
 
+pub struct SanankouYaku;
+impl Yaku for SanankouYaku {
+    fn han_value(
+        &self,
+        hand_interpretation: &HandInterpretation,
+        _melded_tiles: &Vec<TileMeld>,
+        winning_tile: MahjongTileId,
+        _hand_info: &HandInfo,
+        winning_tile_info: &WinningTileInfo,
+    ) -> u8 {
+        // TODO suuankou implies sanankou
+
+        // count closed triplets
+        let mut num_closed_triplets = 0;
+        let total_groups = get_total_groups_after_winning_tile(
+            hand_interpretation,
+            winning_tile,
+            winning_tile_info,
+        );
+        for tile_group in total_groups.iter() {
+            if (tile_group.meld_type == MeldType::Triplet
+                || tile_group.meld_type == MeldType::Quadruplet)
+                && tile_group.is_closed
+            {
+                // println!("found closed triplet {}", *tile_group);
+                num_closed_triplets += 1;
+            }
+        }
+        if num_closed_triplets == 3 {
+            2
+        } else {
+            0
+        }
+    }
+}
+
 pub struct HonitsuYaku;
 impl Yaku for HonitsuYaku {
     fn han_value(
@@ -452,16 +544,17 @@ impl Yaku for HonitsuYaku {
         hand_interpretation: &HandInterpretation,
         melded_tiles: &Vec<TileMeld>,
         winning_tile: MahjongTileId,
-        _hand_info: &HandInfo,
+        hand_info: &HandInfo,
         _winning_tile_info: &WinningTileInfo,
     ) -> u8 {
         if ChinitsuYaku::is_chinitsu_hand(hand_interpretation, melded_tiles, winning_tile) {
             println!("hand is chinitsu, which implies honitsu");
             0 // chinitsu includes honitsu, so you can't count both
         } else if HonitsuYaku::is_honitsu_hand(hand_interpretation, melded_tiles, winning_tile) {
-            match _hand_info.hand_state {
-                HandState::Closed { .. } => 3,
-                HandState::Open => 2,
+            if hand_info.hand_state.is_closed() {
+                3
+            } else {
+                2
             }
         } else {
             // println!("hand is neither chinitsu nor honitsu");
@@ -512,13 +605,14 @@ impl Yaku for ChinitsuYaku {
         hand_interpretation: &HandInterpretation,
         melded_tiles: &Vec<TileMeld>,
         winning_tile: MahjongTileId,
-        _hand_info: &HandInfo,
+        hand_info: &HandInfo,
         _winning_tile_info: &WinningTileInfo,
     ) -> u8 {
         if ChinitsuYaku::is_chinitsu_hand(hand_interpretation, melded_tiles, winning_tile) {
-            match _hand_info.hand_state {
-                HandState::Closed { .. } => 6,
-                HandState::Open => 5,
+            if hand_info.hand_state.is_closed() {
+                6
+            } else {
+                5
             }
         } else {
             0
@@ -564,22 +658,51 @@ impl ChinitsuYaku {
     }
 }
 
-/// Note: maximum possible fu is 110 fu, so using a u8 to represent fu is okay
-/// Note: this isn't checking for yakuman
-pub fn compute_han_and_fu(
+fn get_interpretations_with_valid_tenpai(
     hand_tiles: MahjongTileCountArray,
-    melded_tiles: Vec<TileMeld>,
+    melded_tiles: &Vec<TileMeld>,
     winning_tile: MahjongTileId,
-    hand_info: HandInfo,
-    winning_tile_info: WinningTileInfo,
-) -> (u8, u8) {
-    // First, get the possible hand shape interpretations
-    // TODO eliminate some interpretations based on winning tile (some interpretations aren't possible)
-    let mut interpretations = get_hand_interpretations_min_shanten(hand_tiles, &melded_tiles, 0);
+) -> Vec<HandInterpretation> {
+    let interpretations = get_hand_interpretations_min_shanten(hand_tiles, melded_tiles, 0);
+    let mut valid_interpretations = Vec::new();
+    for interpretation in interpretations {
+        let total_tile_count_array = interpretation.total_tile_count_array;
+        let tile_count_array_with_winning_tile =
+            total_tile_count_array.add_tile_ids(vec![winning_tile]);
+
+        let total_shanten = get_shanten_optimized(tile_count_array_with_winning_tile, melded_tiles);
+        if total_shanten == -1 {
+            // check if the winning tile completes the last incomplete group
+            let mut num_incomplete_groups = 0;
+            let mut num_incomplete_groups_completed_by_winning_tile = 0;
+            for tile_meld in interpretation.groups.iter() {
+                if !tile_meld.is_complete() {
+                    num_incomplete_groups += 1;
+                    if tile_meld
+                        .tile_ids_to_complete_group()
+                        .contains(&winning_tile)
+                    {
+                        println!(
+                            "winning tile {} completes incomplete tile group {}",
+                            winning_tile, tile_meld
+                        );
+                        num_incomplete_groups_completed_by_winning_tile += 1;
+                    }
+                }
+            }
+
+            if num_incomplete_groups >= 1
+                && num_incomplete_groups <= 2
+                && num_incomplete_groups_completed_by_winning_tile == 1
+            {
+                valid_interpretations.push(interpretation);
+            }
+        }
+    }
 
     // check chiitoi and kokushi separately (as the `get_hand_interpretations_min_shanten` doesn't include chiitoi (seven pairs) or kokushi (thirteen orphans))
     let total_tile_count_array = hand_tiles.clone().add_tile_ids(vec![winning_tile]);
-    let chiitoi_shanten = get_chiitoi_shanten(total_tile_count_array, &melded_tiles);
+    let chiitoi_shanten = get_chiitoi_shanten(total_tile_count_array, melded_tiles);
     if chiitoi_shanten == -1 {
         let mut chiitoi_groups = Vec::new();
         for tile_id in total_tile_count_array.to_distinct_tile_ids() {
@@ -589,12 +712,12 @@ pub fn compute_han_and_fu(
                 is_closed: true,
             });
         }
-        interpretations.push(HandInterpretation {
+        valid_interpretations.push(HandInterpretation {
             total_tile_count_array: total_tile_count_array,
             groups: chiitoi_groups,
         });
     }
-    let kokushi_shanten = get_kokushi_shanten(total_tile_count_array, &melded_tiles);
+    let kokushi_shanten = get_kokushi_shanten(total_tile_count_array, melded_tiles);
     if kokushi_shanten == -1 {
         let mut kokushi_groups: Vec<TileMeld> = Vec::new();
         for tile_id in total_tile_count_array.to_distinct_tile_ids() {
@@ -612,14 +735,29 @@ pub fn compute_han_and_fu(
                 });
             }
         }
-        interpretations.push(HandInterpretation {
+        valid_interpretations.push(HandInterpretation {
             total_tile_count_array: total_tile_count_array,
             groups: kokushi_groups,
         });
     }
+    valid_interpretations
+}
+
+/// Note: maximum possible fu is 110 fu, so using a u8 to represent fu is okay
+/// Note: this isn't checking for yakuman
+pub fn compute_han_and_fu(
+    hand_tiles: MahjongTileCountArray,
+    melded_tiles: Vec<TileMeld>,
+    winning_tile: MahjongTileId,
+    hand_info: HandInfo,
+    winning_tile_info: WinningTileInfo,
+) -> (u8, u8) {
+    // First, get the possible hand shape interpretations
+    let valid_interpretations =
+        get_interpretations_with_valid_tenpai(hand_tiles, &melded_tiles, winning_tile);
 
     let mut max_scoring_han_fu = (0u8, 0u8);
-    for interpretation in interpretations {
+    for interpretation in valid_interpretations {
         // for each hand shape interpretation, compute han and fu
         let interpretation_scoring = compute_han_and_fu_hand_interpretation(
             &interpretation,
@@ -666,8 +804,10 @@ pub fn get_yaku_list() -> Vec<Box<dyn Yaku>> {
         // TODO ryanpeikou (3 han, closed only), sanshoku (2 han if closed, 1 han if open)
         // TODO double riichi (2 han)
         // TODO chanta (2 han if closed, 1 han if opened: every group has honor or terminal), junchan (3 han if closed, 2 han if opened: all groups have a terminal)
+        Box::new(ChantaYaku),
         // TODO honroutou (2 han: every tile is a terminal or honor, but effectively 4 han because it requires chiitoi or toitoi)
         // TODO sanankou (2 han, can be open), suuankou (yakuman)
+        Box::new(SanankouYaku),
         // TODO sankantsu (2 han, can be open), suukantsu (yakuman)
     ]
 }
@@ -1593,9 +1733,9 @@ mod tests {
         as_nondealer.seat_wind = MahjongWindOrder::South;
         let as_nondealer = as_nondealer;
 
-        // Dealer Tsumo = 10 han 40 fu
+        // Dealer Tsumo = 11 han 40 fu
         assert_eq!(
-            (10, 40),
+            (11, 40),
             compute_han_and_fu(
                 hand.clone(),
                 melded_tiles.clone(),
@@ -1617,9 +1757,9 @@ mod tests {
             )
         );
 
-        // Non-dealer Tsumo = 10 han 40 fu
+        // Non-dealer Tsumo = 11 han 40 fu
         assert_eq!(
-            (10, 40),
+            (11, 40),
             compute_han_and_fu(
                 hand.clone(),
                 melded_tiles.clone(),

@@ -211,6 +211,45 @@ impl TileMeld {
         match self.meld_type {
             MeldType::SingleTile => {
                 let tile_id = self.tile_ids.get(0).unwrap();
+                vec![*tile_id]
+            }
+            MeldType::Pair => {
+                let tile_id = self.tile_ids.get(0).unwrap();
+                vec![*tile_id]
+            }
+            MeldType::Ryanmen => {
+                let min_tile_id = self.tile_ids.get(0).unwrap();
+                let max_tile_id = self.tile_ids.get(1).unwrap();
+                vec![
+                    MahjongTileId::decrement_tile_id(min_tile_id, 1),
+                    MahjongTileId::increment_tile_id(max_tile_id, 1),
+                ]
+            }
+            MeldType::Kanchan => {
+                let min_tile_id = self.tile_ids.get(0).unwrap();
+                vec![MahjongTileId::increment_tile_id(min_tile_id, 1)]
+            }
+            MeldType::Penchan => {
+                let min_tile_id = self.tile_ids.get(0).unwrap();
+                let min_tile_rank = (*min_tile_id).get_num_tile_rank().unwrap();
+                if min_tile_rank == 1 {
+                    vec![MahjongTileId::increment_tile_id(min_tile_id, 2)]
+                } else if min_tile_rank == 8 {
+                    vec![MahjongTileId::decrement_tile_id(min_tile_id, 1)]
+                } else {
+                    panic!("invalid penchan! min tile rank should be 1 or 8")
+                }
+            }
+            t if t.is_complete() => Vec::new(),
+            _ => panic!("unexpected meld type"),
+        }
+    }
+
+    pub fn tile_ids_to_advance_group(&self) -> Vec<MahjongTileId> {
+        // assumes the tile_ids are sorted
+        match self.meld_type {
+            MeldType::SingleTile => {
+                let tile_id = self.tile_ids.get(0).unwrap();
                 let tile_id = *tile_id;
                 let mut tile_ids = vec![tile_id];
                 match tile_id.get_num_tile_rank() {
@@ -2032,19 +2071,19 @@ mod tests {
         let single_terminal_tile =
             TileMeld::new_closed(vec![MahjongTileId::from_text("1m").unwrap()]);
         let ukiere_tile_ids = single_terminal_tile.tile_ids_to_complete_group();
-        let expected_ukiere_tile_ids = get_tile_ids_from_string("123m");
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("1m");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let single_middle_tile =
             TileMeld::new_closed(vec![MahjongTileId::from_text("8p").unwrap()]);
         let ukiere_tile_ids = single_middle_tile.tile_ids_to_complete_group();
-        let expected_ukiere_tile_ids = get_tile_ids_from_string("6789p");
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("8p");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let single_middle_tile =
             TileMeld::new_closed(vec![MahjongTileId::from_text("3s").unwrap()]);
         let ukiere_tile_ids = single_middle_tile.tile_ids_to_complete_group();
-        let expected_ukiere_tile_ids = get_tile_ids_from_string("12345s");
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("3s");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
 
         let single_honor_tile = TileMeld::new_closed(vec![MahjongTileId::from_text("6z").unwrap()]);
@@ -2081,6 +2120,64 @@ mod tests {
             MahjongTileId::from_text("9p").unwrap(),
         ]);
         let ukiere_tile_ids = penchan.tile_ids_to_complete_group();
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("7p");
+        assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
+    }
+
+    #[test]
+    fn test_tile_ids_to_advance_group() {
+        let single_terminal_tile =
+            TileMeld::new_closed(vec![MahjongTileId::from_text("1m").unwrap()]);
+        let ukiere_tile_ids = single_terminal_tile.tile_ids_to_advance_group();
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("123m");
+        assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
+
+        let single_middle_tile =
+            TileMeld::new_closed(vec![MahjongTileId::from_text("8p").unwrap()]);
+        let ukiere_tile_ids = single_middle_tile.tile_ids_to_advance_group();
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("6789p");
+        assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
+
+        let single_middle_tile =
+            TileMeld::new_closed(vec![MahjongTileId::from_text("3s").unwrap()]);
+        let ukiere_tile_ids = single_middle_tile.tile_ids_to_advance_group();
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("12345s");
+        assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
+
+        let single_honor_tile = TileMeld::new_closed(vec![MahjongTileId::from_text("6z").unwrap()]);
+        let ukiere_tile_ids = single_honor_tile.tile_ids_to_advance_group();
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("6z");
+        assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
+
+        let pair = TileMeld::new_closed(vec![
+            MahjongTileId::from_text("2z").unwrap(),
+            MahjongTileId::from_text("2z").unwrap(),
+        ]);
+        let ukiere_tile_ids = pair.tile_ids_to_advance_group();
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("2z");
+        assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
+
+        let ryanmen = TileMeld::new_closed(vec![
+            MahjongTileId::from_text("3p").unwrap(),
+            MahjongTileId::from_text("4p").unwrap(),
+        ]);
+        let ukiere_tile_ids = ryanmen.tile_ids_to_advance_group();
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("25p");
+        assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
+
+        let kanchan = TileMeld::new_closed(vec![
+            MahjongTileId::from_text("7m").unwrap(),
+            MahjongTileId::from_text("9m").unwrap(),
+        ]);
+        let ukiere_tile_ids = kanchan.tile_ids_to_advance_group();
+        let expected_ukiere_tile_ids = get_tile_ids_from_string("8m");
+        assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
+
+        let penchan = TileMeld::new_closed(vec![
+            MahjongTileId::from_text("8p").unwrap(),
+            MahjongTileId::from_text("9p").unwrap(),
+        ]);
+        let ukiere_tile_ids = penchan.tile_ids_to_advance_group();
         let expected_ukiere_tile_ids = get_tile_ids_from_string("7p");
         assert_tile_ids_match(&ukiere_tile_ids, &expected_ukiere_tile_ids);
     }
