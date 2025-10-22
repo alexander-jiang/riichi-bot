@@ -53,6 +53,38 @@ impl From<MahjongTileNumberedSuit> for char {
     }
 }
 
+/// The Mahjong wind order (also is the player order)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum MahjongWindOrder {
+    East,
+    South,
+    West,
+    North,
+}
+
+impl MahjongWindOrder {
+    pub fn from_ordinal(ordinal: u8) -> Result<Self, mahjong_error::MahjongError> {
+        match ordinal {
+            0 => Ok(MahjongWindOrder::East),
+            1 => Ok(MahjongWindOrder::South),
+            2 => Ok(MahjongWindOrder::West),
+            3 => Ok(MahjongWindOrder::North),
+            _ => Err(mahjong_error::MahjongError {
+                message: "Invalid wind ordinal (should be from 0-3)".to_string(),
+            }),
+        }
+    }
+
+    pub fn to_ordinal(&self) -> u8 {
+        match self {
+            MahjongWindOrder::East => 0,
+            MahjongWindOrder::South => 1,
+            MahjongWindOrder::West => 2,
+            MahjongWindOrder::North => 3,
+        }
+    }
+}
+
 pub const NUM_DISTINCT_TILE_VALUES: u8 = 34;
 pub const FIRST_MANZU_ID: u8 = 0;
 pub const FIRST_PINZU_ID: u8 = 9;
@@ -145,13 +177,44 @@ impl MahjongTileId {
         self.0 < FIRST_HONOR_ID
     }
 
-    // pub fn is_wind_tile(&self) -> bool {
-    //     self.0 >= FIRST_WIND_ID && self.0 < FIRST_DRAGON_ID
-    // }
+    pub fn is_honor_tile(&self) -> bool {
+        self.is_valid_id() && self.0 >= FIRST_HONOR_ID
+    }
 
-    // pub fn is_dragon_tile(&self) -> bool {
-    //     self.0 >= FIRST_DRAGON_ID && self.0 < NUM_DISTINCT_TILE_VALUES
-    // }
+    pub fn is_terminal_tile(&self) -> bool {
+        match self.get_num_tile_rank() {
+            Some(rank) if rank == 1 || rank == 9 => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_simple_tile(&self) -> bool {
+        match self.get_num_tile_rank() {
+            Some(rank) if rank > 1 && rank < 9 => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_wind_tile(&self) -> bool {
+        self.0 >= FIRST_WIND_ID && self.0 < FIRST_DRAGON_ID
+    }
+
+    pub fn get_wind(&self) -> Option<MahjongWindOrder> {
+        if self.is_wind_tile() {
+            let diff = self.0 - FIRST_WIND_ID;
+            if diff > 3 {
+                None
+            } else {
+                Some(MahjongWindOrder::from_ordinal(diff).unwrap())
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn is_dragon_tile(&self) -> bool {
+        self.0 >= FIRST_DRAGON_ID && self.0 < NUM_DISTINCT_TILE_VALUES
+    }
 
     /// Returns Some with the rank of the tile (a number from 1-9) if the tile
     /// is in a numbered suit (man, pin, or sou). Returns None otherise.
@@ -567,6 +630,18 @@ impl MahjongTileCountArray {
             total_tiles += usize::from(self.0[tile_idx]);
         }
         total_tiles
+    }
+
+    pub fn add_tile_ids(&self, tile_ids_to_add: Vec<MahjongTileId>) -> Self {
+        let mut new_tile_count_array = self.clone();
+        for tile_id in tile_ids_to_add.iter() {
+            if new_tile_count_array.0[usize::from(*tile_id)] == 4 {
+                // don't allow more than 4 copies
+                continue;
+            }
+            new_tile_count_array.0[usize::from(*tile_id)] += 1;
+        }
+        new_tile_count_array
     }
 }
 

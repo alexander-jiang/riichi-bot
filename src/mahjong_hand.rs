@@ -857,6 +857,7 @@ impl MahjongHand {
                 {
                     let tile_ids_to_complete = tile_ids_to_complete_group(group).unwrap();
                     for tile_id in tile_ids_to_complete {
+                        // TODO refactor this to use a hashset - then convert to a list at the end
                         if !tenpai_tiles.contains(&tile_id) {
                             tenpai_tiles.push(tile_id);
                         }

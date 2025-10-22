@@ -2,7 +2,7 @@ extern crate test;
 
 pub use crate::mahjong_tile;
 use crate::mahjong_tile::{MahjongTileCountArray, MahjongTileId, FOUR_OF_EACH_TILE_COUNT_ARRAY};
-pub use crate::shanten;
+pub use crate::shanten::{self, TileMeld};
 use rand::rngs::ThreadRng;
 use rand::Rng;
 use std::collections::HashMap;
@@ -66,15 +66,16 @@ fn remove_tile_ids_from_count_array(
 #[allow(unused)]
 fn run_basic_analysis(
     starting_hand: MahjongTileCountArray,
+    melded_tiles: Vec<TileMeld>,
     visible_tile_ids: &Vec<MahjongTileId>,
     num_trials: u32,
     max_allowed_draws: u16,
 ) {
-    let starting_shanten = shanten::get_shanten_optimized(starting_hand);
+    let starting_shanten = shanten::get_shanten_optimized(starting_hand, &melded_tiles);
     if starting_shanten != 1 {
         todo!("only implemented for 1-shanten hands so far");
     }
-    let starting_ukiere_tile_ids = shanten::get_ukiere_optimized(starting_hand);
+    let starting_ukiere_tile_ids = shanten::get_ukiere_optimized(starting_hand, &melded_tiles);
     let starting_hand_tile_ids = starting_hand.to_tile_ids();
     let total_num_visible_tiles = visible_tile_ids.len() + starting_hand.total_tiles();
     println!(
@@ -111,6 +112,7 @@ fn run_basic_analysis(
         tile_count_array_after_draw.0[usize::from(improve_tile_id)] += 1;
         let ukiere_after_improve = shanten::get_all_ukiere_after_discard(
             tile_count_array_after_draw,
+            &melded_tiles,
             starting_shanten - 1,
             &shanten::get_shanten_optimized,
             &shanten::get_ukiere_optimized,
@@ -248,7 +250,8 @@ mod tests {
         let visible_tiles = mahjong_tile::get_tile_ids_from_string(
             "6s4z2z3z9m9p7z6m2p8p4z1z2z3p3p9s4z5z6z3z1s3z7z4z1z6z5z1s4m9m",
         );
-        run_basic_analysis(starting_hand, &visible_tiles, 100_000, 12);
+        let melded_tiles = Vec::new();
+        run_basic_analysis(starting_hand, melded_tiles, &visible_tiles, 100_000, 12);
     }
 
     #[test]
