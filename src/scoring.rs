@@ -115,18 +115,17 @@ impl Yaku for RiichiYaku {
     }
 }
 
-fn get_total_groups(hand_interpretation: &HandInterpretation) -> Vec<TileMeld> {
-    hand_interpretation.groups.clone()
-}
-
 // TODO test this function, test how the hand interpretations are generated when there's declared melds, do the hand interpretations include the winning tile?
 // TODO should this include the melded tiles? or are melded tiles already in hand_interpretation?
 fn get_total_groups_after_winning_tile(
     hand_interpretation: &HandInterpretation,
+    _melded_tiles: &Vec<TileMeld>,
     winning_tile: MahjongTileId,
     winning_tile_info: &WinningTileInfo,
 ) -> Vec<TileMeld> {
     let tile_groups = hand_interpretation.groups.clone();
+    // tile_groups.extend(melded_tiles.clone());
+
     // println!(
     //     "tile groups after winning tile: {}",
     //     tile_groups
@@ -135,28 +134,14 @@ fn get_total_groups_after_winning_tile(
     //         .collect::<Vec<String>>()
     //         .join(", ")
     // );
-    let mut new_tile_melds = Vec::new();
-    for tile_meld in tile_groups {
-        if tile_meld.is_complete() {
-            new_tile_melds.push(tile_meld.clone());
-        } else if tile_meld
-            .tile_ids_to_complete_group()
-            .contains(&winning_tile)
-        {
-            let mut new_tile_ids = tile_meld.tile_ids;
-            new_tile_ids.push(winning_tile);
-
-            let new_is_closed = tile_meld.is_closed && winning_tile_info.source.is_closed();
-            let new_tile_meld = TileMeld::new(new_tile_ids, new_is_closed);
-            // println!(
-            //     "winning tile {} makes group: {}",
-            //     winning_tile, new_tile_meld
-            // );
-            new_tile_melds.push(new_tile_meld);
-        } else if ChiitoiYaku::is_chiitoi_hand(hand_interpretation, winning_tile) {
+    if ChiitoiYaku::is_chiitoi_hand(hand_interpretation, winning_tile) {
+        let mut chiitoi_tile_melds = Vec::new();
+        let mut num_pairs = 0;
+        for tile_meld in tile_groups {
             // TODO test how this works with hand_interpretation on an open hand, and on a chiitoi hand
             if tile_meld.meld_type == MeldType::Pair {
-                new_tile_melds.push(tile_meld.clone());
+                num_pairs += 1;
+                chiitoi_tile_melds.push(tile_meld.clone());
             } else if tile_meld.meld_type == MeldType::SingleTile
                 && tile_meld
                     .tile_ids_to_advance_group()
@@ -170,22 +155,68 @@ fn get_total_groups_after_winning_tile(
                 //     "winning tile {} completes pair in chiitoi: {}",
                 //     winning_tile, new_tile_meld
                 // );
-                new_tile_melds.push(new_tile_meld);
+                num_pairs += 1;
+                chiitoi_tile_melds.push(new_tile_meld);
             }
         }
+        if num_pairs != 7 {
+            panic!("hand is missing 7 pairs (for chiitoi)");
+        }
+        return chiitoi_tile_melds;
     }
-    new_tile_melds
-}
 
-fn get_total_num_pairs_before_winning_tile(hand_interpretation: &HandInterpretation) -> u8 {
+    let mut new_tile_melds = Vec::new();
+    let mut complete_groups = 0;
     let mut num_pairs = 0;
-    let total_groups = get_total_groups(hand_interpretation);
-    for tile_group in total_groups.iter() {
-        if tile_group.meld_type == MeldType::Pair {
+    for tile_meld in tile_groups {
+        if tile_meld.is_complete() {
+            println!("complete group: {}", tile_meld);
+            complete_groups += 1;
+            new_tile_melds.push(tile_meld.clone());
+        } else if tile_meld.meld_type == MeldType::SingleTile
+            && tile_meld
+                .tile_ids_to_advance_group()
+                .contains(&winning_tile)
+        {
+            let mut new_tile_ids = tile_meld.tile_ids;
+            new_tile_ids.push(winning_tile);
+
+            let new_is_closed = tile_meld.is_closed && winning_tile_info.source.is_closed();
+            let new_tile_meld = TileMeld::new(new_tile_ids, new_is_closed);
             num_pairs += 1;
+            println!(
+                "winning tile {} forms pair: {}",
+                winning_tile, new_tile_meld
+            );
+            new_tile_melds.push(new_tile_meld);
+        } else if tile_meld
+            .tile_ids_to_complete_group()
+            .contains(&winning_tile)
+        {
+            let mut new_tile_ids = tile_meld.tile_ids;
+            new_tile_ids.push(winning_tile);
+
+            let new_is_closed = tile_meld.is_closed && winning_tile_info.source.is_closed();
+            let new_tile_meld = TileMeld::new(new_tile_ids, new_is_closed);
+            println!(
+                "winning tile {} makes group: {}",
+                winning_tile, new_tile_meld
+            );
+            complete_groups += 1;
+            new_tile_melds.push(new_tile_meld);
+        } else if tile_meld.meld_type == MeldType::Pair {
+            println!("a pair: {}", tile_meld);
+            num_pairs += 1;
+            new_tile_melds.push(tile_meld.clone());
         }
     }
-    num_pairs
+    if complete_groups != 4 || num_pairs != 1 {
+        panic!(
+            "hand is missing 4 complete groups and 1 pair: found {} complete groups and {} pairs",
+            complete_groups, num_pairs
+        );
+    }
+    new_tile_melds
 }
 
 pub struct YakuhaiYaku;
@@ -193,15 +224,19 @@ impl Yaku for YakuhaiYaku {
     fn han_value(
         &self,
         hand_interpretation: &HandInterpretation,
-        _melded_tiles: &Vec<TileMeld>,
+        melded_tiles: &Vec<TileMeld>,
         winning_tile: MahjongTileId,
         hand_info: &HandInfo,
-        _winning_tile_info: &WinningTileInfo,
+        winning_tile_info: &WinningTileInfo,
     ) -> u8 {
         let mut yakuhai_han = 0;
-        let num_pairs = get_total_num_pairs_before_winning_tile(hand_interpretation);
         // check for a triplet or quadruplet of a yakuhai tile (dragon, seat wind, or round wind)
-        let total_groups = get_total_groups(hand_interpretation);
+        let total_groups = get_total_groups_after_winning_tile(
+            hand_interpretation,
+            melded_tiles,
+            winning_tile,
+            winning_tile_info,
+        );
         for tile_group in total_groups.iter() {
             if tile_group.meld_type == MeldType::Triplet
                 || tile_group.meld_type == MeldType::Quadruplet
@@ -219,25 +254,6 @@ impl Yaku for YakuhaiYaku {
                     } else if YakuhaiYaku::is_yakuhai_tile(*tile_id, hand_info) {
                         yakuhai_han += 1;
                         // println!("group of {} is worth 1 han from yakuhai", *tile_id);
-                    }
-                    continue;
-                }
-            } else if num_pairs == 2 && tile_group.meld_type == MeldType::Pair {
-                // shanpon wait, then check if the winning tile completes a yakuhai triplet
-                let pair_tile_id = tile_group.tile_ids.get(0).unwrap();
-                if winning_tile == *pair_tile_id {
-                    if YakuhaiYaku::is_double_yakuhai_tile(winning_tile, hand_info) {
-                        yakuhai_han += 2;
-                        // println!(
-                        //     "completing triplet of {} (from shanpon) is worth 2 han from yakuhai",
-                        //     winning_tile
-                        // );
-                    } else if YakuhaiYaku::is_yakuhai_tile(winning_tile, hand_info) {
-                        yakuhai_han += 1;
-                        // println!(
-                        //     "completing triplet of {} (from shanpon) is worth 1 han from yakuhai",
-                        //     winning_tile
-                        // );
                     }
                     continue;
                 }
@@ -274,6 +290,67 @@ impl YakuhaiYaku {
     }
 }
 
+pub struct ShousangenYaku;
+impl Yaku for ShousangenYaku {
+    fn han_value(
+        &self,
+        hand_interpretation: &HandInterpretation,
+        melded_tiles: &Vec<TileMeld>,
+        winning_tile: MahjongTileId,
+        _hand_info: &HandInfo,
+        _winning_tile_info: &WinningTileInfo,
+    ) -> u8 {
+        if ShousangenYaku::is_shousangen_hand(hand_interpretation, melded_tiles, winning_tile) {
+            2
+        } else {
+            0
+        }
+    }
+}
+
+impl ShousangenYaku {
+    fn is_shousangen_hand(
+        hand_interpretation: &HandInterpretation,
+        melded_tiles: &Vec<TileMeld>,
+        winning_tile: MahjongTileId,
+    ) -> bool {
+        // TODO should consolidate this?
+        let mut hand_tile_count_array = hand_interpretation.total_tile_count_array;
+        for tile_meld in melded_tiles {
+            hand_tile_count_array = hand_tile_count_array.add_tile_ids(tile_meld.tile_ids.clone());
+        }
+        hand_tile_count_array = hand_tile_count_array.add_tile_ids(vec![winning_tile]);
+
+        let white_dragon_count =
+            hand_tile_count_array.get_tile_id_count(&MahjongTileId::from_text("5z").unwrap());
+        let green_dragon_count =
+            hand_tile_count_array.get_tile_id_count(&MahjongTileId::from_text("6z").unwrap());
+        let red_dragon_count =
+            hand_tile_count_array.get_tile_id_count(&MahjongTileId::from_text("7z").unwrap());
+        let mut dragon_triplets = 0;
+        let mut dragon_pairs = 0;
+        if white_dragon_count >= 3 {
+            dragon_triplets += 1;
+        } else if white_dragon_count == 2 {
+            dragon_pairs += 1;
+        }
+
+        if green_dragon_count >= 3 {
+            dragon_triplets += 1;
+        } else if green_dragon_count == 2 {
+            dragon_pairs += 1;
+        }
+
+        if red_dragon_count >= 3 {
+            dragon_triplets += 1;
+        } else if red_dragon_count == 2 {
+            dragon_pairs += 1;
+        }
+
+        dragon_triplets == 2 && dragon_pairs == 1
+    }
+}
+
 pub struct PinfuYaku;
 impl Yaku for PinfuYaku {
     fn han_value(
@@ -293,8 +370,8 @@ impl Yaku for PinfuYaku {
         let mut pairs: Vec<TileMeld> = Vec::new();
         let mut num_completed_sequences = 0;
         // pinfu must not include triplets or quadruplets (there must be 3 complete sequences, and a ryanmen wait)
-        let total_groups = get_total_groups(hand_interpretation);
-        for tile_group in total_groups.iter() {
+        // (note that we can't use the get_total_groups_after_winning_tile function because we need to check the ryanmen wait)
+        for tile_group in hand_interpretation.groups.iter() {
             if tile_group.meld_type == MeldType::Triplet
                 || tile_group.meld_type == MeldType::Quadruplet
             {
@@ -467,7 +544,7 @@ impl Yaku for IipeikouYaku {
     fn han_value(
         &self,
         hand_interpretation: &HandInterpretation,
-        _melded_tiles: &Vec<TileMeld>,
+        melded_tiles: &Vec<TileMeld>,
         winning_tile: MahjongTileId,
         hand_info: &HandInfo,
         winning_tile_info: &WinningTileInfo,
@@ -476,8 +553,20 @@ impl Yaku for IipeikouYaku {
         if !hand_info.hand_state.is_closed() {
             return 0;
         }
+        // ryanpeikou implies iipeikou, so can't count a hand for iipeikou if it counts for ryanpeikou
+        if RyanpeikouYaku::is_ryanpeikou_hand(
+            hand_interpretation,
+            melded_tiles,
+            winning_tile,
+            hand_info,
+            winning_tile_info,
+        ) {
+            return 0;
+        }
+
         let total_groups = get_total_groups_after_winning_tile(
             hand_interpretation,
+            melded_tiles,
             winning_tile,
             winning_tile_info,
         );
@@ -501,18 +590,89 @@ impl Yaku for IipeikouYaku {
     }
 }
 
+pub struct RyanpeikouYaku;
+impl Yaku for RyanpeikouYaku {
+    fn han_value(
+        &self,
+        hand_interpretation: &HandInterpretation,
+        melded_tiles: &Vec<TileMeld>,
+        winning_tile: MahjongTileId,
+        hand_info: &HandInfo,
+        winning_tile_info: &WinningTileInfo,
+    ) -> u8 {
+        if RyanpeikouYaku::is_ryanpeikou_hand(
+            hand_interpretation,
+            melded_tiles,
+            winning_tile,
+            hand_info,
+            winning_tile_info,
+        ) {
+            3
+        } else {
+            0
+        }
+    }
+}
+
+impl RyanpeikouYaku {
+    pub fn is_ryanpeikou_hand(
+        hand_interpretation: &HandInterpretation,
+        melded_tiles: &Vec<TileMeld>,
+        winning_tile: MahjongTileId,
+        hand_info: &HandInfo,
+        winning_tile_info: &WinningTileInfo,
+    ) -> bool {
+        // ryanpeikou must be closed
+        if !hand_info.hand_state.is_closed() {
+            return false;
+        }
+        let total_groups = get_total_groups_after_winning_tile(
+            hand_interpretation,
+            melded_tiles,
+            winning_tile,
+            winning_tile_info,
+        );
+        let mut tile_ids_sets: HashSet<Vec<MahjongTileId>> = HashSet::new();
+        let mut matching_sequences: HashSet<Vec<MahjongTileId>> = HashSet::new();
+        for tile_group in total_groups {
+            if tile_group.meld_type != MeldType::Sequence {
+                continue;
+            }
+            let tile_group_tile_ids = tile_group.tile_ids;
+            if tile_ids_sets.contains(&tile_group_tile_ids) {
+                matching_sequences.insert(tile_group_tile_ids);
+                if matching_sequences.len() == 2 {
+                    println!(
+                        "3 han from ryanpeikou (tiles = {})",
+                        matching_sequences
+                            .iter()
+                            .map(|tile_ids| tile_ids_to_string(tile_ids))
+                            .collect::<Vec<String>>()
+                            .join(" and ")
+                    );
+                    return true;
+                }
+            } else {
+                tile_ids_sets.insert(tile_group_tile_ids);
+            }
+        }
+        false
+    }
+}
+
 pub struct SanshokuDoukouYaku;
 impl Yaku for SanshokuDoukouYaku {
     fn han_value(
         &self,
         hand_interpretation: &HandInterpretation,
-        _melded_tiles: &Vec<TileMeld>,
+        melded_tiles: &Vec<TileMeld>,
         winning_tile: MahjongTileId,
         _hand_info: &HandInfo,
         winning_tile_info: &WinningTileInfo,
     ) -> u8 {
         let total_groups = get_total_groups_after_winning_tile(
             hand_interpretation,
+            melded_tiles,
             winning_tile,
             winning_tile_info,
         );
@@ -558,13 +718,14 @@ impl Yaku for SanshokuDoujunYaku {
     fn han_value(
         &self,
         hand_interpretation: &HandInterpretation,
-        _melded_tiles: &Vec<TileMeld>,
+        melded_tiles: &Vec<TileMeld>,
         winning_tile: MahjongTileId,
         hand_info: &HandInfo,
         winning_tile_info: &WinningTileInfo,
     ) -> u8 {
         let total_groups = get_total_groups_after_winning_tile(
             hand_interpretation,
+            melded_tiles,
             winning_tile,
             winning_tile_info,
         );
@@ -617,13 +778,14 @@ impl Yaku for IttsuYaku {
     fn han_value(
         &self,
         hand_interpretation: &HandInterpretation,
-        _melded_tiles: &Vec<TileMeld>,
+        melded_tiles: &Vec<TileMeld>,
         winning_tile: MahjongTileId,
         hand_info: &HandInfo,
         winning_tile_info: &WinningTileInfo,
     ) -> u8 {
         let total_groups = get_total_groups_after_winning_tile(
             hand_interpretation,
+            melded_tiles,
             winning_tile,
             winning_tile_info,
         );
@@ -757,7 +919,7 @@ impl Yaku for ChantaYaku {
     fn han_value(
         &self,
         hand_interpretation: &HandInterpretation,
-        _melded_tiles: &Vec<TileMeld>,
+        melded_tiles: &Vec<TileMeld>,
         winning_tile: MahjongTileId,
         hand_info: &HandInfo,
         winning_tile_info: &WinningTileInfo,
@@ -766,10 +928,20 @@ impl Yaku for ChantaYaku {
         if HonroutouYaku::is_honroutou_hand(hand_interpretation, winning_tile) {
             return 0;
         }
+        // junchan implies chanta (not allowed to count chanta and junchan)
+        if JunchanYaku::is_junchan_hand(
+            hand_interpretation,
+            melded_tiles,
+            winning_tile,
+            winning_tile_info,
+        ) {
+            return 0;
+        }
 
         // every tile group (including the pair) contains a terminal or honor tile
         let total_groups = get_total_groups_after_winning_tile(
             hand_interpretation,
+            melded_tiles,
             winning_tile,
             winning_tile_info,
         );
@@ -794,6 +966,67 @@ impl Yaku for ChantaYaku {
             println!("2 han from chanta (open)");
             1
         }
+    }
+}
+
+pub struct JunchanYaku;
+impl Yaku for JunchanYaku {
+    fn han_value(
+        &self,
+        hand_interpretation: &HandInterpretation,
+        melded_tiles: &Vec<TileMeld>,
+        winning_tile: MahjongTileId,
+        hand_info: &HandInfo,
+        winning_tile_info: &WinningTileInfo,
+    ) -> u8 {
+        if JunchanYaku::is_junchan_hand(
+            hand_interpretation,
+            melded_tiles,
+            winning_tile,
+            winning_tile_info,
+        ) {
+            if hand_info.hand_state.is_closed() {
+                println!("3 han from junchan (closed)");
+                3
+            } else {
+                println!("2 han from junchan (open)");
+                2
+            }
+        } else {
+            0
+        }
+    }
+}
+
+impl JunchanYaku {
+    pub fn is_junchan_hand(
+        hand_interpretation: &HandInterpretation,
+        melded_tiles: &Vec<TileMeld>,
+        winning_tile: MahjongTileId,
+        winning_tile_info: &WinningTileInfo,
+    ) -> bool {
+        // every tile group (including the pair) contains a terminal or honor tile
+        let total_groups = get_total_groups_after_winning_tile(
+            hand_interpretation,
+            melded_tiles,
+            winning_tile,
+            winning_tile_info,
+        );
+        for tile_meld in total_groups {
+            let mut num_terminal_tiles = 0;
+            for tile_in_meld in tile_meld.tile_ids.iter() {
+                if tile_in_meld.is_terminal_tile() {
+                    num_terminal_tiles += 1;
+                    break;
+                }
+            }
+            if num_terminal_tiles == 0 {
+                // if any group has no terminal tiles, it's not junchan
+                // println!("tile group doesn't have any terminal tiles = {tile_meld:?}");
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -862,8 +1095,7 @@ impl ChiitoiYaku {
     ) -> bool {
         // after combining the winning tile and the existing hand tiles, there must be 7 pairs (quads don't count)
         let mut num_pairs = 0;
-        let total_groups = get_total_groups(hand_interpretation);
-        for tile_group in total_groups.iter() {
+        for tile_group in hand_interpretation.groups.iter() {
             if tile_group.meld_type == MeldType::Pair {
                 num_pairs += 1;
             } else if tile_group.meld_type == MeldType::SingleTile {
@@ -885,10 +1117,15 @@ impl Yaku for ToitoiYaku {
         melded_tiles: &Vec<TileMeld>,
         winning_tile: MahjongTileId,
         _hand_info: &HandInfo,
-        _winning_tile_info: &WinningTileInfo,
+        winning_tile_info: &WinningTileInfo,
     ) -> u8 {
         // TODO some yakuman imply toitoi: suuankou and chinroutou
-        if ToitoiYaku::is_toitoi_hand(hand_interpretation, melded_tiles, winning_tile) {
+        if ToitoiYaku::is_toitoi_hand(
+            hand_interpretation,
+            melded_tiles,
+            winning_tile,
+            winning_tile_info,
+        ) {
             println!("2 han from toitoi");
             2
         } else {
@@ -900,28 +1137,23 @@ impl Yaku for ToitoiYaku {
 impl ToitoiYaku {
     pub fn is_toitoi_hand(
         hand_interpretation: &HandInterpretation,
-        _melded_tiles: &Vec<TileMeld>,
+        melded_tiles: &Vec<TileMeld>,
         winning_tile: MahjongTileId,
+        winning_tile_info: &WinningTileInfo,
     ) -> bool {
         // every group must be a triplet or quad
         let mut num_triplet_or_quad = 0;
-        let total_groups = get_total_groups(hand_interpretation);
+        let total_groups = get_total_groups_after_winning_tile(
+            hand_interpretation,
+            melded_tiles,
+            winning_tile,
+            winning_tile_info,
+        );
         for tile_group in total_groups.iter() {
             if tile_group.meld_type == MeldType::Triplet
                 || tile_group.meld_type == MeldType::Quadruplet
             {
                 num_triplet_or_quad += 1;
-            } else if tile_group.meld_type == MeldType::Pair {
-                let pair_tile_id = tile_group.tile_ids.get(0).unwrap();
-                if *pair_tile_id == winning_tile {
-                    num_triplet_or_quad += 1;
-                }
-            } else if tile_group.meld_type == MeldType::SingleTile {
-                // this should be a tanki wait (do we just assume the hand is a valid winning hand?)
-                let single_tile_id = tile_group.tile_ids.get(0).unwrap();
-                if *single_tile_id != winning_tile {
-                    return false;
-                }
             }
         }
         num_triplet_or_quad == 4
@@ -933,7 +1165,7 @@ impl Yaku for SanankouYaku {
     fn han_value(
         &self,
         hand_interpretation: &HandInterpretation,
-        _melded_tiles: &Vec<TileMeld>,
+        melded_tiles: &Vec<TileMeld>,
         winning_tile: MahjongTileId,
         _hand_info: &HandInfo,
         winning_tile_info: &WinningTileInfo,
@@ -944,6 +1176,7 @@ impl Yaku for SanankouYaku {
         let mut num_closed_triplets = 0;
         let total_groups = get_total_groups_after_winning_tile(
             hand_interpretation,
+            melded_tiles,
             winning_tile,
             winning_tile_info,
         );
@@ -1105,6 +1338,7 @@ impl Yaku for SankantsuYaku {
         let mut num_quads = 0;
         let total_groups = get_total_groups_after_winning_tile(
             hand_interpretation,
+            melded_tiles,
             winning_tile,
             winning_tile_info,
         );
@@ -1321,12 +1555,12 @@ pub fn get_yaku_list() -> Vec<Box<dyn Yaku>> {
         Box::new(SankantsuYaku),
         Box::new(ChiitoiYaku),
         Box::new(HonroutouYaku),
-        // TODO shousangen (2 han, not including the yakuhai, effectively 4 han because it comes with 2 han from yakuhai)
+        Box::new(ShousangenYaku),
         // 3 han (closed only)
-        // TODO ryanpeikou (3 han, closed only)
+        Box::new(RyanpeikouYaku),
         // 3 han (2 han if open)
         Box::new(HonitsuYaku),
-        // TODO junchan (3 han if closed, 2 han if opened: all groups have a terminal)
+        Box::new(JunchanYaku),
         // 6 han (5 han if open)
         Box::new(ChinitsuYaku),
     ]
@@ -3831,6 +4065,202 @@ mod tests {
                 hand.clone(),
                 melded_tiles.clone(),
                 no_chanta_win_tile,
+                as_nondealer.clone(),
+                ron.clone()
+            )
+        );
+    }
+
+    #[test]
+    fn shousangen_hand_example() {
+        // from https://riichi.wiki/Shousangen
+        // shousangen + yakuhai 2 = 4 han, 8 fu (closed 6z) + 4 fu (open 5z) + 2 fu (yakuhai pair)
+        let hand = MahjongTileCountArray::from_text("23m345p77z666z");
+        let melded_tiles = vec![TileMeld {
+            meld_type: MeldType::Triplet,
+            tile_ids: get_tile_ids_from_string("555z"),
+            is_closed: false,
+        }];
+        let dora_tiles = get_tile_ids_from_string("1z"); // no dora
+        let win_tile = MahjongTileId::from_text("1m").unwrap();
+
+        // winning method
+        let ron = WinningTileInfo {
+            source: WinningTileSource::Discard {
+                is_last_discard: false,
+            },
+        };
+
+        // situations (dealer in East-1 vs. south in East-1)
+        let as_dealer = HandInfo {
+            hand_state: HandState::Open,
+            round_wind: MahjongWindOrder::East,
+            seat_wind: MahjongWindOrder::East,
+            round_number: 1,
+            honba_counter: 0,
+            dora_tiles: dora_tiles.clone(),
+        };
+        let mut as_nondealer = as_dealer.clone();
+        as_nondealer.seat_wind = MahjongWindOrder::West;
+        let as_nondealer = as_nondealer;
+
+        // Dealer Ron = 4 han 40 fu
+        assert_eq!(
+            (4, 40),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_dealer.clone(),
+                ron.clone()
+            )
+        );
+
+        // Non-dealer Ron = 4 han 40 fu
+        assert_eq!(
+            (4, 40),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile,
+                as_nondealer.clone(),
+                ron.clone()
+            )
+        );
+    }
+
+    #[test]
+    fn ryanpeikou_hand_example() {
+        // from https://riichi.wiki/Ryanpeikou
+        // ryanpeikou + pinfu
+        let hand = MahjongTileCountArray::from_text("223344p66778m11s");
+        let melded_tiles = Vec::new();
+        let dora_tiles = get_tile_ids_from_string("1z"); // no dora
+        let ryanpeikou_win_tile = MahjongTileId::from_text("8m").unwrap();
+
+        // winning method
+        let ron = WinningTileInfo {
+            source: WinningTileSource::Discard {
+                is_last_discard: false,
+            },
+        };
+
+        // situations (dealer in East-1 vs. south in East-1)
+        let as_dealer = HandInfo {
+            hand_state: HandState::Closed {
+                riichi_info: RiichiInfo::NoRiichi,
+            },
+            round_wind: MahjongWindOrder::East,
+            seat_wind: MahjongWindOrder::East,
+            round_number: 1,
+            honba_counter: 0,
+            dora_tiles: dora_tiles.clone(),
+        };
+        let mut as_nondealer = as_dealer.clone();
+        as_nondealer.seat_wind = MahjongWindOrder::West;
+        let as_nondealer = as_nondealer;
+
+        // Dealer Ron = 4 han 30 fu
+        assert_eq!(
+            (4, 30),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                ryanpeikou_win_tile,
+                as_dealer.clone(),
+                ron.clone()
+            )
+        );
+
+        // Non-dealer Ron = 4 han 30 fu
+        assert_eq!(
+            (4, 30),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                ryanpeikou_win_tile,
+                as_nondealer.clone(),
+                ron.clone()
+            )
+        );
+    }
+
+    #[test]
+    fn junchan_hand_example() {
+        // from https://riichi.wiki/Junchantaiyaochuu
+        // win on 9s -> junchan only (the triplet of 9m blocks pinfu), 10 fu for ron by closed hand + 8 fu (closed 9m)
+        // win on 6s -> no yaku
+        let hand = MahjongTileCountArray::from_text("123999m789p1178s");
+        let melded_tiles = Vec::new();
+        let dora_tiles = get_tile_ids_from_string("1z"); // no dora
+        let junchan_win_tile = MahjongTileId::from_text("9s").unwrap();
+        let no_junchan_win_tile = MahjongTileId::from_text("6s").unwrap();
+
+        // winning method
+        let ron = WinningTileInfo {
+            source: WinningTileSource::Discard {
+                is_last_discard: false,
+            },
+        };
+
+        // situations (dealer in East-1 vs. south in East-1)
+        let as_dealer = HandInfo {
+            hand_state: HandState::Closed {
+                riichi_info: RiichiInfo::NoRiichi,
+            },
+            round_wind: MahjongWindOrder::East,
+            seat_wind: MahjongWindOrder::East,
+            round_number: 1,
+            honba_counter: 0,
+            dora_tiles: dora_tiles.clone(),
+        };
+        let mut as_nondealer = as_dealer.clone();
+        as_nondealer.seat_wind = MahjongWindOrder::West;
+        let as_nondealer = as_nondealer;
+
+        // Dealer Ron (on 9s) = 3 han 40 fu
+        assert_eq!(
+            (3, 40),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                junchan_win_tile,
+                as_dealer.clone(),
+                ron.clone()
+            )
+        );
+
+        // Non-dealer Ron (on 9s) = 3 han 40 fu
+        assert_eq!(
+            (3, 40),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                junchan_win_tile,
+                as_nondealer.clone(),
+                ron.clone()
+            )
+        );
+
+        // Dealer Ron (on 6s) = no yaku
+        assert_eq!(
+            (0, 0),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                no_junchan_win_tile,
+                as_dealer.clone(),
+                ron.clone()
+            )
+        );
+
+        // Non-dealer Ron (on 6s) = no yaku
+        assert_eq!(
+            (0, 0),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                no_junchan_win_tile,
                 as_nondealer.clone(),
                 ron.clone()
             )
