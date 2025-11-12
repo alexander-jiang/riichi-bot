@@ -1509,6 +1509,7 @@ pub fn compute_han_and_fu(
             winning_tile,
             &hand_info,
             &winning_tile_info,
+            true,
         );
         // then pick the hand shape interpretation with the highest score (sort by han, then fu)
         if interpretation_scoring.0 > max_scoring_han_fu.0
@@ -1521,6 +1522,47 @@ pub fn compute_han_and_fu(
 
     println!(
         "overall hand scoring result: {} han, {} fu",
+        max_scoring_han_fu.0, max_scoring_han_fu.1
+    );
+    max_scoring_han_fu
+}
+
+/// Note: maximum possible fu is 110 fu, so using a u8 to represent fu is okay
+/// Note: this isn't checking for yakuman
+pub fn compute_han_and_unrounded_fu(
+    hand_tiles: MahjongTileCountArray,
+    melded_tiles: Vec<TileMeld>,
+    winning_tile: MahjongTileId,
+    hand_info: HandInfo,
+    winning_tile_info: WinningTileInfo,
+) -> (u8, u8) {
+    // First, get the possible hand shape interpretations
+    let valid_interpretations =
+        get_interpretations_with_valid_tenpai(hand_tiles, &melded_tiles, winning_tile);
+    // TODO validate with tests: this function should return hand interpretations without the winning tile
+
+    let mut max_scoring_han_fu = (0u8, 0u8);
+    for interpretation in valid_interpretations {
+        // for each hand shape interpretation, compute han and fu
+        let interpretation_scoring = compute_han_and_fu_hand_interpretation(
+            &interpretation,
+            &melded_tiles,
+            winning_tile,
+            &hand_info,
+            &winning_tile_info,
+            false,
+        );
+        // then pick the hand shape interpretation with the highest score (sort by han, then fu)
+        if interpretation_scoring.0 > max_scoring_han_fu.0
+            || (interpretation_scoring.0 == max_scoring_han_fu.0
+                && interpretation_scoring.1 > max_scoring_han_fu.1)
+        {
+            max_scoring_han_fu = interpretation_scoring;
+        }
+    }
+
+    println!(
+        "overall hand scoring result (without rounding fu): {} han, {} fu",
         max_scoring_han_fu.0, max_scoring_han_fu.1
     );
     max_scoring_han_fu
@@ -1583,6 +1625,7 @@ pub fn compute_han_and_fu_hand_interpretation(
     winning_tile: MahjongTileId,
     hand_info: &HandInfo,
     winning_tile_info: &WinningTileInfo,
+    should_round_fu: bool,
 ) -> (u8, u8) {
     println!(
         "computing han and fu for hand interpretation: {}, winning tile {}",
@@ -1627,16 +1670,19 @@ pub fn compute_han_and_fu_hand_interpretation(
         hand_info,
         winning_tile_info,
     );
-    // round up the fu to nearest 10
-    let fu_remainder = fu % 10;
-    if fu_remainder != 0 {
-        fu += 10 - fu_remainder;
+    if should_round_fu {
+        // round up the fu to nearest 10
+        let fu_remainder = fu % 10;
+        if fu_remainder != 0 {
+            fu += 10 - fu_remainder;
+        }
+        println!("-> hand interpretation scoring result: {total_han} han, {fu} fu");
+    } else {
+        println!(
+            "-> hand interpretation scoring result (without rounding fu): {total_han} han, {fu} fu"
+        );
     }
 
-    println!(
-        "-> hand interpretation scoring result: {} han, {} fu",
-        total_han, fu
-    );
     (total_han, fu)
 }
 
@@ -1887,10 +1933,10 @@ mod tests {
         as_nondealer.seat_wind = MahjongWindOrder::South;
         let as_nondealer = as_nondealer;
 
-        // Dealer Tsumo = 4 han 30 fu
+        // Dealer Tsumo = 4 han 30 fu (4 fu from closed 2p, 2 fu from tsumo)
         assert_eq!(
-            (4, 30),
-            compute_han_and_fu(
+            (4, 26),
+            compute_han_and_unrounded_fu(
                 hand.clone(),
                 melded_tiles.clone(),
                 win_tile,
@@ -1898,11 +1944,10 @@ mod tests {
                 tsumo.clone()
             )
         );
-
-        // Dealer Ron = 3 han 40 fu
+        // Dealer Ron = 3 han 40 fu (4 fu from closed 2p, 10 fu from closed ron)
         assert_eq!(
-            (3, 40),
-            compute_han_and_fu(
+            (3, 34),
+            compute_han_and_unrounded_fu(
                 hand.clone(),
                 melded_tiles.clone(),
                 win_tile,
@@ -1911,10 +1956,10 @@ mod tests {
             )
         );
 
-        // Non-dealer Tsumo = 4 han 30 fu
+        // Non-dealer Tsumo = 4 han 30 fu (4 fu from closed 2p, 2 fu from tsumo)
         assert_eq!(
-            (4, 30),
-            compute_han_and_fu(
+            (4, 26),
+            compute_han_and_unrounded_fu(
                 hand.clone(),
                 melded_tiles.clone(),
                 win_tile,
@@ -1923,10 +1968,10 @@ mod tests {
             )
         );
 
-        // Non-dealer Ron = 3 han 40 fu
+        // Non-dealer Ron = 3 han 40 fu (4 fu from closed 2p, 10 fu from closed ron)
         assert_eq!(
-            (3, 40),
-            compute_han_and_fu(
+            (3, 34),
+            compute_han_and_unrounded_fu(
                 hand.clone(),
                 melded_tiles.clone(),
                 win_tile,
@@ -1976,10 +2021,10 @@ mod tests {
         as_nondealer.seat_wind = MahjongWindOrder::South;
         let as_nondealer = as_nondealer;
 
-        // Dealer Tsumo = 4 han 20 fu
+        // Dealer Tsumo = 4 han 20 fu (pinfu, so no extra fu)
         assert_eq!(
             (4, 20),
-            compute_han_and_fu(
+            compute_han_and_unrounded_fu(
                 hand.clone(),
                 melded_tiles.clone(),
                 win_tile,
@@ -1988,10 +2033,10 @@ mod tests {
             )
         );
 
-        // Dealer Ron = 3 han 30 fu
+        // Dealer Ron = 3 han 30 fu (pinfu, but 10 fu from closed ron)
         assert_eq!(
             (3, 30),
-            compute_han_and_fu(
+            compute_han_and_unrounded_fu(
                 hand.clone(),
                 melded_tiles.clone(),
                 win_tile,
@@ -2000,10 +2045,10 @@ mod tests {
             )
         );
 
-        // Non-dealer Tsumo = 4 han 20 fu
+        // Non-dealer Tsumo = 4 han 20 fu (pinfu, so no extra fu)
         assert_eq!(
             (4, 20),
-            compute_han_and_fu(
+            compute_han_and_unrounded_fu(
                 hand.clone(),
                 melded_tiles.clone(),
                 win_tile,
@@ -2012,10 +2057,10 @@ mod tests {
             )
         );
 
-        // Non-dealer Ron = 3 han 30 fu
+        // Non-dealer Ron = 3 han 30 fu (pinfu, but 10 fu from closed ron)
         assert_eq!(
             (3, 30),
-            compute_han_and_fu(
+            compute_han_and_unrounded_fu(
                 hand.clone(),
                 melded_tiles.clone(),
                 win_tile,
