@@ -1364,6 +1364,7 @@ impl Yaku for SankantsuYaku {
     }
 }
 
+// validate with tests: this function should return hand interpretations without the winning tile
 fn get_interpretations_with_valid_tenpai(
     hand_tiles: MahjongTileCountArray,
     melded_tiles: &Vec<TileMeld>,
@@ -1372,11 +1373,9 @@ fn get_interpretations_with_valid_tenpai(
     let interpretations = get_hand_interpretations_min_shanten(hand_tiles, melded_tiles, 0);
     let mut valid_interpretations = Vec::new();
     for interpretation in interpretations {
-        let total_tile_count_array = interpretation.total_tile_count_array;
-        let tile_count_array_with_winning_tile =
-            total_tile_count_array.add_tile_ids(vec![winning_tile]);
+        let hand_tiles_with_winning_tile = hand_tiles.add_tile_ids(vec![winning_tile]);
 
-        let total_shanten = get_shanten_optimized(tile_count_array_with_winning_tile, melded_tiles);
+        let total_shanten = get_shanten_optimized(hand_tiles_with_winning_tile, melded_tiles);
         if total_shanten == -1 {
             // check if the winning tile completes the last incomplete group
             let mut num_complete_groups = 0;
@@ -1498,7 +1497,6 @@ pub fn compute_han_and_fu(
     // First, get the possible hand shape interpretations
     let valid_interpretations =
         get_interpretations_with_valid_tenpai(hand_tiles, &melded_tiles, winning_tile);
-    // TODO validate with tests: this function should return hand interpretations without the winning tile
 
     let mut max_scoring_han_fu = (0u8, 0u8);
     for interpretation in valid_interpretations {
@@ -1539,7 +1537,6 @@ pub fn compute_han_and_unrounded_fu(
     // First, get the possible hand shape interpretations
     let valid_interpretations =
         get_interpretations_with_valid_tenpai(hand_tiles, &melded_tiles, winning_tile);
-    // TODO validate with tests: this function should return hand interpretations without the winning tile
 
     let mut max_scoring_han_fu = (0u8, 0u8);
     for interpretation in valid_interpretations {
@@ -4309,6 +4306,75 @@ mod tests {
                 as_nondealer.clone(),
                 ron.clone()
             )
+        );
+    }
+
+    #[test]
+    fn test_get_interpretations_with_valid_tenpai_and_get_total_groups_after_winning_tile() {
+        let hand_tile_count_array = MahjongTileCountArray::from_text("44m67p123678s");
+        let tile_melds = vec![TileMeld::new(get_tile_ids_from_string("666z"), false)];
+        let winning_tile_id = MahjongTileId::from_text("5p").unwrap();
+
+        let interpretations = get_interpretations_with_valid_tenpai(
+            hand_tile_count_array,
+            &tile_melds,
+            winning_tile_id,
+        );
+        assert_eq!(interpretations.len(), 1);
+        let actual_interpretation = interpretations.get(0).unwrap();
+        // we expect the interpretation to not include the winning tile
+        // but the total tile count array should include the melded tiles
+        assert_eq!(
+            actual_interpretation.total_tile_count_array,
+            MahjongTileCountArray::from_text("44m67p123678s666z")
+        );
+
+        let mut expected_groups = vec![
+            TileMeld::new(get_tile_ids_from_string("44m"), true),
+            TileMeld::new(get_tile_ids_from_string("67p"), true),
+            TileMeld::new(get_tile_ids_from_string("123s"), true),
+            TileMeld::new(get_tile_ids_from_string("678s"), true),
+            TileMeld::new(get_tile_ids_from_string("666z"), false),
+        ];
+        expected_groups.sort();
+        let mut interpretation_groups = actual_interpretation.groups.clone();
+        interpretation_groups.sort();
+        // println!(
+        //     "actual interpretation tile melds: {:?}",
+        //     interpretation_groups
+        //         .iter()
+        //         .map(|tile_meld| tile_meld.to_string())
+        //         .collect::<Vec<String>>()
+        //         .join(", ")
+        // );
+        assert_eq!(interpretation_groups, expected_groups);
+
+        // test get_total_groups_after_winning_tile
+        // in this test, win on 5p by discard
+        let winning_tile_info = WinningTileInfo {
+            source: WinningTileSource::Discard {
+                is_last_discard: false,
+            },
+        };
+        let tile_groups_after_winning_tile = get_total_groups_after_winning_tile(
+            actual_interpretation,
+            &tile_melds,
+            winning_tile_id,
+            &winning_tile_info,
+        );
+        let mut expected_groups_after_winning_tile = vec![
+            TileMeld::new(get_tile_ids_from_string("44m"), true),
+            TileMeld::new(get_tile_ids_from_string("567p"), false), // note this group is no longer closed because the tile was won on discard
+            TileMeld::new(get_tile_ids_from_string("123s"), true),
+            TileMeld::new(get_tile_ids_from_string("678s"), true),
+            TileMeld::new(get_tile_ids_from_string("666z"), false),
+        ];
+        expected_groups_after_winning_tile.sort();
+        let mut tile_groups_after_winning_tile = tile_groups_after_winning_tile.clone();
+        tile_groups_after_winning_tile.sort();
+        assert_eq!(
+            tile_groups_after_winning_tile,
+            expected_groups_after_winning_tile
         );
     }
 }

@@ -10,7 +10,7 @@ use std::fmt;
 
 const MAX_SHANTEN: i8 = 99;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MeldType {
     Triplet,    // e.g. 888
     Quadruplet, // e.g. 5555
@@ -37,7 +37,7 @@ impl std::fmt::Display for MeldType {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TileMeld {
     pub meld_type: MeldType,
     pub tile_ids: Vec<MahjongTileId>,
@@ -55,6 +55,13 @@ impl std::fmt::Display for TileMeld {
             tile_ids_to_string(&self.tile_ids),
         )
     }
+}
+
+pub fn total_melded_tiles(melded_tiles: &Vec<TileMeld>) -> usize {
+    melded_tiles
+        .iter()
+        .map(|tile_meld| tile_meld.tile_ids.len())
+        .sum()
 }
 
 fn tile_ids_are_all_same(tile_ids: &Vec<MahjongTileId>) -> bool {
@@ -304,7 +311,7 @@ impl TileMeld {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct HandInterpretation {
     pub total_tile_count_array: MahjongTileCountArray,
     pub groups: Vec<TileMeld>,
@@ -455,7 +462,8 @@ impl HandInterpretation {
             let mut tile_ids = group.tile_ids_to_complete_group();
             if group.meld_type == MeldType::SingleTile {
                 // for isolated tile, it only adds to the ukiere if making another
-                // incomplete group would reduce shanten
+                // incomplete group would reduce shanten (5 groups, including taatsu and pairs, means
+                // the hand doesn't benefit from converting single tile to taatsu or pair)
                 if total_groups >= 5 {
                     continue;
                 }
@@ -464,6 +472,10 @@ impl HandInterpretation {
                     // in this case, you can decrease shanten, but only by drawing the same tile
                     // to form a new group which is the only pair
                     tile_ids = vec![single_tile_id];
+                } else {
+                    // in this case, we have at most 4 groups (taatsu + pairs), of which one is a pair
+                    // so improving the single tile to a taatsu or pair will help
+                    tile_ids = group.tile_ids_to_advance_group();
                 }
 
                 // edge case - if the hand already contains a pair of the same value as
@@ -550,7 +562,7 @@ pub fn get_hand_interpretations(
     hand_interpretations
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PartialMeldInterpretation {
     remaining_tile_count_array: MahjongTileCountArray,
     groups: Vec<TileMeld>,
@@ -778,12 +790,19 @@ pub fn get_suit_melds(suit_tile_count_array: MahjongTileCountArray) -> Vec<Vec<T
     meld_interpretations
 }
 
+/// the tile_count_array is the tiles in hand (excluding melded tiles) -> the HandInterpretation's total_tile_count_array will include all tiles
 pub fn get_hand_interpretations_min_shanten(
     tile_count_array: MahjongTileCountArray,
     melded_tiles: &Vec<TileMeld>,
     shanten_cutoff: i8,
 ) -> Vec<HandInterpretation> {
-    let original_tile_count_array: MahjongTileCountArray = tile_count_array;
+    let melded_tile_ids: Vec<MahjongTileId> = melded_tiles
+        .iter()
+        .map(|tile_meld| tile_meld.tile_ids.clone())
+        .flatten()
+        .collect();
+    let total_tile_count_array: MahjongTileCountArray =
+        tile_count_array.add_tile_ids(melded_tile_ids);
 
     // TODO handle declared melds (which are locked)
     let mut declared_melds = melded_tiles.clone();
@@ -820,10 +839,19 @@ pub fn get_hand_interpretations_min_shanten(
     };
 
     let hand_interpretations = get_suit_melds_min_shanten(
-        original_tile_count_array,
+        total_tile_count_array,
         partial_hand_interpretation,
         shanten_cutoff,
     );
+    // println!(
+    //     "hand interpretations : {}",
+    //     hand_interpretations
+    //         .clone()
+    //         .into_iter()
+    //         .map(|interpretation| interpretation.to_string())
+    //         .collect::<Vec<String>>()
+    //         .join(", ")
+    // );
 
     hand_interpretations
 }
@@ -850,11 +878,16 @@ fn print_queue(queue: &VecDeque<PartialMeldInterpretation>) {
     }
 }
 
+/// the original_tile_count_array is all tiles, including melded tiles -> the HandInterpretation's total_tile_count_array will include all tiles
 pub fn get_suit_melds_min_shanten(
-    original_tile_count_array: MahjongTileCountArray,
+    total_tile_count_array: MahjongTileCountArray,
     initial_partial_interpretation: PartialMeldInterpretation,
     shanten_cutoff: i8,
 ) -> Vec<HandInterpretation> {
+    // println!(
+    //     "get_suit_melds_min_shanten {}, {}, shanten_cutoff: {}",
+    //     total_tile_count_array, initial_partial_interpretation, shanten_cutoff
+    // );
     let mut hand_interpretations: HashMap<i8, Vec<HandInterpretation>> = HashMap::new();
     let mut queue: VecDeque<PartialMeldInterpretation> = VecDeque::new();
     queue.push_back(initial_partial_interpretation);
@@ -894,7 +927,7 @@ pub fn get_suit_melds_min_shanten(
         if tile_id == mahjong_tile::FIRST_HONOR_ID {
             // if we reached this point, then we have a complete interpretation:
             let new_hand_interpretation = HandInterpretation {
-                total_tile_count_array: original_tile_count_array,
+                total_tile_count_array,
                 groups: partial_interpretation.groups,
             };
             // update best shanten so far if we found something promising
@@ -1121,7 +1154,7 @@ pub fn get_shanten_after_each_discard(
     melded_tiles: &Vec<TileMeld>,
     shanten_function: &dyn Fn(MahjongTileCountArray, &Vec<TileMeld>) -> i8,
 ) -> HashMap<i8, Vec<MahjongTileId>> {
-    if tile_count_array.total_tiles() != 14 {
+    if tile_count_array.total_tiles() + total_melded_tiles(melded_tiles) < 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
     }
@@ -1163,7 +1196,7 @@ pub fn get_best_shanten_after_discard(
     melded_tiles: &Vec<TileMeld>,
     shanten_function: &dyn Fn(MahjongTileCountArray, &Vec<TileMeld>) -> i8,
 ) -> i8 {
-    if tile_count_array.total_tiles() != 14 {
+    if tile_count_array.total_tiles() + total_melded_tiles(melded_tiles) < 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
     }
@@ -1188,7 +1221,7 @@ pub fn get_most_ukiere_after_discard(
     ukiere_function: &dyn Fn(MahjongTileCountArray, &Vec<TileMeld>) -> Vec<MahjongTileId>,
     other_visible_tiles: &Vec<MahjongTileId>,
 ) -> Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> {
-    if tile_count_array.total_tiles() != 14 {
+    if tile_count_array.total_tiles() + total_melded_tiles(melded_tiles) < 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
     }
@@ -1235,7 +1268,7 @@ pub fn get_all_ukiere_after_discard(
     ukiere_function: &dyn Fn(MahjongTileCountArray, &Vec<TileMeld>) -> Vec<MahjongTileId>,
     other_visible_tiles: &Vec<MahjongTileId>,
 ) -> Vec<(MahjongTileId, Vec<MahjongTileId>, u16)> {
-    if tile_count_array.total_tiles() != 14 {
+    if tile_count_array.total_tiles() + total_melded_tiles(melded_tiles) < 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
     }
@@ -1272,7 +1305,7 @@ pub fn get_shanten_ukiere_after_each_discard(
     ukiere_function: &dyn Fn(MahjongTileCountArray, &Vec<TileMeld>) -> Vec<MahjongTileId>,
     other_visible_tiles: &Vec<MahjongTileId>,
 ) -> Vec<(MahjongTileId, i8, Vec<MahjongTileId>, u16)> {
-    if tile_count_array.total_tiles() != 14 {
+    if tile_count_array.total_tiles() + total_melded_tiles(melded_tiles) < 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
     }
@@ -1329,7 +1362,7 @@ pub fn get_upgrade_tiles(
     ukiere_function: &dyn Fn(MahjongTileCountArray, &Vec<TileMeld>) -> Vec<MahjongTileId>,
     other_visible_tiles: &Vec<MahjongTileId>,
 ) -> HashMap<MahjongTileId, HashMap<MahjongTileId, (Vec<MahjongTileId>, u16)>> {
-    if tile_count_array.total_tiles() != 13 {
+    if tile_count_array.total_tiles() + total_melded_tiles(melded_tiles) < 13 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
     }
@@ -1430,7 +1463,7 @@ pub fn get_ukiere_after_discard(
     discard_tile_id: MahjongTileId,
     ukiere_function: &dyn Fn(MahjongTileCountArray, &Vec<TileMeld>) -> Vec<MahjongTileId>,
 ) -> Vec<MahjongTileId> {
-    if tile_count_array.total_tiles() != 14 {
+    if tile_count_array.total_tiles() + total_melded_tiles(melded_tiles) < 14 {
         // TODO eventually will need to handle the case when there are more tiles due to quads
         panic!("invalid number of tiles")
     }
@@ -1787,7 +1820,7 @@ mod tests {
         //     "asserting upgrade tiles for {}",
         //     tile_ids_to_string(&tile_count_array.to_tile_ids())
         // );
-        if tile_count_array.total_tiles() != 13 {
+        if tile_count_array.total_tiles() + total_melded_tiles(melded_tiles) < 13 {
             // TODO eventually will need to handle the case when there are more tiles due to quads
             panic!("invalid number of tiles");
         }
@@ -3203,6 +3236,7 @@ mod tests {
         );
         print_shanten_ukiere_after_each_discard(
             tiles_after_draw,
+            &melded_tiles,
             &shanten_ukiere_after_each_discard,
             &other_visible_tiles,
         );
@@ -3210,15 +3244,15 @@ mod tests {
 
     fn print_shanten_ukiere_after_each_discard(
         tile_count_array: MahjongTileCountArray,
+        melded_tiles: &Vec<TileMeld>,
         shanten_ukiere_after_each_discard: &Vec<(MahjongTileId, i8, Vec<MahjongTileId>, u16)>,
         other_visible_tiles: &Vec<MahjongTileId>,
     ) {
-        if tile_count_array.total_tiles() != 14 {
+        if tile_count_array.total_tiles() + total_melded_tiles(melded_tiles) < 14 {
             // TODO eventually will need to handle the case when there are more tiles due to quads
             panic!("invalid number of tiles")
         }
         let original_tiles = tile_count_array.to_tile_ids();
-        let melded_tiles = Vec::new();
         println!(
             "shanten + ukiere after each discard: {}",
             tile_ids_to_string(&original_tiles)
@@ -3521,6 +3555,7 @@ mod tests {
         );
         print_shanten_ukiere_after_each_discard(
             tiles_after_draw,
+            &melded_tiles,
             &shanten_ukiere_after_each_discard,
             &other_visible_tiles,
         );
@@ -3564,6 +3599,7 @@ mod tests {
         );
         print_shanten_ukiere_after_each_discard(
             tiles_after_call,
+            &melded_tiles,
             &shanten_ukiere_after_each_discard,
             &other_visible_tiles,
         );
@@ -3691,6 +3727,7 @@ mod tests {
         );
         print_shanten_ukiere_after_each_discard(
             tiles_after_draw,
+            &melded_tiles,
             &shanten_ukiere_after_each_discard,
             &other_visible_tiles,
         );
@@ -3731,6 +3768,7 @@ mod tests {
         );
         print_shanten_ukiere_after_each_discard(
             tiles_after_draw,
+            &melded_tiles,
             &shanten_ukiere_after_each_discard,
             &other_visible_tiles,
         );
@@ -3781,6 +3819,7 @@ mod tests {
         );
         print_shanten_ukiere_after_each_discard(
             tiles_after_draw,
+            &melded_tiles,
             &shanten_ukiere_after_each_discard,
             &other_visible_tiles,
         );
@@ -3841,6 +3880,7 @@ mod tests {
         );
         print_shanten_ukiere_after_each_discard(
             tiles_after_draw,
+            &melded_tiles,
             &shanten_ukiere_after_each_discard,
             &other_visible_tiles,
         );
@@ -3899,6 +3939,7 @@ mod tests {
         );
         print_shanten_ukiere_after_each_discard(
             tiles_after_draw,
+            &melded_tiles,
             &shanten_ukiere_after_each_discard,
             &other_visible_tiles,
         );
@@ -4167,6 +4208,158 @@ mod tests {
         let melded_tiles = Vec::new();
         let shanten = get_shanten_optimized(tile_count_array, &melded_tiles);
         assert_eq!(shanten, 4); // 4-shanten for thirteen orphans
+    }
+
+    #[test]
+    fn test_get_hand_interpretations_min_shanten_no_melded_tiles() {
+        let tile_count_array = MahjongTileCountArray::from_text("44m67p123678s666z");
+        let melded_tiles = Vec::new();
+        let shanten_cutoff = 0;
+        let interpretations =
+            get_hand_interpretations_min_shanten(tile_count_array, &melded_tiles, shanten_cutoff);
+
+        assert_eq!(interpretations.len(), 1);
+        let tenpai_interpretation = interpretations.get(0).unwrap();
+        assert_eq!(
+            tenpai_interpretation.total_tile_count_array,
+            tile_count_array
+        );
+        let mut expected_groups = vec![
+            TileMeld {
+                meld_type: MeldType::Pair,
+                tile_ids: get_tile_ids_from_string("44m"),
+                is_closed: true,
+            },
+            TileMeld {
+                meld_type: MeldType::Ryanmen,
+                tile_ids: get_tile_ids_from_string("67p"),
+                is_closed: true,
+            },
+            TileMeld {
+                meld_type: MeldType::Sequence,
+                tile_ids: get_tile_ids_from_string("123s"),
+                is_closed: true,
+            },
+            TileMeld {
+                meld_type: MeldType::Sequence,
+                tile_ids: get_tile_ids_from_string("678s"),
+                is_closed: true,
+            },
+            TileMeld {
+                meld_type: MeldType::Triplet,
+                tile_ids: get_tile_ids_from_string("666z"),
+                is_closed: true,
+            },
+        ];
+        expected_groups.sort();
+        let mut interpretation_groups = tenpai_interpretation.groups.clone();
+        interpretation_groups.sort();
+        assert_eq!(interpretation_groups, expected_groups);
+    }
+
+    #[test]
+    fn test_get_hand_interpretations_min_shanten_with_melded_tiles() {
+        let tile_count_array = MahjongTileCountArray::from_text("44m67p123678s");
+        let melded_tiles = vec![TileMeld {
+            meld_type: MeldType::Triplet,
+            tile_ids: get_tile_ids_from_string("666z"),
+            is_closed: false,
+        }];
+        let shanten_cutoff = 0;
+        let interpretations =
+            get_hand_interpretations_min_shanten(tile_count_array, &melded_tiles, shanten_cutoff);
+
+        assert_eq!(interpretations.len(), 1);
+        let tenpai_interpretation = interpretations.get(0).unwrap();
+        let expected_tile_count_array = MahjongTileCountArray::from_text("44m67p123678s666z");
+        assert_eq!(
+            tenpai_interpretation.total_tile_count_array,
+            expected_tile_count_array
+        );
+        let mut expected_groups = vec![
+            TileMeld {
+                meld_type: MeldType::Pair,
+                tile_ids: get_tile_ids_from_string("44m"),
+                is_closed: true,
+            },
+            TileMeld {
+                meld_type: MeldType::Ryanmen,
+                tile_ids: get_tile_ids_from_string("67p"),
+                is_closed: true,
+            },
+            TileMeld {
+                meld_type: MeldType::Sequence,
+                tile_ids: get_tile_ids_from_string("123s"),
+                is_closed: true,
+            },
+            TileMeld {
+                meld_type: MeldType::Sequence,
+                tile_ids: get_tile_ids_from_string("678s"),
+                is_closed: true,
+            },
+            TileMeld {
+                meld_type: MeldType::Triplet,
+                tile_ids: get_tile_ids_from_string("666z"),
+                is_closed: false,
+            },
+        ];
+        expected_groups.sort();
+        let mut interpretation_groups = tenpai_interpretation.groups.clone();
+        interpretation_groups.sort();
+        assert_eq!(interpretation_groups, expected_groups);
+    }
+
+    #[test]
+    fn test_riichi_book1_tenpai_discard() {
+        // page 48
+        let tiles_before_discard = MahjongTileCountArray::from_text("44m667p123678s");
+        let melded_tiles = vec![TileMeld::new(get_tile_ids_from_string("666z"), false)];
+        let other_visible_tiles = Vec::new();
+        let shanten_ukiere_after_each_discard = get_shanten_ukiere_after_each_discard(
+            tiles_before_discard,
+            &melded_tiles,
+            &get_shanten_optimized,
+            &get_ukiere_optimized,
+            &other_visible_tiles,
+        );
+        print_shanten_ukiere_after_each_discard(
+            tiles_before_discard,
+            &melded_tiles,
+            &shanten_ukiere_after_each_discard,
+            &other_visible_tiles,
+        );
+        // can enter tenpai if discard
+        let best_shanten = get_best_shanten_after_discard(
+            tiles_before_discard,
+            &melded_tiles,
+            &get_shanten_optimized,
+        );
+        assert_eq!(best_shanten, 0);
+
+        // only 2 ways to enter tenpai
+        let tenpai_ukiere_after_each_discard: Vec<_> = shanten_ukiere_after_each_discard
+            .into_iter()
+            .filter(
+                |(_discard_tile, shanten, _ukiere_tiles, _num_ukiere_tiles)| {
+                    shanten == &best_shanten
+                },
+            )
+            .collect();
+        assert_eq!(tenpai_ukiere_after_each_discard.len(), 2);
+        // discard 6p -> tenpai, ryanmen wait on 58p
+        assert!(tenpai_ukiere_after_each_discard.contains(&(
+            MahjongTileId::from_text("6p").unwrap(),
+            0,
+            get_tile_ids_from_string("58p"),
+            8
+        )));
+        // discard 7p -> tenpai, shanpon wait on 4m6p
+        assert!(tenpai_ukiere_after_each_discard.contains(&(
+            MahjongTileId::from_text("7p").unwrap(),
+            0,
+            get_tile_ids_from_string("4m6p"),
+            4
+        )));
     }
 }
 
