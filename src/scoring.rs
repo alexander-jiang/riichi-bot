@@ -4377,4 +4377,87 @@ mod tests {
             expected_groups_after_winning_tile
         );
     }
+
+    #[test]
+    fn test_riichi_book1_tenpai_scoring() {
+        // page 52
+        let hand = MahjongTileCountArray::from_text("34588p23678s777z");
+        let melded_tiles = Vec::new();
+        let dora_tiles = get_tile_ids_from_string("1z"); // no dora
+        let win_tile_1s = MahjongTileId::from_text("1s").unwrap();
+        let win_tile_4s = MahjongTileId::from_text("4s").unwrap();
+
+        // winning method
+        let ron = WinningTileInfo {
+            source: WinningTileSource::Discard {
+                is_last_discard: false,
+            },
+        };
+        let tsumo = WinningTileInfo {
+            source: WinningTileSource::SelfDraw {
+                is_first_draw: false,
+                is_last_draw: false,
+            },
+        };
+
+        // situations (dealer in East-1 vs. south in East-1)
+        let as_dealer = HandInfo {
+            hand_state: HandState::Closed {
+                riichi_info: RiichiInfo::NoRiichi,
+            },
+            round_wind: MahjongWindOrder::East,
+            seat_wind: MahjongWindOrder::East,
+            round_number: 1,
+            honba_counter: 0,
+            dora_tiles: dora_tiles.clone(),
+        };
+
+        // Ron (on 1s) = 1 han 40 fu
+        assert_eq!(
+            (1, 40),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile_1s,
+                as_dealer.clone(),
+                ron.clone()
+            )
+        );
+
+        // Tsumo (on 1s) = 2 han 30 fu
+        assert_eq!(
+            (2, 30),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile_1s,
+                as_dealer.clone(),
+                tsumo.clone()
+            )
+        );
+
+        // Ron (on 4s) = 1 han 40 fu
+        assert_eq!(
+            (1, 40),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile_4s,
+                as_dealer.clone(),
+                ron.clone()
+            )
+        );
+
+        // Tsumo (on 4s) = 2 han 30 fu
+        assert_eq!(
+            (2, 30),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile_4s,
+                as_dealer.clone(),
+                tsumo.clone()
+            )
+        );
+    }
 }

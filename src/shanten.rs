@@ -2024,7 +2024,7 @@ mod tests {
     }
 
     #[test]
-    fn tile_ids_from_string() {
+    fn test_tile_ids_from_string() {
         let tile_ids = get_tile_ids_from_string("1234m");
         assert_eq!(tile_ids.len(), 4);
         assert!(tile_ids.contains(&MahjongTileId::from_text("1m").unwrap()));
@@ -4360,6 +4360,38 @@ mod tests {
             get_tile_ids_from_string("4m6p"),
             4
         )));
+    }
+
+    #[test]
+    fn test_riichi_book1_one_shanten() {
+        // page 53
+        let tiles_before_draw = MahjongTileCountArray::from_text("35588p23678s777z");
+        let melded_tiles = Vec::new();
+        let shanten = get_shanten_optimized(tiles_before_draw, &melded_tiles);
+        assert_eq!(shanten, 1);
+
+        let mut ukiere_tiles = get_ukiere_optimized(tiles_before_draw, &melded_tiles);
+        ukiere_tiles.sort();
+
+        let mut expected_ukiere_tiles = get_tile_ids_from_string("458p14s");
+        expected_ukiere_tiles.sort();
+        assert_eq!(ukiere_tiles, expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn test_riichi_book1_two_shanten() {
+        // page 54
+        let tiles_before_draw = MahjongTileCountArray::from_text("35588p23677s777z");
+        let melded_tiles = Vec::new();
+        let shanten = get_shanten_optimized(tiles_before_draw, &melded_tiles);
+        assert_eq!(shanten, 2);
+
+        let mut ukiere_tiles = get_ukiere_optimized(tiles_before_draw, &melded_tiles);
+        ukiere_tiles.sort();
+
+        let mut expected_ukiere_tiles = get_tile_ids_from_string("3458p12345678s");
+        expected_ukiere_tiles.sort();
+        assert_eq!(ukiere_tiles, expected_ukiere_tiles);
     }
 }
 
