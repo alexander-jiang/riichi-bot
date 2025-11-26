@@ -4393,6 +4393,59 @@ mod tests {
         expected_ukiere_tiles.sort();
         assert_eq!(ukiere_tiles, expected_ukiere_tiles);
     }
+
+    #[test]
+    fn test_riichi_book1_wwyd_one_shanten() {
+        // page 55
+        let tiles_before_discard = MahjongTileCountArray::from_text("5677m34p45579s666z");
+        let melded_tiles = Vec::new();
+        let other_visible_tiles = Vec::new();
+        let shanten_ukiere_after_each_discard = get_shanten_ukiere_after_each_discard(
+            tiles_before_discard,
+            &melded_tiles,
+            &get_shanten_optimized,
+            &get_ukiere_optimized,
+            &other_visible_tiles,
+        );
+        print_shanten_ukiere_after_each_discard(
+            tiles_before_discard,
+            &melded_tiles,
+            &shanten_ukiere_after_each_discard,
+            &other_visible_tiles,
+        );
+        // can enter 1-shanten if discard
+        let best_shanten = get_best_shanten_after_discard(
+            tiles_before_discard,
+            &melded_tiles,
+            &get_shanten_optimized,
+        );
+        assert_eq!(best_shanten, 1);
+
+        // only 2 ways to reach 1-shanten
+        let tenpai_ukiere_after_each_discard: Vec<_> = shanten_ukiere_after_each_discard
+            .into_iter()
+            .filter(
+                |(_discard_tile, shanten, _ukiere_tiles, _num_ukiere_tiles)| {
+                    shanten == &best_shanten
+                },
+            )
+            .collect();
+        assert_eq!(tenpai_ukiere_after_each_discard.len(), 2);
+        // discard 7m -> 1-shanten, ukiere = 25p8s
+        assert!(tenpai_ukiere_after_each_discard.contains(&(
+            MahjongTileId::from_text("7m").unwrap(),
+            1,
+            get_tile_ids_from_string("25p8s"),
+            12
+        )));
+        // discard 4s -> 1-shanten, ukiere = 25p8s
+        assert!(tenpai_ukiere_after_each_discard.contains(&(
+            MahjongTileId::from_text("4s").unwrap(),
+            1,
+            get_tile_ids_from_string("25p8s"),
+            12
+        )));
+    }
 }
 
 // 3445799m13p3456s4m - 1-shanten, cut 3s/6s results in 15 ukiere (4689m2p)
