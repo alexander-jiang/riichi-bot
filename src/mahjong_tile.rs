@@ -643,6 +643,17 @@ impl MahjongTileCountArray {
         }
         new_tile_count_array
     }
+
+    pub fn remove_tile_ids(&self, tile_ids_to_remove: Vec<MahjongTileId>) -> Self {
+        let mut new_tile_count_array: MahjongTileCountArray = self.clone();
+        for tile_id in tile_ids_to_remove.iter() {
+            if new_tile_count_array.0[usize::from(*tile_id)] == 0 {
+                continue;
+            }
+            new_tile_count_array.0[usize::from(*tile_id)] -= 1;
+        }
+        new_tile_count_array
+    }
 }
 
 impl fmt::Display for MahjongTileCountArray {

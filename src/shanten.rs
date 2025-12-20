@@ -1755,6 +1755,10 @@ pub fn print_ukiere_after_discard(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::mahjong_tile::MahjongWindOrder;
+    use crate::scoring::{
+        compute_han_and_fu, HandInfo, HandState, RiichiInfo, WinningTileInfo, WinningTileSource,
+    };
     use std::cmp::Ordering;
     use std::collections::HashSet;
     use test::Bencher;
@@ -4446,6 +4450,185 @@ mod tests {
             12
         )));
     }
+
+    #[test]
+    fn test_riichi_book1_wwyd_ryankan_to_pinfu_guaranteed() {
+        // page 66 of riichi book 1, section 3.3.1 (three-tile complex shapes > double closed (ryankan) shape)
+        // 455789m45667p77s2p
+        // discard 2p -> 1-shanten, accepts 356m58p7s (19 tiles)
+        // discard 5m -> 1-shanten, accepts 36m358p (19 tiles)
+        // discarding 5m means we have more options to reach pinfu (if discard 2p and then draw 5m or 7s, it would form an ankou -> not eligible for pinfu)
+        let tiles_before_discard = MahjongTileCountArray::from_text("455789m45667p77s2p");
+        let melded_tiles = Vec::new();
+        let other_visible_tiles = Vec::new();
+        let shanten_ukiere_after_each_discard = get_shanten_ukiere_after_each_discard(
+            tiles_before_discard,
+            &melded_tiles,
+            &get_shanten_optimized,
+            &get_ukiere_optimized,
+            &other_visible_tiles,
+        );
+        // print_shanten_ukiere_after_each_discard(
+        //     tiles_before_discard,
+        //     &melded_tiles,
+        //     &shanten_ukiere_after_each_discard,
+        //     &other_visible_tiles,
+        // );
+        // can enter 1-shanten if discard
+        let best_shanten = get_best_shanten_after_discard(
+            tiles_before_discard,
+            &melded_tiles,
+            &get_shanten_optimized,
+        );
+        assert_eq!(best_shanten, 1);
+
+        // 4 ways to reach 1-shanten: discarding 5m, 2p, or 6p or 4m
+        let one_shanten_ukiere_after_each_discard: Vec<_> = shanten_ukiere_after_each_discard
+            .into_iter()
+            .filter(
+                |(_discard_tile, shanten, _ukiere_tiles, _num_ukiere_tiles)| {
+                    shanten == &best_shanten
+                },
+            )
+            .collect();
+        assert_eq!(one_shanten_ukiere_after_each_discard.len(), 4);
+        print_shanten_ukiere_after_each_discard(
+            tiles_before_discard,
+            &melded_tiles,
+            &one_shanten_ukiere_after_each_discard,
+            &other_visible_tiles,
+        );
+        println!(
+            "one_shanten_ukiere_after_each_discard - {:?}",
+            one_shanten_ukiere_after_each_discard
+        );
+
+        // discard 5m -> 1-shanten, ukiere = 36m358p
+        let ukiere_tiles_after_discard_5m = get_tile_ids_from_string("36m358p");
+        assert!(one_shanten_ukiere_after_each_discard.contains(&(
+            MahjongTileId::from_text("5m").unwrap(),
+            1,
+            ukiere_tiles_after_discard_5m.clone(),
+            19
+        )));
+        // discard 2p -> 1-shanten, ukiere = 356m58p7s
+        // TODO why is this failing??
+        assert!(one_shanten_ukiere_after_each_discard.contains(&(
+            MahjongTileId::from_text("2p").unwrap(),
+            1,
+            get_tile_ids_from_string("356m58p7s"),
+            19
+        )));
+        // discard 6p -> 1-shanten, ukiere = 356m3p7s
+        assert!(one_shanten_ukiere_after_each_discard.contains(&(
+            MahjongTileId::from_text("6p").unwrap(),
+            1,
+            get_tile_ids_from_string("356m3p7s"),
+            16
+        )));
+        // discard 4m -> 1-shanten, ukiere = 5m358p7s
+        assert!(one_shanten_ukiere_after_each_discard.contains(&(
+            MahjongTileId::from_text("4m").unwrap(),
+            1,
+            get_tile_ids_from_string("5m358p7s"),
+            15
+        )));
+
+        // if discard 5m, and draw any of the ukiere tiles (36m358p) -> the resulting tenpai wait can be guaranteed pinfu
+        let tiles_after_discard_5m =
+            tiles_before_discard.remove_tile_ids(vec![MahjongTileId::from_text("5m").unwrap()]);
+        for ukiere_tile_after_discard_5m in ukiere_tiles_after_discard_5m {
+            let tiles_after_discard_5m_and_ukiere =
+                tiles_after_discard_5m.add_tile_ids(vec![ukiere_tile_after_discard_5m]);
+            let best_shanten = get_best_shanten_after_discard(
+                tiles_after_discard_5m_and_ukiere,
+                &melded_tiles,
+                &get_shanten_optimized,
+            );
+            assert_eq!(best_shanten, 0);
+            println!(
+                "after discard 5m and draw {} => {}, should be tenpai after some discard",
+                ukiere_tile_after_discard_5m.to_text(),
+                tiles_after_discard_5m_and_ukiere.to_text()
+            );
+
+            let discard_tiles_for_win = get_shanten_ukiere_after_each_discard(
+                tiles_after_discard_5m_and_ukiere,
+                &melded_tiles,
+                &get_shanten_optimized,
+                &get_ukiere_optimized,
+                &other_visible_tiles,
+            );
+            let ukiere_for_tenpai_after_discard: Vec<_> = discard_tiles_for_win
+                .into_iter()
+                .filter(
+                    |(_discard_tile, shanten, _ukiere_tiles, _num_ukiere_tiles)| {
+                        shanten == &best_shanten
+                    },
+                )
+                .collect();
+
+            let dora_tiles = get_tile_ids_from_string("1z"); // no dora
+            let ron = WinningTileInfo {
+                source: WinningTileSource::Discard {
+                    is_last_discard: false,
+                },
+            };
+            let as_dealer = HandInfo {
+                hand_state: HandState::Closed {
+                    riichi_info: RiichiInfo::NoRiichi,
+                },
+                round_wind: MahjongWindOrder::East,
+                seat_wind: MahjongWindOrder::East,
+                round_number: 1,
+                honba_counter: 0,
+                dora_tiles: dora_tiles.clone(),
+            };
+
+            let mut tiles_to_discard_for_pinfu: Vec<MahjongTileId> = Vec::new();
+            for (discard_for_tenpai, shanten_for_tenpai, ukiere_tiles_for_tenpai, _) in
+                ukiere_for_tenpai_after_discard
+            {
+                if shanten_for_tenpai != 0 {
+                    continue;
+                }
+                // add to the list if all possible win tiles guarantee pinfu
+                let mut pinfu_guaranteed = true;
+                let tenpai_tiles =
+                    tiles_after_discard_5m_and_ukiere.remove_tile_ids(vec![discard_for_tenpai]);
+                println!(
+                    "after discard 5m and draw {}, then discard {} => tenpai on tiles {}",
+                    ukiere_tile_after_discard_5m,
+                    discard_for_tenpai.to_text(),
+                    tenpai_tiles.to_text()
+                );
+                for ukiere_tile_for_win in ukiere_tiles_for_tenpai {
+                    // Ron = 1 han 30 fu (pinfu)
+                    if compute_han_and_fu(
+                        tenpai_tiles.clone(),
+                        melded_tiles.clone(),
+                        ukiere_tile_for_win,
+                        as_dealer.clone(),
+                        ron.clone(),
+                    ) != (1, 30)
+                    // TODO should use PinfuYaku check
+                    {
+                        pinfu_guaranteed = false;
+                    }
+                }
+                if pinfu_guaranteed {
+                    tiles_to_discard_for_pinfu.push(discard_for_tenpai);
+                    println!(
+                        "after discard 5m and draw {} then discard {} => {}, tenpai with pinfu guaranteed",
+                        ukiere_tile_after_discard_5m.to_text(),
+                        discard_for_tenpai.to_text(),
+                        tenpai_tiles.to_text()
+                    );
+                }
+            }
+            assert!(!tiles_to_discard_for_pinfu.is_empty());
+        }
+    }
 }
 
 // 3445799m13p3456s4m - 1-shanten, cut 3s/6s results in 15 ukiere (4689m2p)
@@ -4456,12 +4639,6 @@ mod tests {
 // win by ron on 3p or 6p (as non-dealer): 1 han 40 fu -> 1300
 // win by tsumo on 3p (as non-dealer): 2 han 30 fu (+8 from ankou of 777z, +2 tsumo) -> 500/1000
 // win by tsumo on 6p (as non-dealer): 2 han 40 fu (additional +2 from kanchan wait 456p-57p) -> 700/1300
-
-// example in riichi book 1, section 3.3.1 (three-tile complex shapes > double closed (ryankan) shape)
-// 455789m45667p77s2p
-// discard 2p -> 1-shanten, accepts 356m58p7s (19 tiles)
-// discard 5m -> 1-shanten, accepts 36m358p (19 tiles)
-// discarding 5m means we have more options to reach pinfu (if discard 2p and then draw 5m or 7s, it would form an ankou -> not eligible for pinfu)
 
 // 11345m678p246s77z2m
 // should cut 2s (or 6s) - but why?

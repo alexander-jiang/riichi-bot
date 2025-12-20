@@ -60,17 +60,17 @@ impl WinningTileSource {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WinningTileInfo {
-    source: WinningTileSource,
+    pub(crate) source: WinningTileSource,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct HandInfo {
-    hand_state: HandState,
-    round_wind: MahjongWindOrder,
-    seat_wind: MahjongWindOrder,
-    round_number: u8, // 1-4 inclusive (represents how many different players have been dealer, including this hand)
-    honba_counter: u16, // this number +1 is the "repeat"/renchan number e.g. east round, 2nd dealer, 1 honba -> East-2, 1st bonus round
-    dora_tiles: Vec<MahjongTileId>,
+    pub(crate) hand_state: HandState,
+    pub(crate) round_wind: MahjongWindOrder,
+    pub(crate) seat_wind: MahjongWindOrder,
+    pub(crate) round_number: u8, // 1-4 inclusive (represents how many different players have been dealer, including this hand)
+    pub(crate) honba_counter: u16, // this number +1 is the "repeat"/renchan number e.g. east round, 2nd dealer, 1 honba -> East-2, 1st bonus round
+    pub(crate) dora_tiles: Vec<MahjongTileId>,
 }
 
 pub trait Yaku {
