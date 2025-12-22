@@ -632,6 +632,14 @@ impl MahjongTileCountArray {
         total_tiles
     }
 
+    pub fn add_tile_id(&mut self, tile_id_to_add: MahjongTileId) {
+        if self.0[usize::from(tile_id_to_add)] == 4 {
+            // don't allow more than 4 copies
+            return;
+        }
+        self.0[usize::from(tile_id_to_add)] += 1;
+    }
+
     pub fn add_tile_ids(&self, tile_ids_to_add: Vec<MahjongTileId>) -> Self {
         let mut new_tile_count_array = self.clone();
         for tile_id in tile_ids_to_add.iter() {
@@ -653,6 +661,19 @@ impl MahjongTileCountArray {
             new_tile_count_array.0[usize::from(*tile_id)] -= 1;
         }
         new_tile_count_array
+    }
+
+    pub fn contains(&self, tile_id: &MahjongTileId) -> bool {
+        self.get_tile_id_count(tile_id) > 0
+    }
+
+    pub fn is_empty(&self) -> bool {
+        for tile_idx in 0..self.0.len() {
+            if self.0[tile_idx] > 0 {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -1194,6 +1215,13 @@ mod tests {
     }
 
     #[test]
+    fn test_mahjong_tile_count_array_from_tile_ids_empty_vec() {
+        let empty_tile_count_array = MahjongTileCountArray::from_tile_ids(&vec![]);
+        assert!(empty_tile_count_array.is_empty());
+        assert_eq!(empty_tile_count_array.total_tiles(), 0);
+    }
+
+    #[test]
     fn test_mahjong_tile_count_array_from_text() {
         let tile_ids = vec![MahjongTileId::new_number_tile(
             1,
@@ -1404,4 +1432,61 @@ mod tests {
         assert!(!distinct_tile_ids.contains(&MahjongTileId::from_text("3p").unwrap()));
         assert!(!distinct_tile_ids.contains(&MahjongTileId::from_text("2m").unwrap()));
     }
+
+    #[test]
+    fn test_mahjong_tile_count_array_add_tile_id() {
+        let mut empty_tile_count_array = MahjongTileCountArray::from_tile_ids(&vec![]);
+        assert!(empty_tile_count_array.is_empty());
+        assert_eq!(empty_tile_count_array.total_tiles(), 0);
+
+        let tile_id_to_add = MahjongTileId::from_text("3p").unwrap();
+        empty_tile_count_array.add_tile_id(tile_id_to_add.clone());
+        assert!(!empty_tile_count_array.is_empty());
+        assert_eq!(empty_tile_count_array.total_tiles(), 1);
+        assert!(empty_tile_count_array.contains(&tile_id_to_add));
+    }
+
+    #[test]
+    fn test_mahjong_tile_count_array_add_tile_ids() {
+        let empty_tile_count_array = MahjongTileCountArray::from_tile_ids(&vec![]);
+        assert!(empty_tile_count_array.is_empty());
+        assert_eq!(empty_tile_count_array.total_tiles(), 0);
+
+        let tile_ids_to_add = vec![
+            MahjongTileId::from_text("3p").unwrap(),
+            MahjongTileId::from_text("2s").unwrap(),
+            MahjongTileId::from_text("6z").unwrap(),
+        ];
+        let new_tile_count_array = empty_tile_count_array.add_tile_ids(tile_ids_to_add.clone());
+        assert!(!new_tile_count_array.is_empty());
+        assert_eq!(new_tile_count_array.total_tiles(), tile_ids_to_add.len());
+        for tile_id in tile_ids_to_add {
+            assert!(new_tile_count_array.contains(&tile_id));
+        }
+    }
+    // TODO test using add_tile_ids (or add_tile_id) to have more 4 copies of a single tile
+
+    #[test]
+    fn test_mahjong_tile_count_array_remove_tile_ids() {
+        let initial_tile_ids = vec![
+            MahjongTileId::from_text("3p").unwrap(),
+            MahjongTileId::from_text("2s").unwrap(),
+            MahjongTileId::from_text("6z").unwrap(),
+        ];
+        let initial_tile_count_array = MahjongTileCountArray::from_tile_ids(&initial_tile_ids);
+        assert!(!initial_tile_count_array.is_empty());
+        assert_eq!(
+            initial_tile_count_array.total_tiles(),
+            initial_tile_ids.len()
+        );
+
+        let new_tile_count_array =
+            initial_tile_count_array.remove_tile_ids(initial_tile_ids.clone());
+        assert!(new_tile_count_array.is_empty());
+        assert_eq!(new_tile_count_array.total_tiles(), 0);
+        for tile_id in initial_tile_ids {
+            assert!(!new_tile_count_array.contains(&tile_id));
+        }
+    }
+    // TODO test using remove_tile_ids to remove more copies of a single tile than already exist
 }

@@ -75,7 +75,8 @@ fn run_basic_analysis(
     if starting_shanten != 1 {
         todo!("only implemented for 1-shanten hands so far");
     }
-    let starting_ukiere_tile_ids = shanten::get_ukiere_optimized(starting_hand, &melded_tiles);
+    let starting_ukiere_tile_ids =
+        shanten::get_ukiere_optimized(starting_hand, &melded_tiles).to_tile_ids();
     let starting_hand_tile_ids = starting_hand.to_tile_ids();
     let total_num_visible_tiles = visible_tile_ids.len() + starting_hand.total_tiles();
     println!(
@@ -98,7 +99,7 @@ fn run_basic_analysis(
     // precompute (discard tile id, resulting ukiere tile ids) after each possible improvement tile draw
     let mut draw_tile_id_to_ukiere_tile_ids: HashMap<
         MahjongTileId,
-        Vec<(MahjongTileId, Vec<MahjongTileId>, u16)>,
+        Vec<(MahjongTileId, MahjongTileCountArray, u16)>,
     > = HashMap::new();
     for improve_tile_id in starting_ukiere_tile_ids.iter() {
         let improve_tile_id = *improve_tile_id;
