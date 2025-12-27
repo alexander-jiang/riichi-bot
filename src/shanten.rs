@@ -4,7 +4,7 @@ use crate::mahjong_tile::{
     get_tile_ids_from_string, tile_ids_to_string, MahjongTileCountArray, MahjongTileId,
 };
 pub use crate::{mahjong_error, mahjong_hand, mahjong_tile};
-use std::cmp::min;
+use std::cmp::{min, Ordering};
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
 
@@ -458,16 +458,13 @@ impl HandInterpretation {
         let single_tile_ids = self.get_single_tile_ids();
         let has_pair = !pair_tile_ids.is_empty();
         let total_groups = num_complete_groups + num_incomplete_groups;
-        println!("hand interpretation has {} complete groups, {} incomplete groups, has_pair = {}, pair tile ids = {}, single tile ids = {}",
-            num_complete_groups,
-            num_incomplete_groups,
-            has_pair,
-            pair_tile_ids.to_text(),
-            single_tile_ids.to_text(),
-        );
-        for group in self.groups.iter() {
-            println!("{}", group);
-        }
+        // println!("hand interpretation has {} complete groups, {} incomplete groups, has_pair = {}, pair tile ids = {}, single tile ids = {}",
+        //     num_complete_groups,
+        //     num_incomplete_groups,
+        //     has_pair,
+        //     pair_tile_ids.to_text(),
+        //     single_tile_ids.to_text(),
+        // );
 
         let mut ukiere_tile_ids: MahjongTileCountArray = Default::default();
         for group in &self.groups {
@@ -481,10 +478,6 @@ impl HandInterpretation {
                 }
                 let single_tile_id = *(group.tile_ids.get(0).unwrap());
                 if total_groups == 4 && !has_pair {
-                    println!(
-                        "can decrease shanten by pairing up the single tile {}",
-                        single_tile_id.to_text()
-                    );
                     // in this case, you can decrease shanten, but only by drawing the same tile
                     // to form a new group which is the only pair
                     tile_ids = MahjongTileCountArray::from_tile_ids(&vec![single_tile_id]);
@@ -497,10 +490,6 @@ impl HandInterpretation {
                 // edge case - if the hand already contains a pair of the same value as
                 // the isolated tile, then drawing another copy of the isolated tile doesn't reduce shanten
                 if pair_tile_ids.contains(&single_tile_id) {
-                    println!(
-                        "wait! hand interpretation already has a pair of the single tile {}",
-                        single_tile_id.to_text()
-                    );
                     tile_ids = tile_ids.remove_tile_ids(vec![single_tile_id]);
                 }
             } else if group.meld_type == MeldType::Pair {
@@ -1545,7 +1534,6 @@ fn generate_ukiere_tiles(
         let chiitoi_ukiere_tiles = get_chiitoi_ukiere(tile_count_array, melded_tiles);
         for tile_id in chiitoi_ukiere_tiles.to_tile_ids() {
             if !ukiere_tile_ids.contains(&tile_id) {
-                println!("Adding tile as chiitoi ukiere = {}", tile_id.to_text());
                 ukiere_tile_ids.add_tile_id(tile_id);
             }
         }
@@ -1554,7 +1542,6 @@ fn generate_ukiere_tiles(
         let kokushi_ukiere_tiles = get_kokushi_ukiere(tile_count_array, melded_tiles);
         for tile_id in kokushi_ukiere_tiles.to_tile_ids() {
             if !ukiere_tile_ids.contains(&tile_id) {
-                println!("Adding tile as kokushi ukiere = {}", tile_id.to_text());
                 ukiere_tile_ids.add_tile_id(tile_id);
             }
         }
@@ -1586,7 +1573,6 @@ pub fn get_ukiere(
         .into_iter()
         .filter(|ukiere_tile_id| tile_count_array.get_tile_id_count(ukiere_tile_id) < 4)
         .collect();
-    println!("ukiere tile ids = {}", tile_ids_to_string(&ukiere_tile_ids));
     MahjongTileCountArray::from_tile_ids(&ukiere_tile_ids)
 }
 
@@ -1630,17 +1616,17 @@ pub fn get_ukiere_helper(
             continue;
         }
 
-        println!(
-            "finding ukiere tiles for hand interpretation {} with shanten {}",
-            interpretation, shanten
-        );
+        // println!(
+        //     "finding ukiere tiles for hand interpretation {} with shanten {}",
+        //     interpretation, shanten
+        // );
         let new_tile_ids = interpretation.get_ukiere();
         for &tile_id in new_tile_ids.to_tile_ids().iter() {
-            print!("ukiere tile: {}", tile_id.to_text());
+            // print!("ukiere tile: {}", tile_id.to_text());
             if !ukiere_tiles.contains(&tile_id) {
                 ukiere_tiles.add_tile_id(tile_id);
             }
-            print!("\n");
+            // print!("\n");
         }
     }
     ukiere_tiles
@@ -1743,6 +1729,7 @@ pub fn get_kokushi_ukiere(
 
 // Question: could we use generics for this? (hypothetically?)
 // e.g. make the signature: `pub fn print_ukiere_after_discard<T: TryInto<MahjongTileId>>(options_after_discard: &Vec<(T, Vec<T>, u16)>)`?
+#[allow(unused)]
 pub fn print_ukiere_after_discard(
     options_after_discard: &Vec<(MahjongTileId, MahjongTileCountArray, u16)>,
 ) {
@@ -1772,14 +1759,202 @@ pub fn print_ukiere_after_discard(
     println!("{}", options_str.join("; "));
 }
 
+pub(crate) fn print_shanten_ukiere_after_each_discard(
+    tile_count_array: MahjongTileCountArray,
+    melded_tiles: &Vec<TileMeld>,
+    shanten_ukiere_after_each_discard: &Vec<(MahjongTileId, i8, MahjongTileCountArray, u16)>,
+    other_visible_tiles: &Vec<MahjongTileId>,
+) {
+    if tile_count_array.total_tiles() + total_melded_tiles(melded_tiles) < 14 {
+        // TODO eventually will need to handle the case when there are more tiles due to quads
+        panic!("invalid number of tiles")
+    }
+    let original_tiles = tile_count_array.to_tile_ids();
+    println!(
+        "shanten + ukiere after each discard from tiles: {}",
+        tile_ids_to_string(&original_tiles)
+    );
+    let mut sorted_shanten_ukiere_after_each_discard = shanten_ukiere_after_each_discard.clone();
+    sorted_shanten_ukiere_after_each_discard.sort_by(
+        |(_, shanten_1, _, ukiere_1), (_, shanten_2, _, ukiere_2)| match shanten_1.cmp(shanten_2) {
+            // sort by shanten ascending, then by ukiere descending
+            Ordering::Equal => ukiere_2.cmp(ukiere_1),
+            Ordering::Less => Ordering::Less,
+            Ordering::Greater => Ordering::Greater,
+        },
+    );
+
+    let best_shanten =
+        get_best_shanten_after_discard(tile_count_array, &melded_tiles, &get_shanten_optimized);
+
+    // from the initial hand - try each discard
+    for (
+        discard_tile_id,
+        shanten_after_discard,
+        ukiere_tile_ids_after_discard,
+        num_ukiere_after_discard,
+    ) in sorted_shanten_ukiere_after_each_discard
+    {
+        println!(
+            "discard {} -> {} shanten, {} ukiere tiles: {} ",
+            discard_tile_id,
+            shanten_after_discard,
+            num_ukiere_after_discard,
+            ukiere_tile_ids_after_discard.to_text(),
+        );
+
+        let new_count_array = remove_tile_id_from_count_array(tile_count_array, discard_tile_id);
+        let new_shanten = get_shanten_optimized(new_count_array, &melded_tiles);
+        // println!(
+        //     "hand {} is {} shanten",
+        //     new_count_array, new_shanten
+        // );
+
+        // for performance, only print out improve results (i.e. results after drawing an ukiere tile)
+        // for the discards that result in best shanten (i.e. don't print out for suboptimal discards)
+        if new_shanten == best_shanten {
+            println!("  after advancing shanten:");
+            let mut improve_options = Vec::new();
+            for improve_tile_id in ukiere_tile_ids_after_discard.to_tile_ids() {
+                let after_improve_draw_count_array =
+                    add_tile_id_to_count_array(new_count_array, improve_tile_id.clone());
+                let mut options_after_ukiere_draw = get_most_ukiere_after_discard(
+                    after_improve_draw_count_array,
+                    &melded_tiles,
+                    new_shanten,
+                    &get_shanten_optimized,
+                    &get_ukiere_optimized,
+                    other_visible_tiles,
+                );
+
+                // sort discard options (after drawing improvement tile) by descending number of ukiere tiles
+                // let mut options_after_improve_sorted = options_after_ukiere_draw.clone();
+                options_after_ukiere_draw.sort_by(
+                    |(_, _, num_ukiere_tiles_after_improve1),
+                     (_, _, num_ukiere_tiles_after_improve2)| {
+                        num_ukiere_tiles_after_improve2.cmp(num_ukiere_tiles_after_improve1)
+                    },
+                );
+                improve_options.push((improve_tile_id, options_after_ukiere_draw));
+            }
+
+            // sort improve options by max number of ukiere tiles after discard (descending)
+            improve_options.sort_by(
+                |(_, options_after_improve_sorted1), (_, options_after_improve_sorted2)| {
+                    let max_ukiere_after_improve1 = options_after_improve_sorted1.get(0).unwrap().2;
+                    let max_ukiere_after_improve2 = options_after_improve_sorted2.get(0).unwrap().2;
+                    max_ukiere_after_improve2.cmp(&max_ukiere_after_improve1)
+                },
+            );
+
+            let improve_options_str_parts: Vec<String> = improve_options
+                .into_iter()
+                .map(|(improve_tile_id, options_after_improve)| {
+                    let options_after_improve_str_parts: Vec<String> = options_after_improve
+                        .into_iter()
+                        .map(
+                            |(
+                                discard_after_improve_tile_id,
+                                ukiere_tiles_after_improve_discard,
+                                num_ukiere_tiles_after_improve_discard,
+                            )| {
+                                format!(
+                                    "cut {} => {} ukiere: {}",
+                                    discard_after_improve_tile_id,
+                                    num_ukiere_tiles_after_improve_discard,
+                                    ukiere_tiles_after_improve_discard.to_text()
+                                )
+                            },
+                        )
+                        .collect();
+                    format!(
+                        "    draw {} -> {}",
+                        improve_tile_id,
+                        options_after_improve_str_parts.join("; ")
+                    )
+                })
+                .collect();
+            println!("{}", improve_options_str_parts.join("\n"));
+        }
+
+        // for performance, only print out upgrades for the discards that result in best shanten
+        // (i.e. don't print out for suboptimal discards)
+        if new_shanten == best_shanten {
+            let upgrades = get_upgrade_tiles(
+                new_count_array,
+                &melded_tiles,
+                &get_shanten_optimized,
+                &get_ukiere_optimized,
+                other_visible_tiles,
+            );
+            let has_upgrades = !upgrades.is_empty();
+            if has_upgrades {
+                println!("  upgrades:");
+                let mut upgrade_options = Vec::new();
+                for (upgrade_tile_id, discard_to_ukiere) in upgrades {
+                    let mut discard_to_ukiere_options = Vec::new();
+                    for (discard_tile_id, (ukiere_after_discard, num_ukiere_after_discard)) in
+                        discard_to_ukiere
+                    {
+                        discard_to_ukiere_options.push((
+                            discard_tile_id,
+                            ukiere_after_discard,
+                            num_ukiere_after_discard,
+                        ));
+                    }
+                    // sort discard options (after drawing upgrade) by num ukiere tiles after discard (descending)
+                    discard_to_ukiere_options.sort_by(
+                        |(_, _, num_ukiere_after_discard1), (_, _, num_ukiere_after_discard2)| {
+                            num_ukiere_after_discard2.cmp(num_ukiere_after_discard1)
+                        },
+                    );
+                    upgrade_options.push((upgrade_tile_id, discard_to_ukiere_options));
+                }
+                // sort upgrade options by max num ukiere tiles after discard (descending)
+                upgrade_options.sort_by(
+                    |(_, options_after_upgrade1), (_, options_after_upgrade2)| {
+                        let max_ukiere_after_upgrade1 = options_after_upgrade1.get(0).unwrap().2;
+                        let max_ukiere_after_upgrade2 = options_after_upgrade2.get(0).unwrap().2;
+                        max_ukiere_after_upgrade2.cmp(&max_ukiere_after_upgrade1)
+                    },
+                );
+
+                let upgrade_options_str_parts: Vec<String> = upgrade_options
+                    .into_iter()
+                    .map(|(upgrade_tile_id, discard_options)| {
+                        let discard_to_ukiere_str_parts: Vec<String> = discard_options
+                            .into_iter()
+                            .map(
+                                |(
+                                    discard_after_upgrade_tile_id,
+                                    ukiere_after_upgrade_discard,
+                                    num_ukiere_after_upgrade_discard,
+                                )| {
+                                    format!(
+                                        "cut {} => {} ukiere: {}",
+                                        discard_after_upgrade_tile_id,
+                                        num_ukiere_after_upgrade_discard,
+                                        ukiere_after_upgrade_discard.to_text()
+                                    )
+                                },
+                            )
+                            .collect();
+                        format!(
+                            "    draw {} -> {}",
+                            upgrade_tile_id,
+                            discard_to_ukiere_str_parts.join("; ")
+                        )
+                    })
+                    .collect();
+                println!("{}", upgrade_options_str_parts.join("\n"));
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mahjong_tile::MahjongWindOrder;
-    use crate::scoring::{
-        compute_han_and_fu, HandInfo, HandState, RiichiInfo, WinningTileInfo, WinningTileSource,
-    };
-    use std::cmp::Ordering;
     use std::collections::HashSet;
     use test::Bencher;
 
@@ -3298,208 +3473,6 @@ mod tests {
         );
     }
 
-    fn print_shanten_ukiere_after_each_discard(
-        tile_count_array: MahjongTileCountArray,
-        melded_tiles: &Vec<TileMeld>,
-        shanten_ukiere_after_each_discard: &Vec<(MahjongTileId, i8, MahjongTileCountArray, u16)>,
-        other_visible_tiles: &Vec<MahjongTileId>,
-    ) {
-        if tile_count_array.total_tiles() + total_melded_tiles(melded_tiles) < 14 {
-            // TODO eventually will need to handle the case when there are more tiles due to quads
-            panic!("invalid number of tiles")
-        }
-        let original_tiles = tile_count_array.to_tile_ids();
-        println!(
-            "shanten + ukiere after each discard: {}",
-            tile_ids_to_string(&original_tiles)
-        );
-        let mut sorted_shanten_ukiere_after_each_discard =
-            shanten_ukiere_after_each_discard.clone();
-        sorted_shanten_ukiere_after_each_discard.sort_by(
-            |(_, shanten_1, _, ukiere_1), (_, shanten_2, _, ukiere_2)| match shanten_1
-                .cmp(shanten_2)
-            {
-                // sort by shanten ascending, then by ukiere descending
-                Ordering::Equal => ukiere_2.cmp(ukiere_1),
-                Ordering::Less => Ordering::Less,
-                Ordering::Greater => Ordering::Greater,
-            },
-        );
-
-        let best_shanten =
-            get_best_shanten_after_discard(tile_count_array, &melded_tiles, &get_shanten_optimized);
-
-        // from the initial hand - try each discard
-        for (
-            discard_tile_id,
-            shanten_after_discard,
-            ukiere_tile_ids_after_discard,
-            num_ukiere_after_discard,
-        ) in sorted_shanten_ukiere_after_each_discard
-        {
-            println!(
-                "discard {} -> {} shanten, {} ukiere tiles: {} ",
-                discard_tile_id,
-                shanten_after_discard,
-                num_ukiere_after_discard,
-                ukiere_tile_ids_after_discard.to_text(),
-            );
-
-            let new_count_array =
-                remove_tile_id_from_count_array(tile_count_array, discard_tile_id);
-            let new_shanten = get_shanten_optimized(new_count_array, &melded_tiles);
-            // println!(
-            //     "hand {} is {} shanten",
-            //     new_count_array, new_shanten
-            // );
-
-            // for performance, only print out improve results (i.e. results after drawing an ukiere tile)
-            // for the discards that result in best shanten (i.e. don't print out for suboptimal discards)
-            if new_shanten == best_shanten {
-                println!("  after advancing shanten:");
-                let mut improve_options = Vec::new();
-                for improve_tile_id in ukiere_tile_ids_after_discard.to_tile_ids() {
-                    let after_improve_draw_count_array =
-                        add_tile_id_to_count_array(new_count_array, improve_tile_id.clone());
-                    let mut options_after_ukiere_draw = get_most_ukiere_after_discard(
-                        after_improve_draw_count_array,
-                        &melded_tiles,
-                        new_shanten,
-                        &get_shanten_optimized,
-                        &get_ukiere_optimized,
-                        other_visible_tiles,
-                    );
-
-                    // sort discard options (after drawing improvement tile) by descending number of ukiere tiles
-                    // let mut options_after_improve_sorted = options_after_ukiere_draw.clone();
-                    options_after_ukiere_draw.sort_by(
-                        |(_, _, num_ukiere_tiles_after_improve1),
-                         (_, _, num_ukiere_tiles_after_improve2)| {
-                            num_ukiere_tiles_after_improve2.cmp(num_ukiere_tiles_after_improve1)
-                        },
-                    );
-                    improve_options.push((improve_tile_id, options_after_ukiere_draw));
-                }
-
-                // sort improve options by max number of ukiere tiles after discard (descending)
-                improve_options.sort_by(
-                    |(_, options_after_improve_sorted1), (_, options_after_improve_sorted2)| {
-                        let max_ukiere_after_improve1 =
-                            options_after_improve_sorted1.get(0).unwrap().2;
-                        let max_ukiere_after_improve2 =
-                            options_after_improve_sorted2.get(0).unwrap().2;
-                        max_ukiere_after_improve2.cmp(&max_ukiere_after_improve1)
-                    },
-                );
-
-                let improve_options_str_parts: Vec<String> = improve_options
-                    .into_iter()
-                    .map(|(improve_tile_id, options_after_improve)| {
-                        let options_after_improve_str_parts: Vec<String> = options_after_improve
-                            .into_iter()
-                            .map(
-                                |(
-                                    discard_after_improve_tile_id,
-                                    ukiere_tiles_after_improve_discard,
-                                    num_ukiere_tiles_after_improve_discard,
-                                )| {
-                                    format!(
-                                        "cut {} => {} ukiere: {}",
-                                        discard_after_improve_tile_id,
-                                        num_ukiere_tiles_after_improve_discard,
-                                        ukiere_tiles_after_improve_discard.to_text()
-                                    )
-                                },
-                            )
-                            .collect();
-                        format!(
-                            "    draw {} -> {}",
-                            improve_tile_id,
-                            options_after_improve_str_parts.join("; ")
-                        )
-                    })
-                    .collect();
-                println!("{}", improve_options_str_parts.join("\n"));
-            }
-
-            // for performance, only print out upgrades for the discards that result in best shanten
-            // (i.e. don't print out for suboptimal discards)
-            if new_shanten == best_shanten {
-                let upgrades = get_upgrade_tiles(
-                    new_count_array,
-                    &melded_tiles,
-                    &get_shanten_optimized,
-                    &get_ukiere_optimized,
-                    other_visible_tiles,
-                );
-                let has_upgrades = !upgrades.is_empty();
-                if has_upgrades {
-                    println!("  upgrades:");
-                    let mut upgrade_options = Vec::new();
-                    for (upgrade_tile_id, discard_to_ukiere) in upgrades {
-                        let mut discard_to_ukiere_options = Vec::new();
-                        for (discard_tile_id, (ukiere_after_discard, num_ukiere_after_discard)) in
-                            discard_to_ukiere
-                        {
-                            discard_to_ukiere_options.push((
-                                discard_tile_id,
-                                ukiere_after_discard,
-                                num_ukiere_after_discard,
-                            ));
-                        }
-                        // sort discard options (after drawing upgrade) by num ukiere tiles after discard (descending)
-                        discard_to_ukiere_options.sort_by(
-                            |(_, _, num_ukiere_after_discard1),
-                             (_, _, num_ukiere_after_discard2)| {
-                                num_ukiere_after_discard2.cmp(num_ukiere_after_discard1)
-                            },
-                        );
-                        upgrade_options.push((upgrade_tile_id, discard_to_ukiere_options));
-                    }
-                    // sort upgrade options by max num ukiere tiles after discard (descending)
-                    upgrade_options.sort_by(
-                        |(_, options_after_upgrade1), (_, options_after_upgrade2)| {
-                            let max_ukiere_after_upgrade1 =
-                                options_after_upgrade1.get(0).unwrap().2;
-                            let max_ukiere_after_upgrade2 =
-                                options_after_upgrade2.get(0).unwrap().2;
-                            max_ukiere_after_upgrade2.cmp(&max_ukiere_after_upgrade1)
-                        },
-                    );
-
-                    let upgrade_options_str_parts: Vec<String> = upgrade_options
-                        .into_iter()
-                        .map(|(upgrade_tile_id, discard_options)| {
-                            let discard_to_ukiere_str_parts: Vec<String> = discard_options
-                                .into_iter()
-                                .map(
-                                    |(
-                                        discard_after_upgrade_tile_id,
-                                        ukiere_after_upgrade_discard,
-                                        num_ukiere_after_upgrade_discard,
-                                    )| {
-                                        format!(
-                                            "cut {} => {} ukiere: {}",
-                                            discard_after_upgrade_tile_id,
-                                            num_ukiere_after_upgrade_discard,
-                                            ukiere_after_upgrade_discard.to_text()
-                                        )
-                                    },
-                                )
-                                .collect();
-                            format!(
-                                "    draw {} -> {}",
-                                upgrade_tile_id,
-                                discard_to_ukiere_str_parts.join("; ")
-                            )
-                        })
-                        .collect();
-                    println!("{}", upgrade_options_str_parts.join("\n"));
-                }
-            }
-        }
-    }
-
     #[test]
     fn upgrade_analysis_tenhou_hand_example() {
         // hand: 345m1156p4666778s (in game: i had 345m11256p46778s6s, could discard 2p and draw 6s to reach this hand state)
@@ -3605,7 +3578,6 @@ mod tests {
         );
 
         // next turn: after discarding 3p and calling 1z
-        println!("check after discard 3p and calling 1z");
         let tiles_after_call = MahjongTileCountArray::from_text("5789s57p34667m111z");
         let shanten_after_discard =
             get_best_shanten_after_discard(tiles_after_call, &melded_tiles, &get_shanten_optimized);
@@ -3619,7 +3591,6 @@ mod tests {
             &other_visible_tiles,
         );
 
-        println!("checking if discard ukiere matches...");
         let mut expected_discard_ukiere: Vec<(MahjongTileId, MahjongTileCountArray, u16)> =
             Vec::new();
         expected_discard_ukiere.push((
@@ -3633,7 +3604,6 @@ mod tests {
             12,
         ));
         assert_discards_ukiere_match(&best_ukiere_after_discard, &expected_discard_ukiere);
-        println!("finished checking if discard ukiere matches!");
 
         let shanten_ukiere_after_each_discard = get_shanten_ukiere_after_each_discard(
             tiles_after_call,
@@ -3649,7 +3619,6 @@ mod tests {
             &other_visible_tiles,
         );
 
-        println!("checking if upgrade tiles matches...");
         // upgrades after discarding 5s
         let mut expected_upgrade_tiles: HashMap<
             &'static str,
@@ -4444,185 +4413,6 @@ mod tests {
             MahjongTileCountArray::from_text("25p8s"),
             12
         )));
-    }
-
-    #[test]
-    fn test_riichi_book1_wwyd_ryankan_to_pinfu_guaranteed() {
-        // page 66 of riichi book 1, section 3.3.1 (three-tile complex shapes > double closed (ryankan) shape)
-        // 455789m45667p77s2p
-        // discard 2p -> 1-shanten, accepts 356m58p7s (19 tiles)
-        // discard 5m -> 1-shanten, accepts 36m358p (19 tiles)
-        // discarding 5m means we have more options to reach pinfu (if discard 2p and then draw 5m or 7s, it would form an ankou -> not eligible for pinfu)
-        let tiles_before_discard = MahjongTileCountArray::from_text("455789m45667p77s2p");
-        let melded_tiles = Vec::new();
-        let other_visible_tiles = Vec::new();
-        let shanten_ukiere_after_each_discard = get_shanten_ukiere_after_each_discard(
-            tiles_before_discard,
-            &melded_tiles,
-            &get_shanten_optimized,
-            &get_ukiere_optimized,
-            &other_visible_tiles,
-        );
-        // print_shanten_ukiere_after_each_discard(
-        //     tiles_before_discard,
-        //     &melded_tiles,
-        //     &shanten_ukiere_after_each_discard,
-        //     &other_visible_tiles,
-        // );
-        // can enter 1-shanten if discard
-        let best_shanten = get_best_shanten_after_discard(
-            tiles_before_discard,
-            &melded_tiles,
-            &get_shanten_optimized,
-        );
-        assert_eq!(best_shanten, 1);
-
-        // 4 ways to reach 1-shanten: discarding 5m, 2p, or 6p or 4m
-        let one_shanten_ukiere_after_each_discard: Vec<_> = shanten_ukiere_after_each_discard
-            .into_iter()
-            .filter(
-                |(_discard_tile, shanten, _ukiere_tiles, _num_ukiere_tiles)| {
-                    shanten == &best_shanten
-                },
-            )
-            .collect();
-        assert_eq!(one_shanten_ukiere_after_each_discard.len(), 4);
-        print_shanten_ukiere_after_each_discard(
-            tiles_before_discard,
-            &melded_tiles,
-            &one_shanten_ukiere_after_each_discard,
-            &other_visible_tiles,
-        );
-        println!(
-            "one_shanten_ukiere_after_each_discard - {:?}",
-            one_shanten_ukiere_after_each_discard
-        );
-
-        // discard 5m -> 1-shanten, ukiere = 36m358p
-        let ukiere_tiles_after_discard_5m = MahjongTileCountArray::from_text("36m358p");
-        assert!(one_shanten_ukiere_after_each_discard.contains(&(
-            MahjongTileId::from_text("5m").unwrap(),
-            1,
-            ukiere_tiles_after_discard_5m.clone(),
-            19
-        )));
-        // discard 2p -> 1-shanten, ukiere = 356m58p7s
-        // TODO why is this failing??
-        assert!(one_shanten_ukiere_after_each_discard.contains(&(
-            MahjongTileId::from_text("2p").unwrap(),
-            1,
-            MahjongTileCountArray::from_text("356m58p7s"),
-            19
-        )));
-        // discard 6p -> 1-shanten, ukiere = 356m3p7s
-        assert!(one_shanten_ukiere_after_each_discard.contains(&(
-            MahjongTileId::from_text("6p").unwrap(),
-            1,
-            MahjongTileCountArray::from_text("356m3p7s"),
-            16
-        )));
-        // discard 4m -> 1-shanten, ukiere = 5m358p7s
-        assert!(one_shanten_ukiere_after_each_discard.contains(&(
-            MahjongTileId::from_text("4m").unwrap(),
-            1,
-            MahjongTileCountArray::from_text("5m358p7s"),
-            15
-        )));
-
-        // if discard 5m, and draw any of the ukiere tiles (36m358p) -> the resulting tenpai wait can be guaranteed pinfu
-        let tiles_after_discard_5m =
-            tiles_before_discard.remove_tile_ids(vec![MahjongTileId::from_text("5m").unwrap()]);
-        for ukiere_tile_after_discard_5m in ukiere_tiles_after_discard_5m.to_tile_ids() {
-            let mut tiles_after_discard_5m_and_ukiere = tiles_after_discard_5m.clone();
-            tiles_after_discard_5m_and_ukiere.add_tile_id(ukiere_tile_after_discard_5m);
-            let best_shanten = get_best_shanten_after_discard(
-                tiles_after_discard_5m_and_ukiere,
-                &melded_tiles,
-                &get_shanten_optimized,
-            );
-            assert_eq!(best_shanten, 0);
-            println!(
-                "after discard 5m and draw {} => {}, should be tenpai after some discard",
-                ukiere_tile_after_discard_5m.to_text(),
-                tiles_after_discard_5m_and_ukiere.to_text()
-            );
-
-            let discard_tiles_for_win = get_shanten_ukiere_after_each_discard(
-                tiles_after_discard_5m_and_ukiere,
-                &melded_tiles,
-                &get_shanten_optimized,
-                &get_ukiere_optimized,
-                &other_visible_tiles,
-            );
-            let ukiere_for_tenpai_after_discard: Vec<_> = discard_tiles_for_win
-                .into_iter()
-                .filter(
-                    |(_discard_tile, shanten, _ukiere_tiles, _num_ukiere_tiles)| {
-                        shanten == &best_shanten
-                    },
-                )
-                .collect();
-
-            let dora_tiles = get_tile_ids_from_string("1z"); // no dora
-            let ron = WinningTileInfo {
-                source: WinningTileSource::Discard {
-                    is_last_discard: false,
-                },
-            };
-            let as_dealer = HandInfo {
-                hand_state: HandState::Closed {
-                    riichi_info: RiichiInfo::NoRiichi,
-                },
-                round_wind: MahjongWindOrder::East,
-                seat_wind: MahjongWindOrder::East,
-                round_number: 1,
-                honba_counter: 0,
-                dora_tiles: dora_tiles.clone(),
-            };
-
-            let mut tiles_to_discard_for_pinfu: Vec<MahjongTileId> = Vec::new();
-            for (discard_for_tenpai, shanten_for_tenpai, ukiere_tiles_for_tenpai, _) in
-                ukiere_for_tenpai_after_discard
-            {
-                if shanten_for_tenpai != 0 {
-                    continue;
-                }
-                // add to the list if all possible win tiles guarantee pinfu
-                let mut pinfu_guaranteed = true;
-                let tenpai_tiles =
-                    tiles_after_discard_5m_and_ukiere.remove_tile_ids(vec![discard_for_tenpai]);
-                println!(
-                    "after discard 5m and draw {}, then discard {} => tenpai on tiles {}",
-                    ukiere_tile_after_discard_5m,
-                    discard_for_tenpai.to_text(),
-                    tenpai_tiles.to_text()
-                );
-                for ukiere_tile_for_win in ukiere_tiles_for_tenpai.to_tile_ids() {
-                    // Ron = 1 han 30 fu (pinfu)
-                    if compute_han_and_fu(
-                        tenpai_tiles.clone(),
-                        melded_tiles.clone(),
-                        ukiere_tile_for_win,
-                        as_dealer.clone(),
-                        ron.clone(),
-                    ) != (1, 30)
-                    // TODO should use PinfuYaku check
-                    {
-                        pinfu_guaranteed = false;
-                    }
-                }
-                if pinfu_guaranteed {
-                    tiles_to_discard_for_pinfu.push(discard_for_tenpai);
-                    println!(
-                        "after discard 5m and draw {} then discard {} => {}, tenpai with pinfu guaranteed",
-                        ukiere_tile_after_discard_5m.to_text(),
-                        discard_for_tenpai.to_text(),
-                        tenpai_tiles.to_text()
-                    );
-                }
-            }
-            assert!(!tiles_to_discard_for_pinfu.is_empty());
-        }
     }
 }
 
