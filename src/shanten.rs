@@ -4414,6 +4414,43 @@ mod tests {
             12
         )));
     }
+
+    #[test]
+    fn test_riichi_book1_wwyd_ryankan_vs_ryanmen_plus_one() {
+        // pg 67 - 34789m34588p246s7p (WWYD)
+        // before drawing 7p, hand was 1-shanten, 16 ukeire = 25m35s
+        // after drawing 7p, you can discard 2s → 1-shanten, 12 ukeire = 25m5s
+        // the book recommends discarding 2s instead of 7p (as the 788p is a ryanmen+pair shape)
+        let tiles_before_draw = MahjongTileCountArray::from_text("34789m34588p246s");
+        let melded_tiles = Vec::new();
+        let shanten = get_shanten_optimized(tiles_before_draw, &melded_tiles);
+        assert_eq!(shanten, 1);
+
+        let ukiere_tiles = get_ukiere_optimized(tiles_before_draw, &melded_tiles);
+        let expected_ukiere_tiles = MahjongTileCountArray::from_text("25m35s");
+        assert_eq!(ukiere_tiles, expected_ukiere_tiles);
+
+        // can't do better than 1-shanten after discard
+        let tiles_after_draw = tiles_before_draw.add_tile_ids(get_tile_ids_from_string("7p"));
+        let shanten_after_discard =
+            get_best_shanten_after_discard(tiles_after_draw, &melded_tiles, &get_shanten_optimized);
+        assert_eq!(shanten_after_discard, 1);
+
+        let other_visible_tiles: Vec<MahjongTileId> = Vec::new();
+        let ukiere_after_discard = get_shanten_ukiere_after_each_discard(
+            tiles_after_draw,
+            &melded_tiles,
+            &get_shanten_optimized,
+            &get_ukiere_optimized,
+            &other_visible_tiles,
+        );
+        print_shanten_ukiere_after_each_discard(
+            tiles_after_draw,
+            &melded_tiles,
+            &ukiere_after_discard,
+            &other_visible_tiles,
+        );
+    }
 }
 
 // 3445799m13p3456s4m - 1-shanten, cut 3s/6s results in 15 ukiere (4689m2p)
