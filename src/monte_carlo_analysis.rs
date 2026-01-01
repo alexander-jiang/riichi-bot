@@ -21,7 +21,7 @@ use std::collections::HashMap;
 /// generates a random tile id from the pool of tiles remaining (panics if there are no tiles left),
 /// weighted by the number of copies of tiles remaining
 #[allow(unused)]
-fn generate_random_tile_id_rng(remaining_tile_count: MahjongTileCountArray) -> MahjongTileId {
+pub(crate) fn generate_random_tile_id_rng(remaining_tile_count: MahjongTileCountArray) -> MahjongTileId {
     let tiles_remaining = remaining_tile_count.to_tile_ids();
     if tiles_remaining.len() == 0 {
         panic!("no tiles remaining");

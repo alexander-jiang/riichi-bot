@@ -1,9 +1,11 @@
 use std::collections::{HashMap, HashSet};
+use std::time::Instant;
 
 use crate::mahjong_tile::{
     tile_ids_to_string, MahjongTileCountArray, MahjongTileId, MahjongTileNumberedSuit,
     MahjongWindOrder,
 };
+use crate::monte_carlo_analysis::generate_random_tile_id_rng;
 use crate::shanten::{
     get_best_shanten_after_discard, get_chiitoi_shanten, get_hand_interpretations_min_shanten,
     get_kokushi_shanten, get_shanten_optimized, get_shanten_ukiere_after_each_discard,
@@ -1864,14 +1866,22 @@ fn compute_base_points(han: u8, fu: u8) -> u32 {
     }
 }
 
+fn round_up_to_100(points: u32) -> u32 {
+    if points % 100 == 0 {
+        points
+    } else {
+        ((points / 100) + 1) * 100
+    }
+}
+
 // TODO we can look this up in a table
 pub fn compute_ron_score(han: u8, fu: u8, hand_info: &HandInfo) -> u32 {
     let base_points = compute_base_points(han, fu);
 
     match hand_info.seat_wind {
         // ron as dealer = 6x base-points vs. ron as non-dealer = 4x base-points
-        MahjongWindOrder::East => base_points * 6,
-        _ => base_points * 4,
+        MahjongWindOrder::East => round_up_to_100(base_points * 6),
+        _ => round_up_to_100(base_points * 4),
     }
 }
 
@@ -1881,8 +1891,17 @@ pub fn compute_tsumo_score(han: u8, fu: u8, hand_info: &HandInfo) -> (u32, u32, 
 
     match hand_info.seat_wind {
         // tsumo as dealer = 2x base-points from each other player vs. tsumo as non-dealer = 1x base-points from each non-dealer opponent + 2x base-points from dealer opponent
-        MahjongWindOrder::East => (base_points * 2, base_points * 2, base_points * 2),
-        _ => (base_points * 1, base_points * 1, base_points * 2),
+        // round up each payment to next 100
+        MahjongWindOrder::East => (
+            round_up_to_100(base_points * 2),
+            round_up_to_100(base_points * 2),
+            round_up_to_100(base_points * 2),
+        ),
+        _ => (
+            round_up_to_100(base_points * 1),
+            round_up_to_100(base_points * 1),
+            round_up_to_100(base_points * 2),
+        ),
     }
 }
 
@@ -1959,11 +1978,147 @@ pub fn check_yaku_guaranteed_tenpai(
     false
 }
 
+pub fn compute_expected_value(
+    tiles_after_discard: MahjongTileCountArray,
+    remaining_draws: u8,
+    num_trials: u32,
+    melded_tiles: &Vec<TileMeld>,
+    dora_indicator_tiles: MahjongTileCountArray,
+    other_visible_tiles: &Vec<MahjongTileId>,
+    winning_tile_info: &WinningTileInfo,
+    hand_info: &HandInfo,
+) -> f64 {
+    let shanten = get_shanten_optimized(tiles_after_discard, melded_tiles);
+    if remaining_draws == 0 {
+        return 0.0;
+    }
+    if shanten > 0 {
+        panic!("not supporting expected value for shanten > 0");
+    }
+    let ukiere_tiles = get_ukiere_optimized(tiles_after_discard, melded_tiles);
+    let mut ukiere_tiles_to_value: HashMap<MahjongTileId, f64> = HashMap::new();
+    for ukiere_tile in ukiere_tiles.to_tile_ids() {
+        let (win_han, win_fu) = compute_han_and_fu(
+            tiles_after_discard,
+            melded_tiles.clone(),
+            ukiere_tile,
+            hand_info.clone(),
+            winning_tile_info.clone(),
+        );
+        let (tsumo_value1, tsumo_value2, tsumo_value3) =
+            compute_tsumo_score(win_han, win_fu, hand_info);
+        let total_tsumo_value = tsumo_value1 + tsumo_value2 + tsumo_value3;
+        println!(
+            "ukiere tile to win value (on tsumo): {} han, {} fu, total points = {}",
+            win_han, win_fu, total_tsumo_value
+        );
+        ukiere_tiles_to_value.insert(ukiere_tile, total_tsumo_value as f64);
+    }
+
+    for (ukiere_tile, tsumo_win_value) in ukiere_tiles_to_value.iter() {
+        println!(
+            "win by tsumo on {} -> {}",
+            ukiere_tile.to_text(),
+            tsumo_win_value
+        );
+    }
+
+    let mut initial_wall_tiles = MahjongTileCountArray([4u8; 34]);
+    initial_wall_tiles = initial_wall_tiles.remove_tile_ids(tiles_after_discard.to_tile_ids());
+    initial_wall_tiles = initial_wall_tiles.remove_tile_ids(other_visible_tiles.clone());
+    initial_wall_tiles = initial_wall_tiles.remove_tile_ids(dora_indicator_tiles.to_tile_ids());
+
+    println!(
+        "initial non-visible tiles ({:3} tiles): {}",
+        initial_wall_tiles.total_tiles(),
+        initial_wall_tiles.to_text()
+    );
+
+    // clone into N trials
+    let now = Instant::now();
+    let mut running_avg_value: f64 = 0.0;
+    println!(
+        "number of non-visible tiles before first draw: {}",
+        initial_wall_tiles.total_tiles() - 3
+    );
+    for _i in 0..num_trials {
+        // TODO debug each trial
+        let mut wall_tiles = initial_wall_tiles.clone();
+        // before first tsumo draw, there are 3 more tile discards
+        let tiles_to_remove = wall_tiles.get_n_random_tile_ids(3, ukiere_tiles);
+        // println!(
+        //     "players' discards before first tsumo chance: {}",
+        //     tile_ids_to_string(&tiles_to_remove)
+        // );
+        wall_tiles = wall_tiles.remove_tile_ids(tiles_to_remove);
+
+        let mut draw_number = 1;
+        while draw_number <= remaining_draws {
+            if wall_tiles.total_tiles() < 13 {
+                // TODO there's also tiles in other players hands
+                // println!("there must be at least 13 tiles left in live wall (14 if you include one dora indicator tile)");
+                break;
+            }
+
+            let drawn_tile = generate_random_tile_id_rng(wall_tiles);
+            // println!("draw number {}: tile {}", draw_number, drawn_tile.to_text());
+            if ukiere_tiles.contains(&drawn_tile) {
+                // compute the value of the win
+                let win_value = *(ukiere_tiles_to_value.get(&drawn_tile).unwrap());
+                // println!(
+                //     "drew winning tile {} on draw number {} => win value = {}",
+                //     drawn_tile.to_text(),
+                //     draw_number,
+                //     win_value
+                // );
+                running_avg_value += win_value / (num_trials as f64);
+                break;
+            } else {
+                // remove the drawn_tile from the wall tiles, along with 3 other tiles that are not in ukiere_tiles
+                wall_tiles = wall_tiles.remove_tile_ids(vec![drawn_tile]);
+                let tiles_to_remove = wall_tiles.get_n_random_tile_ids(3, ukiere_tiles);
+                // println!(
+                //     "removed tiles from wall: {} and {}\n-> hidden tiles ({:3} tiles): {}",
+                //     drawn_tile.to_text(),
+                //     tile_ids_to_string(&tiles_to_remove),
+                //     wall_tiles.total_tiles(),
+                //     wall_tiles.to_text()
+                // );
+                wall_tiles = wall_tiles.remove_tile_ids(tiles_to_remove);
+            }
+            draw_number += 1;
+        }
+    }
+    let elapsed = now.elapsed();
+    println!(
+        "Elapsed time for {} trials: {:.2?}, avg ms per trial = {}",
+        num_trials,
+        elapsed,
+        (elapsed.as_millis() as f64) / (num_trials as f64)
+    );
+    running_avg_value
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::mahjong_tile::get_tile_ids_from_string;
     use crate::shanten::print_shanten_ukiere_after_each_discard;
+
+    #[test]
+    fn test_round_up_to_100() {
+        // 1 han 30 fu, tsumo as non-dealer = 240 from non-dealer, 480 from dealer
+        assert_eq!(round_up_to_100(240), 300);
+        assert_eq!(round_up_to_100(480), 500);
+        // 2 han 25 fu ron = 1600
+        assert_eq!(round_up_to_100(1600), 1600);
+        // 2 han 30 fu ron = 1920
+        assert_eq!(round_up_to_100(1920), 2000);
+        // 3 han 30 fu ron = 3840
+        assert_eq!(round_up_to_100(3840), 3900);
+        // 3 han 40 fu tsumo as dealer = 2560 from each
+        assert_eq!(round_up_to_100(2560), 2600);
+    }
 
     #[test]
     fn jpml_pro_test_part1_hand_scoring_q1() {
@@ -4738,6 +4893,94 @@ mod tests {
         assert_eq!(
             ukiere_tiles_after_discard_2p_for_pinfu_guaranteed,
             MahjongTileCountArray::from_text("36m58p")
+        );
+    }
+
+    #[test]
+    fn test_expected_hand_value_turn7() {
+        let turn_number = 7;
+        let seat_wind = MahjongWindOrder::South;
+        let total_draws =
+            if seat_wind == MahjongWindOrder::East || seat_wind == MahjongWindOrder::South {
+                18
+            } else {
+                17
+            };
+        let remaining_draws = total_draws - turn_number;
+        // let num_trials = 1_000_000;
+        let num_trials = 1_000_000;
+        let expected_value_from_shanpon_tenpai = compute_expected_value(
+            MahjongTileCountArray::from_text("123m234789p3388s"),
+            total_draws - turn_number,
+            num_trials,
+            &Vec::new(),
+            MahjongTileCountArray::from_text("3s"),
+            // generate the previous 6 turns of discards, and this is turn 7, where this player (South) just discarded 1p
+            &get_tile_ids_from_string("7777z6666z5555z4444z3333z2222z1z1p"),
+            &WinningTileInfo {
+                source: WinningTileSource::SelfDraw {
+                    is_first_draw: false,
+                    is_last_draw: false,
+                },
+            },
+            &HandInfo {
+                hand_state: HandState::Closed {
+                    riichi_info: RiichiInfo::NoRiichi,
+                },
+                round_wind: MahjongWindOrder::East,
+                seat_wind: seat_wind,
+                round_number: 1,
+                honba_counter: 0,
+                dora_tiles: get_tile_ids_from_string("4s"),
+            },
+        );
+        println!(
+            "Expected value from discard 1p with {} draws left: {}",
+            remaining_draws, expected_value_from_shanpon_tenpai
+        );
+    }
+
+    #[test]
+    fn test_expected_hand_value_turn17() {
+        let turn_number = 17;
+        let seat_wind = MahjongWindOrder::South;
+        let total_draws =
+            if seat_wind == MahjongWindOrder::East || seat_wind == MahjongWindOrder::South {
+                18
+            } else {
+                17
+            };
+        let remaining_draws = total_draws - turn_number;
+        let num_trials = 1_000_000;
+        // let num_trials = 1;
+        let expected_value_from_shanpon_tenpai = compute_expected_value(
+            MahjongTileCountArray::from_text("123m234789p3388s"),
+            total_draws - turn_number,
+            num_trials,
+            &Vec::new(),
+            MahjongTileCountArray::from_text("3s"),
+            // generate the previous 16 turns of discards, and this is turn 17, where this player (South) just discarded 1p
+            &get_tile_ids_from_string("7777z6666z5555z4444z3333z2222z1111z9999m8888m7777m6666m5555m4444m9999s7777s6666s5s1p"),
+            &WinningTileInfo {
+                source: WinningTileSource::SelfDraw {
+                    is_first_draw: false,
+                    is_last_draw: false,
+                },
+            },
+            &HandInfo {
+                hand_state: HandState::Closed {
+                    riichi_info: RiichiInfo::NoRiichi,
+                },
+                round_wind: MahjongWindOrder::East,
+                seat_wind: seat_wind,
+                round_number: 1,
+                honba_counter: 0,
+                dora_tiles: get_tile_ids_from_string("4s"),
+            },
+        );
+        println!(
+            "Expected value from discard 1p with {} draws left: {}",
+            remaining_draws, expected_value_from_shanpon_tenpai
         );
     }
 }

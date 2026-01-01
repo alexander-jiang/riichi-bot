@@ -34,6 +34,7 @@
 use std::fmt;
 
 use crate::mahjong_error;
+use crate::monte_carlo_analysis::generate_random_tile_id_rng;
 
 /// One of the numbered mahjong tile suits (i.e. excludes Wind and Dragon suits)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -661,6 +662,45 @@ impl MahjongTileCountArray {
             new_tile_count_array.0[usize::from(*tile_id)] -= 1;
         }
         new_tile_count_array
+    }
+
+    pub fn get_random_tile_id(&self, exclude_tile_ids: MahjongTileCountArray) -> MahjongTileId {
+        let mut tile_count_array_without_excluded_tiles = self.clone();
+        for exclude_tile_id in exclude_tile_ids.to_tile_ids() {
+            tile_count_array_without_excluded_tiles.0[usize::from(exclude_tile_id.0)] = 0;
+        }
+        generate_random_tile_id_rng(tile_count_array_without_excluded_tiles)
+    }
+
+    pub fn get_n_random_tile_ids(
+        &self,
+        num_tiles_to_remove: u8,
+        exclude_tile_ids: MahjongTileCountArray,
+    ) -> Vec<MahjongTileId> {
+        let mut tile_count_array_without_excluded_tiles = self.clone();
+        for exclude_tile_id in exclude_tile_ids.to_tile_ids() {
+            tile_count_array_without_excluded_tiles.0[usize::from(exclude_tile_id.0)] = 0;
+        }
+
+        let mut tile_ids = Vec::new();
+        for _i in 0..num_tiles_to_remove {
+            let random_tile = generate_random_tile_id_rng(tile_count_array_without_excluded_tiles);
+            let random_tile_count =
+                tile_count_array_without_excluded_tiles.0[usize::from(random_tile.0)];
+            tile_count_array_without_excluded_tiles.0[usize::from(random_tile.0)] =
+                random_tile_count.saturating_sub(1);
+            tile_ids.push(random_tile);
+        }
+        tile_ids
+    }
+
+    pub fn remove_n_tile_ids(
+        &self,
+        num_tiles_to_remove: u8,
+        exclude_tile_ids: MahjongTileCountArray,
+    ) -> Self {
+        let tiles_to_remove = self.get_n_random_tile_ids(num_tiles_to_remove, exclude_tile_ids);
+        self.remove_tile_ids(tiles_to_remove)
     }
 
     pub fn contains(&self, tile_id: &MahjongTileId) -> bool {
