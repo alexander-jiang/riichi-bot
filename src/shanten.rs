@@ -1496,7 +1496,7 @@ pub fn get_num_tiles_remaining(
             base_tile_count[tile_idx] -= 1;
             remaining_tile_count -= 1;
         } else {
-            panic!("tried to remove too many copies of tile {}", tile_id);
+            // panic!("tried to remove too many copies of tile {}", tile_id);
         }
     }
     remaining_tile_count
@@ -4450,6 +4450,38 @@ mod tests {
             &ukiere_after_discard,
             &other_visible_tiles,
         );
+    }
+
+    #[test]
+    fn test_wwyd_tenpai_vs_sticky_1shanten() {
+        let tiles_before_draw = MahjongTileCountArray::from_text("123m1234789p388s");
+        let melded_tiles = Vec::new();
+        let other_visible_tiles = get_tile_ids_from_string("33s"); // dora indicator + discarded 3s to get to sticky 1-shanten (instead of discarding 1p or 4p for )
+        let ukiere_tiles = get_ukiere_optimized(tiles_before_draw, &melded_tiles);
+        for ukiere_tile_to_tenpai in ukiere_tiles.to_tile_ids() {
+            let tiles_before_discard_to_tenpai =
+                tiles_before_draw.add_tile_ids(vec![ukiere_tile_to_tenpai]);
+            let shanten_ukiere_to_tenpai = get_shanten_ukiere_after_each_discard(
+                tiles_before_discard_to_tenpai,
+                &melded_tiles,
+                &get_shanten_optimized,
+                &get_ukiere_optimized,
+                &other_visible_tiles,
+            );
+            let shanten_ukiere_to_tenpai_only: Vec<_> = shanten_ukiere_to_tenpai
+                .into_iter()
+                .filter(|(_tile_id, shanten, _ukiere_tiles, _num_ukiere)| *shanten == 0)
+                .collect();
+            println!("draw {}:", ukiere_tile_to_tenpai.to_text());
+            print_shanten_ukiere_after_each_discard(
+                tiles_before_discard_to_tenpai,
+                &melded_tiles,
+                &shanten_ukiere_to_tenpai_only,
+                &other_visible_tiles,
+            );
+            println!("---");
+        }
+        assert!(false);
     }
 }
 

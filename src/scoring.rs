@@ -1996,6 +1996,8 @@ pub fn compute_expected_value(
         panic!("not supporting expected value for shanten > 0");
     }
     let ukiere_tiles = get_ukiere_optimized(tiles_after_discard, melded_tiles);
+
+    // pre-compute value of tsumo wins
     let mut ukiere_tiles_to_value: HashMap<MahjongTileId, f64> = HashMap::new();
     for ukiere_tile in ukiere_tiles.to_tile_ids() {
         let (win_han, win_fu) = compute_han_and_fu(
@@ -2097,6 +2099,190 @@ pub fn compute_expected_value(
         (elapsed.as_millis() as f64) / (num_trials as f64)
     );
     running_avg_value
+}
+
+pub fn compute_expected_value_riichi_vs_perfect_defense(
+    tiles_after_discard: MahjongTileCountArray,
+    remaining_draws: u8,
+    include_haitei_chance_on_last_draw: bool,
+    include_ippatsu_chance_on_first_draw: bool,
+    melded_tiles: &Vec<TileMeld>,
+    dora_indicator_tiles: MahjongTileCountArray,
+    other_visible_tiles: &Vec<MahjongTileId>,
+    winning_tile_info: &WinningTileInfo,
+    hand_info: &HandInfo,
+) -> f64 {
+    let shanten = get_shanten_optimized(tiles_after_discard, melded_tiles);
+    if remaining_draws == 0 {
+        return 0.0;
+    }
+    if shanten > 0 {
+        panic!("not supporting expected value for shanten > 0");
+    }
+    let ukiere_tiles = get_ukiere_optimized(tiles_after_discard, melded_tiles);
+
+    // if opponents are playing perfect defense, the only chance to win is by tsumo
+    // TODO ignore ura dora for now?
+
+    // pre-compute value of possible tsumo wins
+    let mut ukiere_tiles_to_tsumo_value: HashMap<MahjongTileId, f64> = HashMap::new();
+    for ukiere_tile in ukiere_tiles.to_tile_ids() {
+        let (win_han, win_fu) = compute_han_and_fu(
+            tiles_after_discard,
+            melded_tiles.clone(),
+            ukiere_tile,
+            hand_info.clone(),
+            winning_tile_info.clone(),
+        );
+        let (tsumo_value1, tsumo_value2, tsumo_value3) =
+            compute_tsumo_score(win_han, win_fu, hand_info);
+        let total_tsumo_value = tsumo_value1 + tsumo_value2 + tsumo_value3;
+        println!(
+            "ukiere tile to win value (on tsumo): {} han, {} fu, total points = {}",
+            win_han, win_fu, total_tsumo_value
+        );
+        ukiere_tiles_to_tsumo_value.insert(ukiere_tile, total_tsumo_value as f64);
+    }
+
+    for (ukiere_tile, tsumo_win_value) in ukiere_tiles_to_tsumo_value.iter() {
+        println!(
+            "win by tsumo on {} -> {}",
+            ukiere_tile.to_text(),
+            tsumo_win_value
+        );
+    }
+
+    let mut initial_wall_tiles = MahjongTileCountArray([4u8; 34]);
+    // remove all visible tiles: the player's own hand and the other visible tiles (including dora indicator tiles)
+    initial_wall_tiles = initial_wall_tiles.remove_tile_ids(tiles_after_discard.to_tile_ids());
+    initial_wall_tiles = initial_wall_tiles.remove_tile_ids(other_visible_tiles.clone());
+    initial_wall_tiles = initial_wall_tiles.remove_tile_ids(dora_indicator_tiles.to_tile_ids());
+
+    let mut total_ukiere_tiles = 0;
+    for ukiere_tile in ukiere_tiles.to_tile_ids() {
+        total_ukiere_tiles += initial_wall_tiles.get_tile_id_count(&ukiere_tile);
+    }
+
+    println!(
+        "initial non-visible tiles ({:3} tiles): {}",
+        initial_wall_tiles.total_tiles(),
+        initial_wall_tiles.to_text()
+    );
+
+    // before first tsumo draw, there are 3 more tile discards
+    let mut nonvisible_tiles = initial_wall_tiles.total_tiles() - 3;
+    let mut probability_of_getting_to_turn = 1.0;
+    let mut total_expected_value = 0.0;
+    for draw_number in 0..remaining_draws {
+        if draw_number == 0 && include_ippatsu_chance_on_first_draw {
+            for ukiere_tile in ukiere_tiles.to_tile_ids() {
+                let mut ippatsu_hand_info = hand_info.clone();
+                ippatsu_hand_info.hand_state = match hand_info.hand_state.clone() {
+                    // The hand should already be in riichi
+                    HandState::Open => HandState::Closed {
+                        riichi_info: RiichiInfo::Riichi {
+                            is_ippatsu: true,
+                            is_double_riichi: false,
+                        },
+                    },
+                    HandState::Closed { riichi_info } => match riichi_info {
+                        // The hand should already be in riichi
+                        RiichiInfo::NoRiichi => HandState::Closed {
+                            riichi_info: RiichiInfo::Riichi {
+                                is_ippatsu: true,
+                                is_double_riichi: false,
+                            },
+                        },
+                        // keep whether we're in double-riichi
+                        RiichiInfo::Riichi {
+                            is_double_riichi, ..
+                        } => HandState::Closed {
+                            riichi_info: RiichiInfo::Riichi {
+                                is_ippatsu: true,
+                                is_double_riichi: is_double_riichi,
+                            },
+                        },
+                    },
+                };
+                let (win_han, win_fu) = compute_han_and_fu(
+                    tiles_after_discard,
+                    melded_tiles.clone(),
+                    ukiere_tile,
+                    ippatsu_hand_info,
+                    winning_tile_info.clone(),
+                );
+                let (tsumo_value1, tsumo_value2, tsumo_value3) =
+                    compute_tsumo_score(win_han, win_fu, hand_info);
+                let win_value = tsumo_value1 + tsumo_value2 + tsumo_value3;
+                let ukiere_tile_count = initial_wall_tiles.get_tile_id_count(&ukiere_tile);
+                let expected_value_for_tile = probability_of_getting_to_turn
+                    * (ukiere_tile_count as f64 / nonvisible_tiles as f64)
+                    * (win_value as f64);
+                println!(
+                    "ippatsu turn: EV for ukiere tile {} (for turn {}) = {}, probability of getting to turn = {}, nonvisible tiles = {}",
+                    ukiere_tile.to_text(),
+                    draw_number + 1,
+                    expected_value_for_tile,
+                    probability_of_getting_to_turn,
+                    nonvisible_tiles
+                );
+                total_expected_value += expected_value_for_tile;
+            }
+        } else if draw_number == remaining_draws - 1 && include_haitei_chance_on_last_draw {
+            for ukiere_tile in ukiere_tiles.to_tile_ids() {
+                let mut haitei_winning_tile_info = winning_tile_info.clone();
+                haitei_winning_tile_info.source = WinningTileSource::SelfDraw {
+                    is_first_draw: false,
+                    is_last_draw: true,
+                };
+                let (win_han, win_fu) = compute_han_and_fu(
+                    tiles_after_discard,
+                    melded_tiles.clone(),
+                    ukiere_tile,
+                    hand_info.clone(),
+                    haitei_winning_tile_info,
+                );
+                let (tsumo_value1, tsumo_value2, tsumo_value3) =
+                    compute_tsumo_score(win_han, win_fu, hand_info);
+                let win_value = tsumo_value1 + tsumo_value2 + tsumo_value3;
+                let ukiere_tile_count = initial_wall_tiles.get_tile_id_count(&ukiere_tile);
+                let expected_value_for_tile = probability_of_getting_to_turn
+                    * (ukiere_tile_count as f64 / nonvisible_tiles as f64)
+                    * (win_value as f64);
+                println!(
+                    "haitei turn: EV for ukiere tile {} (for turn {}) = {}, probability of getting to turn = {}, nonvisible tiles = {}",
+                    ukiere_tile.to_text(),
+                    draw_number + 1,
+                    expected_value_for_tile,
+                    probability_of_getting_to_turn,
+                    nonvisible_tiles
+                );
+                total_expected_value += expected_value_for_tile;
+            }
+        } else {
+            for ukiere_tile in ukiere_tiles.to_tile_ids() {
+                let win_value = *(ukiere_tiles_to_tsumo_value.get(&ukiere_tile).unwrap());
+                let ukiere_tile_count = initial_wall_tiles.get_tile_id_count(&ukiere_tile);
+                let expected_value_for_tile = probability_of_getting_to_turn
+                    * (ukiere_tile_count as f64 / nonvisible_tiles as f64)
+                    * win_value;
+                println!(
+                    "EV for ukiere tile {} (for turn {}) = {}, probability of getting to turn = {}, nonvisible tiles = {}",
+                    ukiere_tile.to_text(),
+                    draw_number + 1,
+                    expected_value_for_tile,
+                    probability_of_getting_to_turn,
+                    nonvisible_tiles
+                );
+                total_expected_value += expected_value_for_tile
+            }
+        }
+
+        probability_of_getting_to_turn *= 1.0 - total_ukiere_tiles as f64 / nonvisible_tiles as f64;
+        nonvisible_tiles -= 4; // 4 tiles discarded (the four tiles)
+    }
+
+    total_expected_value
 }
 
 #[cfg(test)]
@@ -4925,7 +5111,10 @@ mod tests {
             },
             &HandInfo {
                 hand_state: HandState::Closed {
-                    riichi_info: RiichiInfo::NoRiichi,
+                    riichi_info: RiichiInfo::Riichi {
+                        is_double_riichi: false,
+                        is_ippatsu: false,
+                    },
                 },
                 round_wind: MahjongWindOrder::East,
                 seat_wind: seat_wind,
@@ -4969,7 +5158,7 @@ mod tests {
             },
             &HandInfo {
                 hand_state: HandState::Closed {
-                    riichi_info: RiichiInfo::NoRiichi,
+                    riichi_info: RiichiInfo::Riichi { is_double_riichi: false, is_ippatsu: false },
                 },
                 round_wind: MahjongWindOrder::East,
                 seat_wind: seat_wind,
@@ -4981,6 +5170,278 @@ mod tests {
         println!(
             "Expected value from discard 1p with {} draws left: {}",
             remaining_draws, expected_value_from_shanpon_tenpai
+        );
+    }
+
+    #[test]
+    fn test_expected_hand_value_turn7_riichi() {
+        let turn_number = 8;
+        let seat_wind = MahjongWindOrder::South;
+        let total_draws =
+            if seat_wind == MahjongWindOrder::East || seat_wind == MahjongWindOrder::South {
+                18
+            } else {
+                17
+            };
+        let remaining_draws = total_draws - turn_number;
+        let expected_value_from_shanpon_tenpai_riichi =
+            compute_expected_value_riichi_vs_perfect_defense(
+                MahjongTileCountArray::from_text("123m234789p3388s"),
+                total_draws - turn_number,
+                seat_wind == MahjongWindOrder::South,
+                true,
+                &Vec::new(),
+                MahjongTileCountArray::from_text("3s"),
+                // generate the previous 6 turns of discards, and this is turn 7, where this player (South) just discarded 1p
+                &get_tile_ids_from_string("7777z6666z5555z4444z3333z2222z1z1p"),
+                &WinningTileInfo {
+                    source: WinningTileSource::SelfDraw {
+                        is_first_draw: false,
+                        is_last_draw: false,
+                    },
+                },
+                &HandInfo {
+                    hand_state: HandState::Closed {
+                        riichi_info: RiichiInfo::Riichi {
+                            is_double_riichi: false,
+                            is_ippatsu: false,
+                        },
+                    },
+                    round_wind: MahjongWindOrder::East,
+                    seat_wind: seat_wind,
+                    round_number: 1,
+                    honba_counter: 0,
+                    dora_tiles: get_tile_ids_from_string("4s"),
+                },
+            );
+        println!(
+            "Expected value from riichi on discard 1p with {} draws left: {}",
+            remaining_draws, expected_value_from_shanpon_tenpai_riichi
+        );
+    }
+
+    #[test]
+    fn test_expected_hand_value_turn17_riichi() {
+        let turn_number = 17;
+        let seat_wind = MahjongWindOrder::South;
+        let total_draws =
+            if seat_wind == MahjongWindOrder::East || seat_wind == MahjongWindOrder::South {
+                18
+            } else {
+                17
+            };
+        let remaining_draws = total_draws - turn_number;
+        let expected_value_from_shanpon_tenpai_riichi =
+            compute_expected_value_riichi_vs_perfect_defense(
+                MahjongTileCountArray::from_text("123m234789p3388s"),
+                total_draws - turn_number,
+                seat_wind == MahjongWindOrder::South,
+                true,
+                &Vec::new(),
+                MahjongTileCountArray::from_text("3s"),
+                // generate the previous 16 turns of discards, and this is turn 17, where this player (South) just discarded 1p
+                &get_tile_ids_from_string("7777z6666z5555z4444z3333z2222z1111z9999m8888m7777m6666m5555m4444m9999s7777s6666s5s1p"),
+                &WinningTileInfo {
+                    source: WinningTileSource::SelfDraw {
+                        is_first_draw: false,
+                        is_last_draw: false,
+                    },
+                },
+                &HandInfo {
+                    hand_state: HandState::Closed {
+                        riichi_info: RiichiInfo::Riichi {
+                            is_double_riichi: false,
+                            is_ippatsu: false,
+                        },
+                    },
+                    round_wind: MahjongWindOrder::East,
+                    seat_wind: seat_wind,
+                    round_number: 1,
+                    honba_counter: 0,
+                    dora_tiles: get_tile_ids_from_string("4s"),
+                },
+            );
+        println!(
+            "Expected value from riichi on discard 1p with {} draws left: {}",
+            remaining_draws, expected_value_from_shanpon_tenpai_riichi
+        );
+    }
+
+    // TODO or maybe the player discards 3s instead -> then could declare riichi on next turn (for tenpai, if possible)
+    // there are 41 ukiere tiles (to tenpai): 123456p123458s
+    #[test]
+    fn test_expected_hand_value_turn7_damaten_and_riichi_on_turn8() {
+        // TODO the player discards 1p without riichi turn 7 and then declares riichi on next turn (taking a potential upgrade, if possible)
+        // there are 28 upgrade tiles: 1245679s
+        let riichi_turn_number = 8;
+        let tiles_after_discard = MahjongTileCountArray::from_text("123m234789p3388s");
+        let melded_tiles = Vec::new();
+        let other_visible_tiles = get_tile_ids_from_string("7777z6666z5555z4444z3333z2222z1z1p");
+        let dora_indicator_tiles = MahjongTileCountArray::from_text("3s");
+        let seat_wind = MahjongWindOrder::South;
+        let hand_info = HandInfo {
+            hand_state: HandState::Closed {
+                riichi_info: RiichiInfo::Riichi {
+                    is_double_riichi: false,
+                    is_ippatsu: false,
+                },
+            },
+            round_wind: MahjongWindOrder::East,
+            seat_wind: seat_wind,
+            round_number: 1,
+            honba_counter: 0,
+            dora_tiles: get_tile_ids_from_string("4s"),
+        };
+
+        let total_draws =
+            if seat_wind == MahjongWindOrder::East || seat_wind == MahjongWindOrder::South {
+                18
+            } else {
+                17
+            };
+        let remaining_draws = total_draws - riichi_turn_number;
+        // let num_trials = 1_000_000;
+        let num_trials = 1;
+
+        let mut nonvisible_tiles = MahjongTileCountArray([4u8; 34]);
+        nonvisible_tiles = nonvisible_tiles.remove_tile_ids(tiles_after_discard.to_tile_ids());
+        nonvisible_tiles = nonvisible_tiles.remove_tile_ids(other_visible_tiles.clone());
+        nonvisible_tiles = nonvisible_tiles.remove_tile_ids(dora_indicator_tiles.to_tile_ids());
+
+        // TODO don't hardcode ukiere and upgrade tiles
+        let ukiere_tiles = MahjongTileCountArray::from_text("38s");
+        let upgrade_tiles = MahjongTileCountArray::from_text("1245679s");
+        let mut discard_after_upgrade_for_riichi: HashMap<MahjongTileId, MahjongTileId> =
+            HashMap::new();
+        // for upgrade_tile in upgrade_tiles.to_tile_ids() {
+        //     discard_after_upgrade_for_riichi.insert(upgrade_tile);
+        // }
+        discard_after_upgrade_for_riichi.insert(
+            MahjongTileId::from_text("1s").unwrap(),
+            MahjongTileId::from_text("3s").unwrap(),
+        );
+        discard_after_upgrade_for_riichi.insert(
+            MahjongTileId::from_text("2s").unwrap(),
+            MahjongTileId::from_text("3s").unwrap(),
+        );
+        discard_after_upgrade_for_riichi.insert(
+            MahjongTileId::from_text("4s").unwrap(),
+            MahjongTileId::from_text("3s").unwrap(),
+        );
+        discard_after_upgrade_for_riichi.insert(
+            MahjongTileId::from_text("5s").unwrap(),
+            MahjongTileId::from_text("3s").unwrap(),
+        );
+        discard_after_upgrade_for_riichi.insert(
+            MahjongTileId::from_text("6s").unwrap(),
+            MahjongTileId::from_text("8s").unwrap(),
+        );
+        discard_after_upgrade_for_riichi.insert(
+            MahjongTileId::from_text("7s").unwrap(),
+            MahjongTileId::from_text("8s").unwrap(),
+        );
+        discard_after_upgrade_for_riichi.insert(
+            MahjongTileId::from_text("9s").unwrap(),
+            MahjongTileId::from_text("8s").unwrap(),
+        );
+
+        let mut expected_value = 0.0;
+        for _i in 0..num_trials {
+            let other_player_discards =
+                nonvisible_tiles.get_n_random_tile_ids(3, MahjongTileCountArray([0u8; 34]));
+            nonvisible_tiles = nonvisible_tiles.remove_tile_ids(other_player_discards.clone());
+
+            let drawn_tile = nonvisible_tiles.get_random_tile_id(MahjongTileCountArray([0u8; 34]));
+            println!(
+                "other players discarded = {}, just drew = {}",
+                tile_ids_to_string(&other_player_discards),
+                drawn_tile.to_text()
+            );
+
+            if ukiere_tiles.contains(&drawn_tile) {
+                // just drew a winning tile (won by tsumo)
+                let (win_han, win_fu) = compute_han_and_fu(
+                    tiles_after_discard,
+                    melded_tiles.clone(),
+                    drawn_tile,
+                    hand_info.clone(),
+                    WinningTileInfo {
+                        source: WinningTileSource::SelfDraw {
+                            is_first_draw: false,
+                            is_last_draw: false,
+                        },
+                    },
+                );
+                let (tsumo_value1, tsumo_value2, tsumo_value3) =
+                    compute_tsumo_score(win_han, win_fu, &hand_info);
+                let total_tsumo_value = tsumo_value1 + tsumo_value2 + tsumo_value3;
+                println!(
+                    "drew winning tile (tsumo), win value = {}",
+                    total_tsumo_value
+                );
+                expected_value += total_tsumo_value as f64 / num_trials as f64;
+            } else if upgrade_tiles.contains(&drawn_tile) {
+                let discard_tile_for_riichi =
+                    *(discard_after_upgrade_for_riichi.get(&drawn_tile).unwrap());
+                let mut new_other_visible_tiles = other_visible_tiles.clone();
+                new_other_visible_tiles.extend(other_player_discards.iter());
+                new_other_visible_tiles.push(discard_tile_for_riichi);
+                let expected_value_of_riichi = compute_expected_value_riichi_vs_perfect_defense(
+                    tiles_after_discard,
+                    total_draws - riichi_turn_number,
+                    seat_wind == MahjongWindOrder::South,
+                    true,
+                    &Vec::new(),
+                    dora_indicator_tiles,
+                    &new_other_visible_tiles,
+                    &WinningTileInfo {
+                        source: WinningTileSource::SelfDraw {
+                            is_first_draw: false,
+                            is_last_draw: false,
+                        },
+                    },
+                    &hand_info,
+                );
+                println!(
+                    "drew upgrade tile {}, discard {} for riichi, with EV = {}",
+                    drawn_tile.to_text(),
+                    discard_tile_for_riichi.to_text(),
+                    expected_value_of_riichi
+                );
+                expected_value += expected_value_of_riichi / num_trials as f64;
+            } else {
+                // discard the just drawn tile for riichi
+                let mut new_other_visible_tiles = other_visible_tiles.clone();
+                new_other_visible_tiles.extend(other_player_discards.iter());
+                new_other_visible_tiles.push(drawn_tile);
+                let expected_value_of_riichi = compute_expected_value_riichi_vs_perfect_defense(
+                    tiles_after_discard,
+                    total_draws - riichi_turn_number,
+                    seat_wind == MahjongWindOrder::South,
+                    true,
+                    &Vec::new(),
+                    dora_indicator_tiles,
+                    &new_other_visible_tiles,
+                    &WinningTileInfo {
+                        source: WinningTileSource::SelfDraw {
+                            is_first_draw: false,
+                            is_last_draw: false,
+                        },
+                    },
+                    &hand_info,
+                );
+                println!(
+                    "didn't draw an ukiere or upgrade tile: discarding {} for riichi, with EV = {}",
+                    drawn_tile.to_text(),
+                    expected_value_of_riichi
+                );
+                expected_value += expected_value_of_riichi / num_trials as f64;
+            }
+        }
+
+        println!(
+            "Expected value from riichi on discard 1p (no riichi), then riichi on the next turn with {} draws left: {}",
+            remaining_draws, expected_value
         );
     }
 }
