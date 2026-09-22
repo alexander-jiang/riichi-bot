@@ -1795,24 +1795,29 @@ pub(crate) fn print_shanten_ukiere_after_each_discard(
         num_ukiere_after_discard,
     ) in sorted_shanten_ukiere_after_each_discard
     {
-        println!(
-            "discard {} -> {} shanten, {} ukiere tiles: {} ",
-            discard_tile_id,
-            shanten_after_discard,
-            num_ukiere_after_discard,
-            ukiere_tile_ids_after_discard.to_text(),
-        );
-
         let new_count_array = remove_tile_id_from_count_array(tile_count_array, discard_tile_id);
         let new_shanten = get_shanten_optimized(new_count_array, &melded_tiles);
         // println!(
         //     "hand {} is {} shanten",
         //     new_count_array, new_shanten
         // );
+        let is_tenpai_after_discard = shanten_after_discard == 0;
+        let shanten_after_discard_str = if is_tenpai_after_discard {
+            "tenpai".to_string()
+        } else {
+            format!("{} shanten", shanten_after_discard)
+        };
+        println!(
+            "discard {} -> {}, {} ukiere tiles: {} ",
+            discard_tile_id,
+            shanten_after_discard_str,
+            num_ukiere_after_discard,
+            ukiere_tile_ids_after_discard.to_text(),
+        );
 
         // for performance, only print out improve results (i.e. results after drawing an ukiere tile)
         // for the discards that result in best shanten (i.e. don't print out for suboptimal discards)
-        if new_shanten == best_shanten {
+        if new_shanten == best_shanten && !is_tenpai_after_discard {
             println!("  after advancing shanten:");
             let mut improve_options = Vec::new();
             for improve_tile_id in ukiere_tile_ids_after_discard.to_tile_ids() {
@@ -1879,7 +1884,7 @@ pub(crate) fn print_shanten_ukiere_after_each_discard(
 
         // for performance, only print out upgrades for the discards that result in best shanten
         // (i.e. don't print out for suboptimal discards)
-        if new_shanten == best_shanten {
+        if new_shanten == best_shanten && !is_tenpai_after_discard {
             let upgrades = get_upgrade_tiles(
                 new_count_array,
                 &melded_tiles,
@@ -3012,6 +3017,24 @@ mod tests {
 
         let ukiere_tiles = get_kokushi_ukiere(tiles, &melded_tiles);
         assert_eq!(ukiere_tiles.total_tiles(), 0);
+    }
+
+    #[test]
+    fn complex_chinitsu_tenpai() {
+        // potential upgrade scenario from one of my tenhou games: actual hand was 1134566677899m with dora = 1m, and one red 5m
+        // -> if I drew 1m, then I could upgrade (cut 9m) and get to this complex tenpai wait
+        let tiles = MahjongTileCountArray::from_text("1113456667789m");
+        let melded_tiles = Vec::new();
+        assert_eq!(get_shanten(tiles, &melded_tiles), 0);
+        assert_eq!(get_shanten_optimized(tiles, &melded_tiles), 0);
+
+        // ukiere tiles: 2578m
+        let expected_ukiere_tiles = MahjongTileCountArray::from_text("2578m");
+        let ukiere_tiles = get_ukiere(tiles, &melded_tiles);
+        assert_eq!(&ukiere_tiles, &expected_ukiere_tiles);
+
+        let ukiere_tiles = get_ukiere_optimized(tiles, &melded_tiles);
+        assert_eq!(&ukiere_tiles, &expected_ukiere_tiles);
     }
 
     #[bench]
@@ -4454,9 +4477,10 @@ mod tests {
 
     #[test]
     fn test_wwyd_tenpai_vs_sticky_1shanten() {
+        // WIP incomplete test (intentionally not passing)
         let tiles_before_draw = MahjongTileCountArray::from_text("123m1234789p388s");
         let melded_tiles = Vec::new();
-        let other_visible_tiles = get_tile_ids_from_string("33s"); // dora indicator + discarded 3s to get to sticky 1-shanten (instead of discarding 1p or 4p for )
+        let other_visible_tiles = get_tile_ids_from_string("33s"); // dora indicator + discarded 3s to get to sticky 1-shanten (instead of discarding 1p or 4p for tanki tenpai)
         let ukiere_tiles = get_ukiere_optimized(tiles_before_draw, &melded_tiles);
         for ukiere_tile_to_tenpai in ukiere_tiles.to_tile_ids() {
             let tiles_before_discard_to_tenpai =
@@ -4481,6 +4505,123 @@ mod tests {
             );
             println!("---");
         }
+        assert!(false);
+    }
+
+    #[test]
+    fn test_tricky_1shanten_upgrade() {
+        // before drawing 4m to get to 1-shanten:
+        let tiles_before_1shanten = MahjongTileCountArray::from_text("223346889s4m123p8p");
+        let melded_tiles = Vec::new();
+        let other_visible_tiles = get_tile_ids_from_string("7m9m4z1z"); // dora indicator 7m + discarded tiles
+
+        // let ukiere_tiles = get_ukiere_optimized(tiles_before_1shanten, &melded_tiles);
+        let shanten_ukiere_to_tenpai = get_shanten_ukiere_after_each_discard(
+            tiles_before_1shanten,
+            &melded_tiles,
+            &get_shanten_optimized,
+            &get_ukiere_optimized,
+            &other_visible_tiles,
+        );
+        print_shanten_ukiere_after_each_discard(
+            tiles_before_1shanten,
+            &melded_tiles,
+            &shanten_ukiere_to_tenpai,
+            &other_visible_tiles,
+        );
+        println!("---");
+
+        // println!("========= after draw 4m and discard 9s: =========");
+
+        // // before I drew 5s
+        // let tiles_before_draw = MahjongTileCountArray::from_text("22334688s44m123p");
+        // let melded_tiles = Vec::new();
+        // let other_visible_tiles = get_tile_ids_from_string("7m9m4z1z8p9s8m6m2p"); // dora indicator 7m + discarded tiles
+        // let ukiere_tiles = get_ukiere_optimized(tiles_before_draw, &melded_tiles);
+        // for ukiere_tile_to_tenpai in ukiere_tiles.to_tile_ids() {
+        //     let tiles_before_discard_to_tenpai =
+        //         tiles_before_draw.add_tile_ids(vec![ukiere_tile_to_tenpai]);
+        //     let shanten_ukiere_to_tenpai = get_shanten_ukiere_after_each_discard(
+        //         tiles_before_discard_to_tenpai,
+        //         &melded_tiles,
+        //         &get_shanten_optimized,
+        //         &get_ukiere_optimized,
+        //         &other_visible_tiles,
+        //     );
+        //     let shanten_ukiere_to_tenpai_only: Vec<_> = shanten_ukiere_to_tenpai
+        //         .into_iter()
+        //         .filter(|(_tile_id, shanten, _ukiere_tiles, _num_ukiere)| *shanten == 0)
+        //         .collect();
+        //     println!("draw {}:", ukiere_tile_to_tenpai.to_text());
+        //     print_shanten_ukiere_after_each_discard(
+        //         tiles_before_discard_to_tenpai,
+        //         &melded_tiles,
+        //         &shanten_ukiere_to_tenpai_only,
+        //         &other_visible_tiles,
+        //     );
+        //     println!("---");
+        // }
+
+        // println!("========= after draw 5s and discard 8s: =========");
+
+        // let tiles_before_draw = MahjongTileCountArray::from_text("22334568s44m123p");
+        // let melded_tiles = Vec::new();
+        // let other_visible_tiles = get_tile_ids_from_string("7m9m4z1z8p9s8m6m2p8s"); // dora indicator 7m + discarded tiles
+        // let ukiere_tiles = get_ukiere_optimized(tiles_before_draw, &melded_tiles);
+        // for ukiere_tile_to_tenpai in ukiere_tiles.to_tile_ids() {
+        //     let tiles_before_discard_to_tenpai =
+        //         tiles_before_draw.add_tile_ids(vec![ukiere_tile_to_tenpai]);
+        //     let shanten_ukiere_to_tenpai = get_shanten_ukiere_after_each_discard(
+        //         tiles_before_discard_to_tenpai,
+        //         &melded_tiles,
+        //         &get_shanten_optimized,
+        //         &get_ukiere_optimized,
+        //         &other_visible_tiles,
+        //     );
+        //     let shanten_ukiere_to_tenpai_only: Vec<_> = shanten_ukiere_to_tenpai
+        //         .into_iter()
+        //         .filter(|(_tile_id, shanten, _ukiere_tiles, _num_ukiere)| *shanten == 0)
+        //         .collect();
+        //     println!("draw {}:", ukiere_tile_to_tenpai.to_text());
+        //     print_shanten_ukiere_after_each_discard(
+        //         tiles_before_discard_to_tenpai,
+        //         &melded_tiles,
+        //         &shanten_ukiere_to_tenpai_only,
+        //         &other_visible_tiles,
+        //     );
+        //     println!("---");
+        // }
+
+        // println!("========= after draw 6s and discard another 8s: =========");
+
+        // let tiles_before_draw = MahjongTileCountArray::from_text("22334566s44m123p");
+        // let melded_tiles = Vec::new();
+        // let other_visible_tiles = get_tile_ids_from_string("7m9m4z1z8p9s8m6m2p8s8s8s"); // dora indicator 7m + discarded tiles
+        // let ukiere_tiles = get_ukiere_optimized(tiles_before_draw, &melded_tiles);
+        // for ukiere_tile_to_tenpai in ukiere_tiles.to_tile_ids() {
+        //     let tiles_before_discard_to_tenpai =
+        //         tiles_before_draw.add_tile_ids(vec![ukiere_tile_to_tenpai]);
+        //     let shanten_ukiere_to_tenpai = get_shanten_ukiere_after_each_discard(
+        //         tiles_before_discard_to_tenpai,
+        //         &melded_tiles,
+        //         &get_shanten_optimized,
+        //         &get_ukiere_optimized,
+        //         &other_visible_tiles,
+        //     );
+        //     let shanten_ukiere_to_tenpai_only: Vec<_> = shanten_ukiere_to_tenpai
+        //         .into_iter()
+        //         .filter(|(_tile_id, shanten, _ukiere_tiles, _num_ukiere)| *shanten == 0)
+        //         .collect();
+        //     println!("draw {}:", ukiere_tile_to_tenpai.to_text());
+        //     print_shanten_ukiere_after_each_discard(
+        //         tiles_before_discard_to_tenpai,
+        //         &melded_tiles,
+        //         &shanten_ukiere_to_tenpai_only,
+        //         &other_visible_tiles,
+        //     );
+        //     println!("---");
+        // }
+
         assert!(false);
     }
 }

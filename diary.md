@@ -4,6 +4,56 @@
 
 - make sure we have fully tested the tenpai check, as well as determining which tiles are the winning tiles, the potential groupings, and the shanten + upgrade calculations
 
+### Sep 21 2026
+
+Had an interesting chinitsu hand in tenhou game: 113456667789m3z (I reached the shape of 113456667789m, with dora = 1m and a red 5m in my hand, on 8th discard. I'm in North seat, the round is east-2, the player to my left is in 1st place with 33k off of ron from the player across in the East-1 round for 8k). In game, I drew 9m and discarded 3z on 11th discard. I declined riichi, but I didn't recognize the tenpai or my wait in game (I thought of the shape as 11-34567-66-789-9m), and I didn't end up winning the hand (the player to my left declared riichi on 12th discard and had a great wait: 123p3334555s789s - riichi + iipatsu + red dora).
+After the game, I figured out my wait was 8m, and I wondered what the potential upgrade situations would be.
+Also it's interesting to consider the scoring situations.
+
+### Sep 20 2026
+
+Had an interesting hand in solitaire mahjong practice: 223346889s4m123p (tsumogiri'd 8p, then drew 4m, and cut 9p) -- then the hand progressed with 22334688s44m123p5s (I cut 8s, after analysis, but my initial intuition was to cut 3s) -> then it backfired with two 8s draws, then a 6s draw
+
+### Jan 4 2026
+
+working on a breakdown of the decision: assuming it's turn 7, should we discard 1p and call riichi immediately (on turn 7), or should we discard 1p and riichi on the next turn, after potentially drawing an upgrade tile (28 upgrade tiles: 1245679s)?
+
+A third decision would be to discard 3s (stepping back to 1-shanten) and hope to draw an ukiere tile on the next turn (and riichi).
+
+### Jan 1 2026
+
+Been working on the expected value (for tenpai only, without considering upgrades) calculation function - first via Monte carlo / simulation:
+
+output for a test case: hand of `123m234789p3388s`, after discarding 1p as South on turn 7 (i.e. 11 more draws, assuming no tile calls)
+should for `3/93 + (1 - 3/93) * 3/89 + (1 - 3/93) * (1 - 3/89) * 3/85 + ... {for 11 total terms} = 0.379312` -> so for a win value of 1100, expected value should be 417.2432, but [the website](https://kobalab.net/majiang/dapai.html#m123p1234789s338s8/0/1/s3&z7z6z5z4z3z2/z7z6z5z4z3z2/z7z6z5z4z3z2/z7z6z5z4z3z2z1) computes an expected value of 343.75?
+
+```
+---- scoring::tests::test_expected_hand_value_turn7 stdout ----
+[...]
+win by tsumo on 3s -> 1100
+win by tsumo on 8s -> 1100
+initial non-visible tiles ( 96 tiles): 111222333444455556666777788889999m11122233344455556666777888999p1111222234444555566667777889999s111z
+number of non-visible tiles before first draw: 93
+Elapsed time for 1000000 trials: 484.67s, avg ms per trial = 0.484674
+Expected value from discard 1p with 11 draws left: 418.1232000018171
+```
+
+the same hand (in south player) on discarding 1p on turn 17 (with 1 more draw left): should be `3/53 * 1100 = 62.264`
+but [this website](https://kobalab.net/majiang/dapai.html#m123p1234789s338s8/0/1/s3&z7z6z5z4z3z2z1m9m8m7m6m5m4s9s7s6/z7z6z5z4z3z2z1m9m8m7m6m5m4s9s7s6/z7z6z5z4z3z2z1m9m8m7m6m5m4s9s7s6/z7z6z5z4z3z2z1m9m8m7m6m5m4s9s7s6s5) computes the expected value to be 53.57?
+
+```
+---- scoring::tests::test_expected_hand_value_turn17 stdout ----
+[...]
+win by tsumo on 3s -> 1100
+win by tsumo on 8s -> 1100
+initial non-visible tiles ( 56 tiles): 111222333m11122233344455556666777888999p111122223444455588s
+number of non-visible tiles before first draw: 53
+Elapsed time for 1000000 trials: 63.31s, avg ms per trial = 0.063308
+Expected value from discard 1p with 1 draws left: 62.47560000003669
+```
+
+also, the above estimates don't account for any chance of winning by ron, any potential riichi bonuses (ippatsu or uradora), or for haitei (assuming no tile calls are made, the South player has the haitei draw).
+
 ### Oct 6 2025
 
 Thinking about collections of mahjong tiles. What we usually want is a multi-set (neither a `Vec` / list, where order matters, nor a set, which doesn't allow duplicates).
@@ -691,7 +741,6 @@ Elapsed time for is_winning_shape_recursive_heuristic: ~37 - 54 microseconds
 - Draft list of tasks
 - set a timeline - 9 weeks total
 - what i tried for the "is_winning_hand" function
-
   - initially, i just tried counting tiles by suit and rank - this helps for honor tiles, but number tiles can be tricky, especially with overlapping sequences.
   - My initial idea was to use the counts by rank for each suit (since the suits are independent of each other) - and try to identify isolated tiles, but this is not strict enough to catch situations when there are non-winning hands that just have tiles that are close/neighboring & this also misses hands where the end of the sequence is deemed "isolated" since no sequence could start with that -> the missing piece is to remove the tiles from the hand for consideration, which starts to seem like a recursive solution
   - I was concerned about a recursive solution, but I think that it should be safe due to the low maximum depth - each recursive call will remove at least 2 (and usually at least 3) tiles away from the list of remaining tiles, and the fanout is not high - there are at most 4 options if a single tile has 4 of a kind: make a meld with all four tiles together, make a meld with three of the tiles, use two of the tiles for the pair, or make a meld with one of the tiles for a sequence

@@ -5444,4 +5444,57 @@ mod tests {
             remaining_draws, expected_value
         );
     }
+
+    #[test]
+    fn test_chinitsu_hand_with_ittsuu_and_iipeikou() {
+        // potential situation from my hand in tenhou game (I could have upgraded from 1134566677899m, draw 2m and discard 1m), I also had a red 5m (but in this example, the MahjongTileCountArray doesn't support red fives)
+        // can win on 58m. The win on 5m is 8 han, 30 fu: chinitsu + pinfu + dora 1. But the win on 8m is better:
+        let hand = MahjongTileCountArray::from_text("1234566677899m");
+        let melded_tiles = Vec::new();
+        let dora_tiles = get_tile_ids_from_string("1m"); // dora = 1m (indicator = 9m)
+        let win_tile_5m = MahjongTileId::from_text("5m").unwrap();
+        let win_tile_8m = MahjongTileId::from_text("8m").unwrap();
+
+        let ron = WinningTileInfo {
+            source: WinningTileSource::Discard {
+                is_last_discard: false,
+            },
+        };
+
+        let as_dealer = HandInfo {
+            hand_state: HandState::Closed {
+                riichi_info: RiichiInfo::NoRiichi,
+            },
+            round_wind: MahjongWindOrder::East,
+            seat_wind: MahjongWindOrder::East,
+            round_number: 1,
+            honba_counter: 0,
+            dora_tiles: dora_tiles.clone(),
+        };
+
+        // Ron (on 5m) = 8 han, 30 fu: 123-456-67-678-99 + 5m is best, chinitsu + pinfu + dora 1
+        assert_eq!(
+            (8, 30),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile_5m,
+                as_dealer.clone(),
+                ron.clone()
+            )
+        );
+
+        // Ron (on 8m) = 10 han, 40 fu: 123-456-66-789-79 + 8m is best, chinitsu + ittsuu (closed) + iipeikou + dora 1, fu: kanchan wait
+        // trying to score pinfu is worse off: 123-456-678-67-99 + 8m = 9 han, 30 fu: chinitsu + pinfu + iipeikou + dora 1
+        assert_eq!(
+            (10, 40),
+            compute_han_and_fu(
+                hand.clone(),
+                melded_tiles.clone(),
+                win_tile_8m,
+                as_dealer.clone(),
+                ron.clone()
+            )
+        );
+    }
 }
