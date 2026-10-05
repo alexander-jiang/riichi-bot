@@ -4624,6 +4624,453 @@ mod tests {
 
         assert!(false);
     }
+
+    #[test]
+    fn test_get_upgrade_tiles() {
+        // example from Riichi book 1, section 9.2, page 221
+        let tiles = MahjongTileCountArray::from_text("24567m345p11s777z");
+        let melded_tiles = Vec::new();
+        let other_visible_tiles = Vec::new();
+        let upgrade_tiles = get_upgrade_tiles(
+            tiles,
+            &melded_tiles,
+            &get_shanten_optimized,
+            &get_ukiere_optimized,
+            &other_visible_tiles,
+        );
+
+        // only upgrade is 5m
+        assert_eq!(upgrade_tiles.len(), 1);
+        // draw (or call) 5m -> cut 2m -> new wait is 36m (previous wait is 3m)
+        let tile_5m = MahjongTileId::from_text("5m").unwrap();
+        let discard_for_upgraded_wait_after_5m = upgrade_tiles
+            .get(&tile_5m)
+            .expect("5m should be an upgrade tile");
+
+        // only way to discard after drawing 5m is to discard 2m
+        assert_eq!(discard_for_upgraded_wait_after_5m.len(), 1);
+        let tile_2m = MahjongTileId::from_text("2m").unwrap();
+        let upgraded_wait_after_5m_cut_2m = discard_for_upgraded_wait_after_5m
+            .get(&tile_2m)
+            .expect("2m should be discarded after drawing 5m");
+        assert_eq!(
+            upgraded_wait_after_5m_cut_2m,
+            &(MahjongTileCountArray::from_text("36m"), 7)
+        );
+    }
+
+    #[test]
+    fn test_get_upgrade_tiles_riichi_book1_discard_4s() {
+        // examples from riichi book 1: section 3.2.3 (ready and n-away > advancing your hand)
+        // option 1: discard 4s first
+        let tiles_after_discard_4s = MahjongTileCountArray::from_text("5677m34p5579s666z");
+        let melded_tiles = Vec::new();
+        let other_visible_tiles = Vec::new();
+        let upgrade_tiles = get_upgrade_tiles(
+            tiles_after_discard_4s,
+            &melded_tiles,
+            &get_shanten_optimized,
+            &get_ukiere_optimized,
+            &other_visible_tiles,
+        );
+
+        println!(
+            "upgrade tiles after discard 4s: {:?}",
+            upgrade_tiles
+                .keys()
+                .map(MahjongTileId::to_text)
+                .fold(String::new(), |mut a, b| {
+                    a.push(' ');
+                    a.push_str(&b);
+                    a
+                })
+        );
+        // upgrades: 4m, 6m, 7m, 8m, 5s, 6s, 7s, 9s, 3p, 4p
+        assert_eq!(upgrade_tiles.len(), 10);
+
+        println!("checking upgrade tile 4m");
+        // draw 4m -> cut 5s -> new wait is 25p68s (previous wait is 25p8s)
+        let tile_4m = MahjongTileId::from_text("4m").unwrap();
+        let discard_for_upgraded_wait_after_4m = upgrade_tiles
+            .get(&tile_4m)
+            .expect("4m should be an upgrade tile");
+
+        // after drawing 4m, can discard 5s or 9s
+        assert_eq!(discard_for_upgraded_wait_after_4m.len(), 2);
+        let tile_5s = MahjongTileId::from_text("5s").unwrap();
+        let upgraded_wait_after_4m_cut_5s = discard_for_upgraded_wait_after_4m
+            .get(&tile_5s)
+            .expect("5s should be one of the discard options after drawing 4m");
+        assert_eq!(
+            upgraded_wait_after_4m_cut_5s,
+            &(MahjongTileCountArray::from_text("25p68s"), 16)
+        );
+        let tile_9s = MahjongTileId::from_text("9s").unwrap();
+        let upgraded_wait_after_4m_cut_9s = discard_for_upgraded_wait_after_4m
+            .get(&tile_9s)
+            .expect("9s should be one of the discard options after drawing 4m");
+        assert_eq!(
+            upgraded_wait_after_4m_cut_9s,
+            &(MahjongTileCountArray::from_text("7m25p56s"), 16)
+        );
+
+        println!("checking upgrade tile 6m");
+        // draw 6m -> cut 7s -> new wait is 25p58m (previous wait is 25p8s)
+        let tile_6m = MahjongTileId::from_text("6m").unwrap();
+        let discard_for_upgraded_wait_after_6m = upgrade_tiles
+            .get(&tile_6m)
+            .expect("6m should be an upgrade tile");
+
+        // after drawing 6m, can discard 7s or 9s
+        assert_eq!(discard_for_upgraded_wait_after_6m.len(), 2);
+        let tile_7s = MahjongTileId::from_text("7s").unwrap();
+        let upgraded_wait_after_6m_cut_7s = discard_for_upgraded_wait_after_6m
+            .get(&tile_7s)
+            .expect("7s should be one of the discard options after drawing 6m");
+        assert_eq!(
+            upgraded_wait_after_6m_cut_7s,
+            &(MahjongTileCountArray::from_text("25p58m"), 15)
+        );
+        let tile_9s = MahjongTileId::from_text("9s").unwrap();
+        let upgraded_wait_after_6m_cut_9s = discard_for_upgraded_wait_after_6m
+            .get(&tile_9s)
+            .expect("9s should be one of the discard options after drawing 6m");
+        assert_eq!(
+            upgraded_wait_after_6m_cut_9s,
+            &(MahjongTileCountArray::from_text("25p58m"), 15)
+        );
+
+        println!("checking upgrade tile 7m");
+        // draw 7m -> cut 9s -> new wait is 47m25p56s (previous wait is 25p8s)
+        let tile_7m = MahjongTileId::from_text("7m").unwrap();
+        let discard_for_upgraded_wait_after_7m = upgrade_tiles
+            .get(&tile_7m)
+            .expect("7m should be an upgrade tile");
+
+        // after drawing 7m, can discard 9s (for highest acceptance)
+        let tile_9s = MahjongTileId::from_text("9s").unwrap();
+        let upgraded_wait_after_7m_cut_9s = discard_for_upgraded_wait_after_7m
+            .get(&tile_9s)
+            .expect("9s should be one of the discard options after drawing 7m");
+        assert_eq!(
+            upgraded_wait_after_7m_cut_9s,
+            &(MahjongTileCountArray::from_text("47m25p56s"), 19)
+        );
+
+        println!("checking upgrade tile 8m");
+        // draw 8m -> cut 7s -> new wait is 25p69m (previous wait is 25p8s)
+        let tile_8m = MahjongTileId::from_text("8m").unwrap();
+        let discard_for_upgraded_wait_after_8m = upgrade_tiles
+            .get(&tile_8m)
+            .expect("8m should be an upgrade tile");
+
+        // after drawing 8m, can discard 7s or 9s (for highest acceptance)
+        assert_eq!(discard_for_upgraded_wait_after_8m.len(), 2);
+        let tile_7s = MahjongTileId::from_text("7s").unwrap();
+        let upgraded_wait_after_8m_cut_7s = discard_for_upgraded_wait_after_8m
+            .get(&tile_7s)
+            .expect("7s should be one of the discard options after drawing 8m");
+        assert_eq!(
+            upgraded_wait_after_8m_cut_7s,
+            &(MahjongTileCountArray::from_text("25p69m"), 15)
+        );
+        let tile_9s = MahjongTileId::from_text("9s").unwrap();
+        let upgraded_wait_after_8m_cut_9s = discard_for_upgraded_wait_after_8m
+            .get(&tile_9s)
+            .expect("9s should be one of the discard options after drawing 8m");
+        assert_eq!(
+            upgraded_wait_after_8m_cut_9s,
+            &(MahjongTileCountArray::from_text("25p69m"), 15)
+        );
+
+        println!("checking upgrade tile 5s");
+        // draw 5s -> cut 7m -> new wait is 2345p6789s (previous wait is 25p8s)
+        let tile_5s = MahjongTileId::from_text("5s").unwrap();
+        let discard_for_upgraded_wait_after_5s = upgrade_tiles
+            .get(&tile_5s)
+            .expect("5s should be an upgrade tile");
+
+        // after drawing 5s, can discard 7m (for highest acceptance)
+        let tile_7m = MahjongTileId::from_text("7m").unwrap();
+        let upgraded_wait_after_5s_cut_7m = discard_for_upgraded_wait_after_5s
+            .get(&tile_7m)
+            .expect("7m should be one of the discard options after drawing 5s");
+        assert_eq!(
+            upgraded_wait_after_5s_cut_7m,
+            &(MahjongTileCountArray::from_text("2345p6789s"), 28)
+        );
+
+        println!("checking upgrade tile 6s");
+        // draw 6s -> cut 9s -> new wait is 47m25p58s (previous wait is 25p8s)
+        let tile_6s = MahjongTileId::from_text("6s").unwrap();
+        let discard_for_upgraded_wait_after_6s = upgrade_tiles
+            .get(&tile_6s)
+            .expect("6s should be an upgrade tile");
+
+        // after drawing 6s, can discard 9s (for highest acceptance)
+        let tile_9s = MahjongTileId::from_text("9s").unwrap();
+        let upgraded_wait_after_6s_cut_9s = discard_for_upgraded_wait_after_6s
+            .get(&tile_9s)
+            .expect("9s should be one of the discard options after drawing 6s");
+        assert_eq!(
+            upgraded_wait_after_6s_cut_9s,
+            &(MahjongTileCountArray::from_text("47m25p58s"), 20)
+        );
+
+        println!("checking upgrade tile 7s");
+        // draw 7s -> cut 7m -> new wait is 25p578s (previous wait is 25p8s)
+        let tile_7s = MahjongTileId::from_text("7s").unwrap();
+        let discard_for_upgraded_wait_after_7s = upgrade_tiles
+            .get(&tile_7s)
+            .expect("7s should be an upgrade tile");
+
+        // after drawing 7s, can discard 7m (for highest acceptance)
+        let tile_7m = MahjongTileId::from_text("7m").unwrap();
+        let upgraded_wait_after_7s_cut_7m = discard_for_upgraded_wait_after_7s
+            .get(&tile_7m)
+            .expect("7m should be one of the discard options after drawing 7s");
+        assert_eq!(
+            upgraded_wait_after_7s_cut_7m,
+            &(MahjongTileCountArray::from_text("25p578s"), 16)
+        );
+
+        println!("checking upgrade tile 9s");
+        // draw 9s -> cut 7m -> new wait is 25p5689s (previous wait is 25p8s)
+        let tile_9s = MahjongTileId::from_text("9s").unwrap();
+        let discard_for_upgraded_wait_after_9s = upgrade_tiles
+            .get(&tile_9s)
+            .expect("9s should be an upgrade tile");
+
+        // after drawing 9s, can discard 7m (for highest acceptance)
+        let tile_7m = MahjongTileId::from_text("7m").unwrap();
+        let upgraded_wait_after_9s_cut_7m = discard_for_upgraded_wait_after_9s
+            .get(&tile_7m)
+            .expect("7m should be one of the discard options after drawing 9s");
+        assert_eq!(
+            upgraded_wait_after_9s_cut_7m,
+            &(MahjongTileCountArray::from_text("25p5689s"), 20)
+        );
+
+        println!("checking upgrade tile 3p");
+        // draw 3p -> cut 7m -> new wait is 235p58s (previous wait is 25p8s)
+        let tile_3p = MahjongTileId::from_text("3p").unwrap();
+        let discard_for_upgraded_wait_after_3p = upgrade_tiles
+            .get(&tile_3p)
+            .expect("3p should be an upgrade tile");
+
+        // after drawing 3p, can discard 7m (for highest acceptance)
+        let tile_7m = MahjongTileId::from_text("7m").unwrap();
+        let upgraded_wait_after_3p_cut_7m = discard_for_upgraded_wait_after_3p
+            .get(&tile_7m)
+            .expect("7m should be one of the discard options after drawing 3p");
+        assert_eq!(
+            upgraded_wait_after_3p_cut_7m,
+            &(MahjongTileCountArray::from_text("235p58s"), 16)
+        );
+
+        println!("checking upgrade tile 4p");
+        // draw 4p -> cut 7m -> new wait is 245p58s (previous wait is 25p8s)
+        let tile_4p = MahjongTileId::from_text("4p").unwrap();
+        let discard_for_upgraded_wait_after_4p = upgrade_tiles
+            .get(&tile_4p)
+            .expect("4p should be an upgrade tile");
+
+        // after drawing 4p, can discard 7m (for highest acceptance)
+        let tile_7m = MahjongTileId::from_text("7m").unwrap();
+        let upgraded_wait_after_4p_cut_7m = discard_for_upgraded_wait_after_4p
+            .get(&tile_7m)
+            .expect("7m should be one of the discard options after drawing 4p");
+        assert_eq!(
+            upgraded_wait_after_4p_cut_7m,
+            &(MahjongTileCountArray::from_text("245p58s"), 16)
+        );
+    }
+
+    #[test]
+    fn test_get_upgrade_tiles_riichi_book1_discard_7m() {
+        // examples from riichi book 1: section 3.2.3 (ready and n-away > advancing your hand)
+        // option 2: discard 7m first
+        // what if we discard 7m instead:
+        let tiles_after_discard_7m = MahjongTileCountArray::from_text("567m34p45579s666z");
+        let melded_tiles = Vec::new();
+        let other_visible_tiles = Vec::new();
+        let upgrade_tiles = get_upgrade_tiles(
+            tiles_after_discard_7m,
+            &melded_tiles,
+            &get_shanten_optimized,
+            &get_ukiere_optimized,
+            &other_visible_tiles,
+        );
+
+        println!(
+            "upgrade tiles after discard 7m: {:?}",
+            upgrade_tiles
+                .keys()
+                .map(MahjongTileId::to_text)
+                .fold(String::new(), |mut a, b| {
+                    a.push(' ');
+                    a.push_str(&b);
+                    a
+                })
+        );
+        // upgrades: 3s, 4s, 5s, 6s, 7s, 9s, 3p, 4p
+        assert_eq!(upgrade_tiles.len(), 8);
+
+        println!("checking upgrade tile 3s");
+        // draw (or call) 3s -> cut 9s -> new wait is 2345p2567s (previous wait is 25p8s)
+        let tile_3s = MahjongTileId::from_text("3s").unwrap();
+        let discard_for_upgraded_wait_after_3s = upgrade_tiles
+            .get(&tile_3s)
+            .expect("3s should be an upgrade tile");
+
+        // after drawing 3s, can discard 9s (but there are other options)
+        println!(
+            "discard tiles after discard 7m, upgrade on 3s: {:?}",
+            discard_for_upgraded_wait_after_3s
+                .keys()
+                .map(MahjongTileId::to_text)
+                .fold(String::new(), |mut a, b| {
+                    a.push(' ');
+                    a.push_str(&b);
+                    a
+                })
+        );
+        let tile_9s = MahjongTileId::from_text("9s").unwrap();
+        let upgraded_wait_after_3s_cut_9s = discard_for_upgraded_wait_after_3s
+            .get(&tile_9s)
+            .expect("9s should be one of the discard options after drawing 3s");
+        assert_eq!(
+            upgraded_wait_after_3s_cut_9s,
+            &(MahjongTileCountArray::from_text("2345p2567s"), 27)
+        );
+
+        println!("checking upgrade tile 4s");
+        // draw (or call) 4s -> cut 9s -> new wait is 25p456s (previous wait is 25p8s)
+        let tile_4s = MahjongTileId::from_text("4s").unwrap();
+        let discard_for_upgraded_wait_after_4s = upgrade_tiles
+            .get(&tile_4s)
+            .expect("4s should be an upgrade tile");
+
+        // after drawing 4s, can discard 5s or 9s
+        let tile_5s = MahjongTileId::from_text("5s").unwrap();
+        let upgraded_wait_after_4s_cut_5s = discard_for_upgraded_wait_after_4s
+            .get(&tile_5s)
+            .expect("5s should be one of the discard options after drawing 4s");
+        assert_eq!(
+            upgraded_wait_after_4s_cut_5s,
+            &(MahjongTileCountArray::from_text("25p68s"), 16)
+        );
+        let tile_9s = MahjongTileId::from_text("9s").unwrap();
+        let upgraded_wait_after_4s_cut_9s = discard_for_upgraded_wait_after_4s
+            .get(&tile_9s)
+            .expect("9s should be one of the discard options after drawing 4s");
+        assert_eq!(
+            upgraded_wait_after_4s_cut_9s,
+            &(MahjongTileCountArray::from_text("25p456s"), 16)
+        );
+
+        println!("checking upgrade tile 5s");
+        // draw 5s -> cut 4s -> new wait is 2345p6789s (previous wait is 25p8s)
+        let tile_5s = MahjongTileId::from_text("5s").unwrap();
+        let discard_for_upgraded_wait_after_5s = upgrade_tiles
+            .get(&tile_5s)
+            .expect("5s should be an upgrade tile");
+
+        // after drawing 5s, can discard 4s (for highest acceptance)
+        let tile_4s = MahjongTileId::from_text("4s").unwrap();
+        let upgraded_wait_after_5s_cut_4s = discard_for_upgraded_wait_after_5s
+            .get(&tile_4s)
+            .expect("4s should be one of the discard options after drawing 5s");
+        assert_eq!(
+            upgraded_wait_after_5s_cut_4s,
+            &(MahjongTileCountArray::from_text("2345p6789s"), 28)
+        );
+
+        println!("checking upgrade tile 6s");
+        // draw 6s -> cut 9s -> new wait is 2345p345678s (previous wait is 25p8s)
+        let tile_6s = MahjongTileId::from_text("6s").unwrap();
+        let discard_for_upgraded_wait_after_6s = upgrade_tiles
+            .get(&tile_6s)
+            .expect("6s should be an upgrade tile");
+
+        // after drawing 6s, can discard 9s (for highest acceptance)
+        let tile_9s = MahjongTileId::from_text("9s").unwrap();
+        let upgraded_wait_after_6s_cut_9s = discard_for_upgraded_wait_after_6s
+            .get(&tile_9s)
+            .expect("9s should be one of the discard options after drawing 6s");
+        assert_eq!(
+            upgraded_wait_after_6s_cut_9s,
+            &(MahjongTileCountArray::from_text("2345p345678s"), 33)
+        );
+
+        println!("checking upgrade tile 7s");
+        // draw 7s -> cut 9s -> new wait is 25p3567s (previous wait is 25p8s)
+        let tile_7s = MahjongTileId::from_text("7s").unwrap();
+        let discard_for_upgraded_wait_after_7s = upgrade_tiles
+            .get(&tile_7s)
+            .expect("7s should be an upgrade tile");
+
+        // after drawing 7s, can discard 9s (for highest acceptance)
+        let tile_9s = MahjongTileId::from_text("9s").unwrap();
+        let upgraded_wait_after_7s_cut_9s = discard_for_upgraded_wait_after_7s
+            .get(&tile_9s)
+            .expect("9s should be one of the discard options after drawing 7s");
+        assert_eq!(
+            upgraded_wait_after_7s_cut_9s,
+            &(MahjongTileCountArray::from_text("25p3567s"), 20)
+        );
+
+        println!("checking upgrade tile 9s");
+        // draw 9s -> cut 7s -> new wait is 25p3569s (previous wait is 25p8s)
+        let tile_9s = MahjongTileId::from_text("9s").unwrap();
+        let discard_for_upgraded_wait_after_9s = upgrade_tiles
+            .get(&tile_9s)
+            .expect("9s should be an upgrade tile");
+
+        // after drawing 9s, can discard 7s (for highest acceptance)
+        let tile_7s = MahjongTileId::from_text("7s").unwrap();
+        let upgraded_wait_after_9s_cut_7s = discard_for_upgraded_wait_after_9s
+            .get(&tile_7s)
+            .expect("7s should be one of the discard options after drawing 9s");
+        assert_eq!(
+            upgraded_wait_after_9s_cut_7s,
+            &(MahjongTileCountArray::from_text("25p3569s"), 20)
+        );
+
+        println!("checking upgrade tile 3p");
+        // draw 3p -> cut 4p -> new wait is 3p3568s (previous wait is 25p8s)
+        let tile_3p = MahjongTileId::from_text("3p").unwrap();
+        let discard_for_upgraded_wait_after_3p = upgrade_tiles
+            .get(&tile_3p)
+            .expect("3p should be an upgrade tile");
+
+        // after drawing 3p, can discard 4p (for highest acceptance)
+        let tile_4p = MahjongTileId::from_text("4p").unwrap();
+        let upgraded_wait_after_3p_cut_4p = discard_for_upgraded_wait_after_3p
+            .get(&tile_4p)
+            .expect("4p should be one of the discard options after drawing 3p");
+        assert_eq!(
+            upgraded_wait_after_3p_cut_4p,
+            &(MahjongTileCountArray::from_text("3p3568s"), 16)
+        );
+
+        println!("checking upgrade tile 4p");
+        // draw 4p -> cut 3p -> new wait is 4p3568s (previous wait is 25p8s)
+        let tile_4p = MahjongTileId::from_text("4p").unwrap();
+        let discard_for_upgraded_wait_after_4p = upgrade_tiles
+            .get(&tile_4p)
+            .expect("4p should be an upgrade tile");
+
+        // after drawing 4p, can discard 3p (for highest acceptance)
+        let tile_3p = MahjongTileId::from_text("3p").unwrap();
+        let upgraded_wait_after_4p_cut_3p = discard_for_upgraded_wait_after_4p
+            .get(&tile_3p)
+            .expect("3p should be one of the discard options after drawing 4p");
+        assert_eq!(
+            upgraded_wait_after_4p_cut_3p,
+            &(MahjongTileCountArray::from_text("4p3568s"), 16)
+        );
+    }
 }
 
 // 3445799m13p3456s4m - 1-shanten, cut 3s/6s results in 15 ukiere (4689m2p)
