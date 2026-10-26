@@ -1954,6 +1954,7 @@ pub(crate) fn print_shanten_ukiere_after_each_discard(
                 println!("{}", upgrade_options_str_parts.join("\n"));
             }
         }
+        println!("---");
     }
 }
 
@@ -3220,50 +3221,6 @@ mod tests {
     }
 
     #[test]
-    fn tenpai_and_n_shanten_examples_riichi_book_1() {
-        // examples from riichi book 1: section 3.2.3 (ready and n-away)
-        // tenpai hand
-        let tiles = MahjongTileCountArray::from_text("34588p23678s777z");
-        let melded_tiles = Vec::new();
-        assert_eq!(get_shanten(tiles, &melded_tiles), 0);
-        assert_eq!(get_shanten_optimized(tiles, &melded_tiles), 0);
-
-        // ukiere tiles: 14s
-        let expected_ukiere_tiles = MahjongTileCountArray::from_text("14s");
-        let ukiere_tiles = get_ukiere(tiles, &melded_tiles);
-        assert_eq!(ukiere_tiles, expected_ukiere_tiles);
-
-        let ukiere_tiles = get_ukiere_optimized(tiles, &melded_tiles);
-        assert_eq!(ukiere_tiles, expected_ukiere_tiles);
-
-        // 1-shanten hand:
-        let tiles = MahjongTileCountArray::from_text("35588p23678s777z");
-        assert_eq!(get_shanten(tiles, &melded_tiles), 1);
-        assert_eq!(get_shanten_optimized(tiles, &melded_tiles), 1);
-
-        // ukiere tiles: 458p14s
-        let expected_ukiere_tiles = MahjongTileCountArray::from_text("458p14s");
-        let ukiere_tiles = get_ukiere(tiles, &melded_tiles);
-        assert_eq!(ukiere_tiles, expected_ukiere_tiles);
-
-        let ukiere_tiles = get_ukiere_optimized(tiles, &melded_tiles);
-        assert_eq!(ukiere_tiles, expected_ukiere_tiles);
-
-        // 2-shanten hand
-        let tiles = MahjongTileCountArray::from_text("35588p23677s777z");
-        assert_eq!(get_shanten(tiles, &melded_tiles), 2);
-        assert_eq!(get_shanten_optimized(tiles, &melded_tiles), 2);
-
-        // ukiere tiles: 3458p12345678s (3p236s will make the hand 1-shanten for chiitoi)
-        let expected_ukiere_tiles = MahjongTileCountArray::from_text("3458p12345678s");
-        let ukiere_tiles = get_ukiere(tiles, &melded_tiles);
-        assert_eq!(ukiere_tiles, expected_ukiere_tiles);
-
-        let ukiere_tiles = get_ukiere_optimized(tiles, &melded_tiles);
-        assert_eq!(ukiere_tiles, expected_ukiere_tiles);
-    }
-
-    #[test]
     fn wwyd_basic_efficiency_riichi_book_1() {
         // examples from riichi book 1: section 3.2.3 (ready and n-away > advancing your hand)
         let tiles = MahjongTileCountArray::from_text("5677m34p45579s666z");
@@ -4360,8 +4317,26 @@ mod tests {
     }
 
     #[test]
+    fn test_riichi_book_1_tenpai() {
+        // example from riichi book 1: section 3.2.3 (ready and n-away), page 52
+        // tenpai hand
+        let tiles = MahjongTileCountArray::from_text("34588p23678s777z");
+        let melded_tiles = Vec::new();
+        assert_eq!(get_shanten(tiles, &melded_tiles), 0);
+        assert_eq!(get_shanten_optimized(tiles, &melded_tiles), 0);
+
+        // ukiere tiles: 14s
+        let expected_ukiere_tiles = MahjongTileCountArray::from_text("14s");
+        let ukiere_tiles = get_ukiere(tiles, &melded_tiles);
+        assert_eq!(ukiere_tiles, expected_ukiere_tiles);
+
+        let ukiere_tiles = get_ukiere_optimized(tiles, &melded_tiles);
+        assert_eq!(ukiere_tiles, expected_ukiere_tiles);
+    }
+
+    #[test]
     fn test_riichi_book1_one_shanten() {
-        // page 53
+        // example from riichi book 1: section 3.2.3 (ready and n-away), page 53
         let tiles_before_draw = MahjongTileCountArray::from_text("35588p23678s777z");
         let melded_tiles = Vec::new();
         let shanten = get_shanten_optimized(tiles_before_draw, &melded_tiles);
@@ -4374,7 +4349,7 @@ mod tests {
 
     #[test]
     fn test_riichi_book1_two_shanten() {
-        // page 54
+        // example from riichi book 1: section 3.2.3 (ready and n-away), page 53
         let tiles_before_draw = MahjongTileCountArray::from_text("35588p23677s777z");
         let melded_tiles = Vec::new();
         let shanten = get_shanten_optimized(tiles_before_draw, &melded_tiles);
@@ -4436,6 +4411,53 @@ mod tests {
             MahjongTileCountArray::from_text("25p8s"),
             12
         )));
+    }
+
+    #[test]
+    fn riichi_book1_two_shanten_one_pair() {
+        // example from riichi book 1: section 3.2.6 (pairs and sets), page 59
+        let tiles_before_draw = MahjongTileCountArray::from_text("135m56789p2267s4z");
+        let melded_tiles = Vec::new();
+        let shanten = get_shanten_optimized(tiles_before_draw, &melded_tiles);
+        assert_eq!(shanten, 2);
+
+        let ukiere_tiles = get_ukiere_optimized(tiles_before_draw, &melded_tiles);
+        let expected_ukiere_tiles = MahjongTileCountArray::from_text("24m47p58s");
+        assert_eq!(ukiere_tiles, expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn riichi_book1_two_shanten_two_pairs() {
+        // example from riichi book 1: section 3.2.6 (pairs and sets), page 59
+        let tiles_before_draw = MahjongTileCountArray::from_text("1135m56789p2267s");
+        let melded_tiles = Vec::new();
+        let shanten = get_shanten_optimized(tiles_before_draw, &melded_tiles);
+        assert_eq!(shanten, 2);
+
+        let ukiere_tiles = get_ukiere_optimized(tiles_before_draw, &melded_tiles);
+        let expected_ukiere_tiles = MahjongTileCountArray::from_text("124m47p258s");
+        assert_eq!(ukiere_tiles, expected_ukiere_tiles);
+    }
+
+    #[test]
+    fn riichi_book1_two_shanten_three_pairs() {
+        // example from riichi book 1: section 3.2.6 (pairs and sets), page 60
+        let tiles_after_draw = MahjongTileCountArray::from_text("1135m56789p2267s6s");
+        let melded_tiles = Vec::new();
+        let other_visible_tiles: Vec<MahjongTileId> = Vec::new();
+        let ukiere_after_discard = get_shanten_ukiere_after_each_discard(
+            tiles_after_draw,
+            &melded_tiles,
+            &get_shanten_optimized,
+            &get_ukiere_optimized,
+            &other_visible_tiles,
+        );
+        print_shanten_ukiere_after_each_discard(
+            tiles_after_draw,
+            &melded_tiles,
+            &ukiere_after_discard,
+            &other_visible_tiles,
+        );
     }
 
     #[test]
